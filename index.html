@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v25</title>
+  <title>クリモン - 基礎版 v26</title>
   <style>
     :root{
       --bg:#10131c;
@@ -724,7 +724,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v25</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v26</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1185,26 +1185,126 @@ const EVOLUTION_TREE = {
 };
 
 
-function normalizeBranchPath(branchPath){
-  const p = String(branchPath || "base").trim();
-  return p ? p : "base";
-}
 function speciesKeyFromName(name){
   const found = Object.entries(BASE_SPECIES).find(([key,s])=>s.speciesName===name);
   return found ? found[0] : "";
 }
+function normalizeEvolutionPath(branchPath){
+  let p = String(branchPath ?? "").trim();
+  if(p === "base") return "";
+  if(p.startsWith("base")) p = p.slice(4);
+  if(p.startsWith("_")) p = p.slice(1);
+  return p;
+}
+function imageBranchPath(branchPath){
+  const p = normalizeEvolutionPath(branchPath);
+  return p || "base";
+}
 function imagePath(speciesKey, branchPath){
   const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
-  const path = normalizeBranchPath(branchPath);
-  return `images/${key}_${path}.png`;
+  return `images/${key}_${imageBranchPath(branchPath)}.png`;
+}
+function stageFromPath(path){
+  const p = normalizeEvolutionPath(path);
+  if(!p) return 0;
+  if(p.length === 1) return 1;
+  if(p.length === 2) return 2;
+  return 3;
+}
+function formIdFor(speciesKey, branchPath){
+  const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
+  const p = normalizeEvolutionPath(branchPath);
+  return `${key}_${p || "base"}`;
+}
+function inferSpeciesAndPath(formId, fallbackSpeciesKey, fallbackPath){
+  const raw = String(formId || "");
+  const parts = raw.split("_");
+  const speciesKey = BASE_SPECIES[parts[0]] ? parts[0] : (BASE_SPECIES[fallbackSpeciesKey] ? fallbackSpeciesKey : "shinya");
+  const pathFromId = parts.length > 1 ? parts.slice(1).join("_") : "";
+  const path = normalizeEvolutionPath(pathFromId || fallbackPath || "");
+  return {speciesKey, path};
+}
+function formDataFor(speciesKey, branchPath){
+  const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
+  const p = normalizeEvolutionPath(branchPath);
+  const base = BASE_SPECIES[key];
+  if(!p){
+    return {
+      speciesKey:key,
+      branchPath:"",
+      formId:`${key}_base`,
+      formName:base.speciesName,
+      speciesName:base.speciesName,
+      profile:base.role,
+      role:base.role,
+      stage:0,
+      emoji:base.emoji,
+      image:imagePath(key,"")
+    };
+  }
+  const entry=(EVOLUTION_TREE[key]||{})[p];
+  return {
+    speciesKey:key,
+    branchPath:p,
+    formId:`${key}_${p}`,
+    formName:entry?.formName || `${base.speciesName}進化体`,
+    speciesName:base.speciesName,
+    profile:entry?.profile || "進化体。",
+    role:base.role,
+    stage:stageFromPath(p),
+    emoji:base.emoji,
+    image:imagePath(key,p)
+  };
+}
+function repairMonsterRecord(mon){
+  if(!mon) return mon;
+  const inferred = inferSpeciesAndPath(mon.formId, mon.speciesKey || speciesKeyFromName(mon.speciesName), mon.branchPath);
+  const fixed = formDataFor(inferred.speciesKey, inferred.path);
+  mon.speciesKey = fixed.speciesKey;
+  mon.speciesName = fixed.speciesName;
+  mon.stage = fixed.stage;
+  mon.branchPath = fixed.branchPath;
+  mon.formId = fixed.formId;
+  mon.formName = fixed.formName;
+  mon.role = fixed.role;
+  mon.profile = fixed.profile;
+  mon.emoji = fixed.emoji;
+  mon.image = fixed.image;
+  if(!mon.nickname) mon.nickname = mon.name || fixed.formName;
+  return mon;
+}
+function repairDexItem(formId, item){
+  const inferred = inferSpeciesAndPath(item?.formId || formId, item?.speciesKey || speciesKeyFromName(item?.speciesName), item?.branchPath);
+  const fixed = formDataFor(inferred.speciesKey, inferred.path);
+  return {
+    ...item,
+    speciesKey:fixed.speciesKey,
+    branchPath:fixed.branchPath || "base",
+    emoji:item?.emoji || fixed.emoji,
+    image:fixed.image,
+    speciesName:fixed.speciesName,
+    formName:fixed.formName,
+    role:item?.role || fixed.role,
+    profile:item?.profile && !String(item.profile).includes("進化体。") ? item.profile : fixed.profile,
+    formId:fixed.formId,
+    stage:fixed.stage,
+    seenAt:item?.seenAt || Date.now()
+  };
+}
+function repairDexCollection(){
+  const repaired = {};
+  for(const [formId,item] of Object.entries(state.dex || {})){
+    const fixed = repairDexItem(formId,item || {});
+    repaired[fixed.formId] = fixed;
+  }
+  state.dex = repaired;
 }
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
   if(!source) return "";
-  if(source.image) return source.image;
   const key = source.speciesKey || speciesKeyFromName(source.speciesName) || "";
-  if(key) return imagePath(key, source.branchPath || "base");
-  return "";
+  if(key) return imagePath(key, source.branchPath || "");
+  return source.image || "";
 }
 function actorEmoji(actor){
   const source = actor && actor.source ? actor.source : actor;
@@ -1251,37 +1351,27 @@ function initGame(){
 function migrateState(){
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
+  if(!state.dex) state.dex = {};
   if(typeof state.firstEggUsed !== "boolean") state.firstEggUsed = state.monsters && state.monsters.length > 0;
   if(!state.battleSpeed) state.battleSpeed = 1;
   if(!state.selectedTreeSpecies) state.selectedTreeSpecies = "shinya";
   if(!state.mockMode) state.mockMode = "normal";
   if(!Array.isArray(state.mockHistory)) state.mockHistory = [];
   if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
-  for(const [formId,item] of Object.entries(state.dex || {})){
-    if(!item.formId) item.formId = formId;
-    const parts = String(item.formId || formId).split("_");
-    if(!item.speciesKey) item.speciesKey = BASE_SPECIES[parts[0]] ? parts[0] : (speciesKeyFromName(item.speciesName) || "shinya");
-    if(!item.branchPath) item.branchPath = parts.length>1 ? parts.slice(1).join("_") : "base";
-    if(item.branchPath === "") item.branchPath = "base";
-    if(!item.emoji) item.emoji = BASE_SPECIES[item.speciesKey]?.emoji || "❔";
-    if(!item.image) item.image = imagePath(item.speciesKey, item.branchPath || "base");
-    if(!item.formName) item.formName = item.speciesName || item.formId || "クリモン";
-    if(!item.speciesName) item.speciesName = BASE_SPECIES[item.speciesKey]?.speciesName || "不明";
-  }
+
+  repairDexCollection();
+
   for(const mon of state.monsters || []){
-    if(!mon.nickname) mon.nickname = mon.name || mon.formName || BASE_SPECIES[mon.speciesKey]?.speciesName || "クリモン";
-    if(!mon.speciesName) mon.speciesName = BASE_SPECIES[mon.speciesKey]?.speciesName || mon.name;
-    if(!mon.formName) mon.formName = mon.name || mon.speciesName;
-    if(!mon.speciesKey) mon.speciesKey = speciesKeyFromName(mon.speciesName) || "shinya";
-    if(mon.branchPath === undefined || mon.branchPath === null) mon.branchPath = "";
-    if(mon.stage===0 && mon.branchPath==="base") mon.branchPath = "";
-    if(!mon.emoji) mon.emoji = BASE_SPECIES[mon.speciesKey]?.emoji || "❔";
-    if(!mon.image) mon.image = imagePath(mon.speciesKey, mon.branchPath || "base");
+    repairMonsterRecord(mon);
     if(!mon.level || mon.level < 1) mon.level = 1;
     if(mon.level > MAX_LEVEL) mon.level = MAX_LEVEL;
+    if(!mon.stats) mon.stats = {...(BASE_SPECIES[mon.speciesKey]?.baseStats || BASE_SPECIES.shinya.baseStats)};
+    if(!mon.history) mon.history = {train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:getTimeBand().key,miraclePlay:false};
+    if(!mon.history.train) mon.history.train = {hp:0,atk:0,def:0,mag:0,luck:0,spd:0};
     ensureCapBias(mon);
     capMonsterStats(mon);
     if(mon.level >= MAX_LEVEL) mon.exp = 0;
+    registerDex(mon);
   }
 }
 migrateState();
@@ -1338,7 +1428,7 @@ function hatchEgg(){
     nickname:species.speciesName,
     formId:`${speciesKey}_base`,
     stage:0, branchPath:"",
-    role:species.role, profile:species.role, emoji:species.emoji, image:species.image,
+    role:species.role, profile:species.role, emoji:species.emoji, image:imagePath(speciesKey,""),
     personality, condition:"normal", level:1, exp:0, stats, hpCurrent:stats.hp,
     capBias:rollCapBias(),
     rareScore:Math.floor(Math.random()*4), trait:rollTrait(),
@@ -2065,14 +2155,21 @@ function isRareEvolution(mon,scores,band){
   return scores.special+Math.floor(mon.stats.luck/2)>=threshold;
 }
 function buildEvolutionForm(mon,branch){
-  const nextStage=mon.stage+1;
-  const currentPath = (!mon.branchPath || mon.branchPath==="base") ? "" : mon.branchPath;
-  const newPath=mon.stage===2 && branch==="r" ? currentPath+"r" : currentPath+branch;
-  const entry=(EVOLUTION_TREE[mon.speciesKey]||{})[newPath] || {formName:`${BASE_SPECIES[mon.speciesKey].speciesName}進化体`, profile:"進化体。"};
-  return {formName:entry.formName, profile:entry.profile, stage:nextStage, branchPath:newPath, formId:`${mon.speciesKey}_${newPath}`, image:imagePath(mon.speciesKey,newPath)};
+  const currentPath = normalizeEvolutionPath(mon.branchPath);
+  const newPath = mon.stage===2 && branch==="r" ? currentPath+"r" : currentPath+branch;
+  return formDataFor(mon.speciesKey,newPath);
 }
 function applyEvolution(mon,result){
-  mon.formName=result.formName;mon.profile=result.profile;mon.stage=result.stage;mon.branchPath=result.branchPath;mon.formId=result.formId;mon.image=result.image;
+  mon.speciesKey=result.speciesKey || mon.speciesKey;
+  mon.speciesName=result.speciesName || mon.speciesName;
+  mon.formName=result.formName;
+  mon.profile=result.profile;
+  mon.role=result.role || mon.role;
+  mon.stage=result.stage;
+  mon.branchPath=result.branchPath;
+  mon.formId=result.formId;
+  mon.emoji=result.emoji || mon.emoji;
+  mon.image=result.image;
   applyFormBonus(mon);
   capMonsterStats(mon);
   mon.hpCurrent=mon.stats.hp;
@@ -2103,19 +2200,18 @@ function getEvolveHint(mon){
 }
 
 function registerDex(mon){
-  const branchPath = mon.branchPath || "base";
-  const speciesKey = mon.speciesKey || speciesKeyFromName(mon.speciesName) || "shinya";
-  state.dex[mon.formId]={
-    speciesKey,
-    branchPath,
-    emoji:mon.emoji || BASE_SPECIES[speciesKey]?.emoji || "❔",
-    image:mon.image || imagePath(speciesKey, branchPath),
-    speciesName:mon.speciesName || BASE_SPECIES[speciesKey]?.speciesName || "不明",
-    formName:mon.formName || mon.speciesName || "クリモン",
-    role:mon.role,
-    profile:mon.profile||mon.role,
-    formId:mon.formId,
-    stage:mon.stage,
+  const fixed = formDataFor(mon.speciesKey, mon.branchPath);
+  state.dex[fixed.formId]={
+    speciesKey:fixed.speciesKey,
+    branchPath:fixed.branchPath || "base",
+    emoji:fixed.emoji,
+    image:fixed.image,
+    speciesName:fixed.speciesName,
+    formName:fixed.formName,
+    role:fixed.role,
+    profile:fixed.profile,
+    formId:fixed.formId,
+    stage:fixed.stage,
     seenAt:Date.now()
   };
 }
@@ -2503,13 +2599,8 @@ function stageName(stage){
 
 
 function dexInfoFromItem(item){
-  const formId = item.formId || "";
-  const parts = String(formId).split("_");
-  const speciesKey = item.speciesKey || (BASE_SPECIES[parts[0]] ? parts[0] : speciesKeyFromName(item.speciesName)) || "shinya";
-  const branchPath = item.branchPath || (parts.length>1 ? parts.slice(1).join("_") : "base") || "base";
-  const emoji = item.emoji || BASE_SPECIES[speciesKey]?.emoji || "❔";
-  const image = item.image || imagePath(speciesKey, branchPath);
-  return {speciesKey, branchPath, emoji, image};
+  const fixed = repairDexItem(item?.formId || "", item || {});
+  return {speciesKey:fixed.speciesKey, branchPath:fixed.branchPath, emoji:fixed.emoji, image:fixed.image};
 }
 function dexThumbHtml(item){
   const info = dexInfoFromItem(item);
@@ -2553,7 +2644,11 @@ function setTreeSpecies(key){
   renderEvolutionTree();
 }
 function dexHas(formId){
-  return !!(state.dex && state.dex[formId]);
+  if(!state.dex) return false;
+  if(state.dex[formId]) return true;
+  const inferred = inferSpeciesAndPath(formId,"shinya","");
+  const fixedId = formIdFor(inferred.speciesKey,inferred.path);
+  return !!state.dex[fixedId];
 }
 function nodeData(key,path,label,branchKind){
   const base = BASE_SPECIES[key];
