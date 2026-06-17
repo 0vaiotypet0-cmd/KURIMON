@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v23</title>
+  <title>クリモン - 基礎版 v24</title>
   <style>
     :root{
       --bg:#10131c;
@@ -621,12 +621,110 @@
       text-overflow:ellipsis;
     }
 
+
+    .personality-card-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .personality-card{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      border-radius:14px;
+      padding:10px;
+      font-size:12px;
+      line-height:1.55;
+    }
+    .personality-card strong{
+      display:block;
+      font-size:14px;
+      color:#fff1a1;
+      margin-bottom:4px;
+    }
+    .personality-card .p-row{
+      display:block;
+      color:var(--muted);
+      margin-top:3px;
+    }
+    .personality-card .p-row b{
+      color:var(--text);
+    }
+    .fighter-body{
+      position:relative;
+      min-height:130px;
+    }
+    .fighter-body img{
+      max-width:95%;
+      max-height:150px;
+      width:auto;
+      height:auto;
+      object-fit:contain;
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      z-index:2;
+      filter:drop-shadow(0 14px 18px rgba(0,0,0,.35));
+    }
+    .fighter-body .fighter-fallback{
+      z-index:1;
+      font-size:70px;
+      line-height:1;
+      filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));
+    }
+    .dex-card{
+      display:grid;
+      grid-template-columns:56px 1fr;
+      gap:10px;
+      align-items:center;
+      min-height:78px;
+    }
+    .dex-thumb{
+      width:56px;
+      height:56px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.22);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+      position:relative;
+    }
+    .dex-thumb img{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      image-rendering:auto;
+      z-index:2;
+      filter:drop-shadow(0 8px 10px rgba(0,0,0,.25));
+    }
+    .dex-thumb .fallback{
+      font-size:28px;
+      line-height:1;
+      z-index:1;
+    }
+    .dex-info{
+      min-width:0;
+    }
+    .dex-info strong{
+      display:block;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      margin-bottom:2px;
+    }
+
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v23</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v24</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1086,6 +1184,49 @@ const EVOLUTION_TREE = {
   }
 };
 
+
+function normalizeBranchPath(branchPath){
+  const p = String(branchPath || "base").trim();
+  return p ? p : "base";
+}
+function speciesKeyFromName(name){
+  const found = Object.entries(BASE_SPECIES).find(([key,s])=>s.speciesName===name);
+  return found ? found[0] : "";
+}
+function imagePath(speciesKey, branchPath){
+  const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
+  const path = normalizeBranchPath(branchPath);
+  return `images/${key}_${path}.png`;
+}
+function actorImage(actor){
+  const source = actor && actor.source ? actor.source : actor;
+  if(!source) return "";
+  if(source.image) return source.image;
+  const key = source.speciesKey || speciesKeyFromName(source.speciesName) || "";
+  if(key) return imagePath(key, source.branchPath || "base");
+  return "";
+}
+function actorEmoji(actor){
+  const source = actor && actor.source ? actor.source : actor;
+  if(!source) return "❔";
+  return source.emoji || (source.speciesKey && BASE_SPECIES[source.speciesKey]?.emoji) || "❔";
+}
+function imageWithFallbackHtml(src, emoji, alt, className){
+  const safeEmoji = escapeHtml(emoji || "❔");
+  const safeAlt = escapeHtml(alt || "クリモン");
+  const safeSrc = escapeHtml(src || "");
+  const cls = className ? ` class="${escapeHtml(className)}"` : "";
+  if(!src){
+    return `<span${cls}>${safeEmoji}</span>`;
+  }
+  return `<span${cls}>${safeEmoji}</span><img src="${safeSrc}" alt="${safeAlt}" onload="this.previousElementSibling.style.display='none';" onerror="this.style.display='none';this.previousElementSibling.style.display='block';">`;
+}
+function battlePortraitHtml(actor){
+  const source = actor && actor.source ? actor.source : actor;
+  const name = source?.nickname || source?.formName || source?.name || "クリモン";
+  return imageWithFallbackHtml(actorImage(actor), actorEmoji(actor), name, "fighter-fallback");
+}
+
 let state = loadGame() || initGame();
 let currentTab = "home";
 let currentEnemy = null;
@@ -1119,15 +1260,23 @@ function migrateState(){
   for(const [formId,item] of Object.entries(state.dex || {})){
     if(!item.formId) item.formId = formId;
     const parts = String(item.formId || formId).split("_");
-    if(!item.speciesKey) item.speciesKey = parts[0] || "shinya";
-    if(!item.branchPath) item.branchPath = parts.slice(1).join("_") || "base";
+    if(!item.speciesKey) item.speciesKey = BASE_SPECIES[parts[0]] ? parts[0] : (speciesKeyFromName(item.speciesName) || "shinya");
+    if(!item.branchPath) item.branchPath = parts.length>1 ? parts.slice(1).join("_") : "base";
+    if(item.branchPath === "") item.branchPath = "base";
     if(!item.emoji) item.emoji = BASE_SPECIES[item.speciesKey]?.emoji || "❔";
     if(!item.image) item.image = imagePath(item.speciesKey, item.branchPath || "base");
+    if(!item.formName) item.formName = item.speciesName || item.formId || "クリモン";
+    if(!item.speciesName) item.speciesName = BASE_SPECIES[item.speciesKey]?.speciesName || "不明";
   }
   for(const mon of state.monsters || []){
     if(!mon.nickname) mon.nickname = mon.name || mon.formName || BASE_SPECIES[mon.speciesKey]?.speciesName || "クリモン";
     if(!mon.speciesName) mon.speciesName = BASE_SPECIES[mon.speciesKey]?.speciesName || mon.name;
     if(!mon.formName) mon.formName = mon.name || mon.speciesName;
+    if(!mon.speciesKey) mon.speciesKey = speciesKeyFromName(mon.speciesName) || "shinya";
+    if(mon.branchPath === undefined || mon.branchPath === null) mon.branchPath = "base";
+    if(mon.branchPath === "") mon.branchPath = "base";
+    if(!mon.emoji) mon.emoji = BASE_SPECIES[mon.speciesKey]?.emoji || "❔";
+    if(!mon.image) mon.image = imagePath(mon.speciesKey, mon.branchPath || "base");
     if(!mon.level || mon.level < 1) mon.level = 1;
     if(mon.level > MAX_LEVEL) mon.level = MAX_LEVEL;
     ensureCapBias(mon);
@@ -1188,7 +1337,7 @@ function hatchEgg(){
     formName:species.speciesName,
     nickname:species.speciesName,
     formId:`${speciesKey}_base`,
-    stage:0, branchPath:"",
+    stage:0, branchPath:"base",
     role:species.role, profile:species.role, emoji:species.emoji, image:species.image,
     personality, condition:"normal", level:1, exp:0, stats, hpCurrent:stats.hp,
     capBias:rollCapBias(),
@@ -1392,11 +1541,15 @@ function improveCondition(c){if(c==="bad")return"tired";if(c==="tired")return"no
 
 function makeEnemy(level){
   const enemies=[
-    {name:"野良クリモン",emoji:"👾"},{name:"ミームスライム",emoji:"🫠"},{name:"定時ゴブリン",emoji:"🕔"},{name:"沼バード",emoji:"🐦‍⬛"},{name:"社畜ワーム",emoji:"🪱"}
+    {name:"野良クリモン",emoji:"👾",image:"images/enemy_wild.png"},
+    {name:"ミームスライム",emoji:"🫠",image:"images/enemy_slime.png"},
+    {name:"定時ゴブリン",emoji:"🕔",image:"images/enemy_goblin.png"},
+    {name:"沼バード",emoji:"🐦‍⬛",image:"images/enemy_bird.png"},
+    {name:"社畜ワーム",emoji:"🪱",image:"images/enemy_worm.png"}
   ];
   const pick=enemies[Math.floor(Math.random()*enemies.length)];
   const base=24+level*3;
-  return {name:pick.name, emoji:pick.emoji, level, hp:base+Math.floor(Math.random()*8), atk:5+level+Math.floor(Math.random()*4), def:4+level+Math.floor(Math.random()*4), mag:4+level+Math.floor(Math.random()*4), luck:4+level+Math.floor(Math.random()*4), spd:4+level+Math.floor(Math.random()*4)};
+  return {name:pick.name, emoji:pick.emoji, image:pick.image, level, hp:base+Math.floor(Math.random()*8), atk:5+level+Math.floor(Math.random()*4), def:4+level+Math.floor(Math.random()*4), mag:4+level+Math.floor(Math.random()*4), luck:4+level+Math.floor(Math.random()*4), spd:4+level+Math.floor(Math.random()*4)};
 }
 function prepareBattlePreview(){
   const mon=getCurrentMonster(); if(!mon || battleBusy)return;
@@ -1413,8 +1566,8 @@ function updateBattleStage(mon, enemy, myHp, enemyHp){
   document.getElementById("bfMyName").textContent=mon.nickname;
   document.getElementById("bfMySpecies").textContent=`${mon.formName} / ${mon.speciesName}`;
   document.getElementById("bfEnemyName").textContent=`${enemy.name} Lv.${enemy.level}`;
-  document.getElementById("bfMyBody").textContent=mon.emoji||"🐣";
-  document.getElementById("bfEnemyBody").textContent=enemy.emoji||"👾";
+  document.getElementById("bfMyBody").innerHTML=battlePortraitHtml(mon);
+  document.getElementById("bfEnemyBody").innerHTML=battlePortraitHtml(enemy);
   document.getElementById("bfMyHpText").textContent=`HP ${Math.max(0,myHp)}/${mon.stats.hp}`;
   document.getElementById("bfEnemyHpText").textContent=`HP ${Math.max(0,enemyHp)}/${enemy.hp}`;
   document.getElementById("bfMyHpBar").style.width=`${Math.max(0,Math.round(myHp/mon.stats.hp*100))}%`;
@@ -1949,13 +2102,15 @@ function getEvolveHint(mon){
 }
 
 function registerDex(mon){
+  const branchPath = mon.branchPath || "base";
+  const speciesKey = mon.speciesKey || speciesKeyFromName(mon.speciesName) || "shinya";
   state.dex[mon.formId]={
-    speciesKey:mon.speciesKey,
-    branchPath:mon.branchPath || "base",
-    emoji:mon.emoji || BASE_SPECIES[mon.speciesKey]?.emoji || "❔",
-    image:mon.image || imagePath(mon.speciesKey, mon.branchPath || "base"),
-    speciesName:mon.speciesName,
-    formName:mon.formName,
+    speciesKey,
+    branchPath,
+    emoji:mon.emoji || BASE_SPECIES[speciesKey]?.emoji || "❔",
+    image:mon.image || imagePath(speciesKey, branchPath),
+    speciesName:mon.speciesName || BASE_SPECIES[speciesKey]?.speciesName || "不明",
+    formName:mon.formName || mon.speciesName || "クリモン",
     role:mon.role,
     profile:mon.profile||mon.role,
     formId:mon.formId,
@@ -2006,7 +2161,15 @@ function renderMonster(mon){
     skillArea.innerHTML=`<b>使えるスキル・魔法</b>${renderSkillChips(mon)}`;
   }
   const img=document.getElementById("monsterImg"), emoji=document.getElementById("monsterEmoji");
-  img.src=mon.image;img.onload=()=>{img.style.display="block";emoji.style.display="none"};img.onerror=()=>{img.style.display="none";emoji.style.display="block"};emoji.textContent=mon.emoji||"🐣";
+  const src=actorImage(mon);
+  emoji.textContent=actorEmoji(mon)||"🐣";
+  emoji.style.display="block";
+  img.style.display="none";
+  if(src){
+    img.onload=()=>{img.style.display="block";emoji.style.display="none"};
+    img.onerror=()=>{img.style.display="none";emoji.style.display="block"};
+    img.src=src;
+  }
   const caps=getStatCaps(mon);
   document.getElementById("statsArea").innerHTML=Object.entries(STAT_LABEL).map(([key,label])=>{
     const val=mon.stats[key], cap=caps[key], pct=Math.min(100,Math.round((val/cap)*100));
@@ -2341,36 +2504,39 @@ function stageName(stage){
 function dexInfoFromItem(item){
   const formId = item.formId || "";
   const parts = String(formId).split("_");
-  const speciesKey = item.speciesKey || parts[0] || "shinya";
-  const branchPath = item.branchPath || parts.slice(1).join("_") || "base";
+  const speciesKey = item.speciesKey || (BASE_SPECIES[parts[0]] ? parts[0] : speciesKeyFromName(item.speciesName)) || "shinya";
+  const branchPath = item.branchPath || (parts.length>1 ? parts.slice(1).join("_") : "base") || "base";
   const emoji = item.emoji || BASE_SPECIES[speciesKey]?.emoji || "❔";
   const image = item.image || imagePath(speciesKey, branchPath);
   return {speciesKey, branchPath, emoji, image};
 }
 function dexThumbHtml(item){
   const info = dexInfoFromItem(item);
-  const fallback = escapeHtml(info.emoji || "❔");
-  return `<div class="dex-thumb">
-    <span class="fallback">${fallback}</span>
-    <img src="${escapeHtml(info.image)}" alt="${escapeHtml(item.formName || "クリモン")}" onload="this.previousElementSibling.style.display='none';" onerror="this.style.display='none';">
-  </div>`;
+  const name = item.formName || item.speciesName || item.formId || "クリモン";
+  return `<div class="dex-thumb">${imageWithFallbackHtml(info.image, info.emoji, name, "fallback")}</div>`;
 }
 
 function renderDex(){
-  const area=document.getElementById("collectionArea"), items=Object.values(state.dex||{});
+  const area=document.getElementById("collectionArea");
+  if(!area) return;
+  const items=Object.values(state.dex||{});
   if(items.length===0){area.innerHTML=`<div class="hint">まだ図鑑登録がありません。</div>`;return}
-  area.innerHTML=items.map(item=>`
-    <div class="mini dex-card">
+  area.innerHTML=items.map(item=>{
+    const formName = item.formName || item.speciesName || item.formId || "クリモン";
+    const speciesName = item.speciesName || BASE_SPECIES[dexInfoFromItem(item).speciesKey]?.speciesName || "不明";
+    const formId = item.formId || "";
+    const stage = Number.isFinite(item.stage) ? item.stage : 0;
+    return `<div class="mini dex-card">
       ${dexThumbHtml(item)}
       <div class="dex-info">
-        <strong>${escapeHtml(item.formName)}</strong>
-        <span>種族：${escapeHtml(item.speciesName)}</span><br>
-        <span>ID：${escapeHtml(item.formId)}</span><br>
-        <span>段階：${stageName(item.stage)}</span><br>
-        <span>${escapeHtml(item.profile||"")}</span>
+        <strong>${escapeHtml(formName)}</strong>
+        <span>種族：${escapeHtml(speciesName)}</span><br>
+        ${formId ? `<span>ID：${escapeHtml(formId)}</span><br>` : ""}
+        <span>段階：${stageName(stage)}</span><br>
+        <span>${escapeHtml(item.profile||item.role||"")}</span>
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 }
 function renderEvolutionTree(){
   const area=document.getElementById("evolutionTreeArea");
@@ -2497,23 +2663,20 @@ function renderTips(){
 function renderPersonalityTips(){
   const area=document.getElementById("personalityTipsArea");
   if(!area) return;
-  const rows = Object.entries(PERSONALITIES).map(([name,data])=>{
+  const cards = Object.entries(PERSONALITIES).map(([name,data])=>{
     const grow = data.grow || {};
     const effects = Object.keys(grow).length
       ? Object.entries(grow).map(([k,v])=>`${STAT_LABEL[k]} ${v>0?"+":""}${v}`).join(" / ")
       : "補正なし";
-    return `<tr>
-      <td>${escapeHtml(name)}</td>
-      <td>${escapeHtml(effects)}</td>
-      <td>${escapeHtml(data.feature || "")}</td>
-      <td>${escapeHtml(restPenaltyText(typeof data.restPenalty==="number" ? data.restPenalty : 0.25))}</td>
-      <td>${escapeHtml(data.desc)}</td>
-    </tr>`;
+    return `<div class="personality-card">
+      <strong>${escapeHtml(name)}</strong>
+      <span class="p-row"><b>ステータス補正：</b>${escapeHtml(effects)}</span>
+      <span class="p-row"><b>特徴：</b>${escapeHtml(data.feature || "なし")}</span>
+      <span class="p-row"><b>休憩リスク：</b>${escapeHtml(restPenaltyText(typeof data.restPenalty==="number" ? data.restPenalty : 0.25))}</span>
+      <span class="p-row"><b>説明：</b>${escapeHtml(data.desc || "")}</span>
+    </div>`;
   }).join("");
-  area.innerHTML = `<table class="tips-table">
-    <thead><tr><th>性格</th><th>ステータス補正</th><th>特徴</th><th>休憩リスク</th><th>説明</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+  area.innerHTML = `<div class="personality-card-grid">${cards}</div>`;
 }
 function renderStatTip(key){
   const area=document.getElementById("statTipArea");
