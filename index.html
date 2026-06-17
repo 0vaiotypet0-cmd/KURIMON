@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>クリモン - 基礎版 v21</title>
+  <style>
+    :root{
+      --bg:#10131c;
+      --panel:#1a2030;
+      --text:#f5f7ff;
+      --muted:#aeb7cc;
+      --accent:#f8d66d;
+      --danger:#ff6b7a;
+      --ok:#6df2a2;
+      --magic:#9ba7ff;
+      --line:rgba(255,255,255,.12);
+      --shadow:0 14px 35px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(248,214,109,.18), transparent 34%),
+        radial-gradient(circle at top right, rgba(109,242,162,.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(155,167,255,.12), transparent 32%),
+        var(--bg);
+      color:var(--text);
+      min-height:100vh;
+    }
+    header{
+      position:sticky;top:0;z-index:10;
+      background:rgba(16,19,28,.88);
+      backdrop-filter: blur(12px);
+      border-bottom:1px solid var(--line);
+      padding:12px 14px;
+    }
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:1140px;margin:0 auto}
+    .logo{font-size:21px;font-weight:950;letter-spacing:.02em;display:flex;gap:8px;align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.06);border-radius:999px;padding:7px 10px;color:var(--muted);font-size:12px;white-space:nowrap}
+    main{max-width:1140px;margin:0 auto;padding:14px;display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+    @media(max-width:900px){main{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
+    section,.card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    section{padding:14px}
+    h2,h3{margin:0 0 10px;line-height:1.25}
+    h2{font-size:17px} h3{font-size:15px}
+    p{margin:6px 0;color:var(--muted);line-height:1.55;font-size:13px}
+    button,input{
+      font-family:inherit;
+    }
+    input{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      color:var(--text);
+      background:rgba(0,0,0,.24);
+      outline:none;
+    }
+    button{
+      border:0;border-radius:13px;padding:10px 12px;font-weight:850;
+      color:#151515;background:var(--accent);cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.25);
+    }
+    button.secondary{background:#dfe6ff}
+    button.danger{background:var(--danger);color:#fff}
+    button.ok{background:var(--ok)}
+    button.magic{background:var(--magic);color:#10131c}
+    button.ghost{background:rgba(255,255,255,.09);color:var(--text);border:1px solid var(--line);box-shadow:none}
+    button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:540px){.grid2{grid-template-columns:1fr}button,input{width:100%}}
+    .monster-main{display:grid;grid-template-columns:180px 1fr;gap:14px;align-items:start}
+    @media(max-width:620px){.monster-main{grid-template-columns:1fr}}
+    .portrait{min-height:210px;background:linear-gradient(135deg,rgba(248,214,109,.12),rgba(255,255,255,.05));border:1px solid var(--line);border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+    .portrait img{width:100%;height:100%;object-fit:contain;display:none}
+    .portrait .fallback{font-size:76px;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))}
+    .badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(248,214,109,.14);color:#ffe38b;font-size:12px;border:1px solid rgba(248,214,109,.28);margin:2px 3px 2px 0}
+    .stat{margin:8px 0}
+    .stat-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+    .bar{height:10px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+    .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#f8d66d,#fff0a8);border-radius:999px;transition:.25s}
+    .hpbar{height:12px;background:rgba(255,255,255,.10);border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+    .hpbar>span{display:block;height:100%;background:linear-gradient(90deg,#6df2a2,#f8d66d);transition:.25s;width:100%}
+    .small{font-size:12px;color:var(--muted)}
+    .egg{min-height:140px;display:flex;align-items:center;justify-content:center;font-size:72px;border-radius:18px;border:1px dashed rgba(255,255,255,.2);background:rgba(255,255,255,.045);margin-bottom:10px}
+    .log{max-height:320px;overflow:auto;padding:10px;background:rgba(0,0,0,.18);border-radius:14px;border:1px solid var(--line);font-size:12px;color:#d9def0;line-height:1.55}
+    .log div{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .hidden{display:none!important}
+    .hint{border-left:4px solid var(--accent);background:rgba(248,214,109,.08);padding:9px 10px;border-radius:12px;color:#fff3bf;font-size:13px;margin:10px 0}
+    .collection,.box-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+    .mini{padding:10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line);min-height:118px}
+    .mini strong{display:block;font-size:13px}.mini span{font-size:11px;color:var(--muted)}
+    .mini.active{border-color:rgba(248,214,109,.7);box-shadow:0 0 0 2px rgba(248,214,109,.16) inset}
+    .footer-note{grid-column:1/-1;color:var(--muted);font-size:12px;padding-bottom:12px}
+    code{background:rgba(0,0,0,.25);border:1px solid var(--line);padding:2px 5px;border-radius:6px;color:#fff1a1}
+
+    /* Battle */
+    .battle-stage{
+      position:relative;
+      min-height:310px;
+      overflow:hidden;
+      border-radius:20px;
+      border:1px solid rgba(255,255,255,.14);
+      background:
+        radial-gradient(circle at 20% 30%, rgba(248,214,109,.18), transparent 25%),
+        radial-gradient(circle at 78% 35%, rgba(255,107,122,.18), transparent 25%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.18));
+      padding:14px;
+    }
+    .battle-flash{
+      position:absolute;inset:0;pointer-events:none;opacity:0;transition:.18s;
+      background:radial-gradient(circle, rgba(255,255,255,.55), transparent 42%);
+      mix-blend-mode:screen;
+    }
+    .battle-flash.on{opacity:1}
+    .fighters{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
+    .fighter{
+      position:relative;
+      min-height:235px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      overflow:hidden;
+    }
+    .fighter.enemy-side{background:rgba(255,107,122,.075)}
+    .fighter.me-side{background:rgba(109,242,162,.075)}
+    .fighter-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;z-index:1}
+    .fighter-name{font-weight:900;font-size:14px}
+    .fighter-species{font-size:11px;color:var(--muted)}
+    .fighter-body{
+      flex:1;
+      display:flex;align-items:center;justify-content:center;
+      font-size:70px;
+      transition:transform .18s, filter .18s;
+      z-index:1;
+    }
+    .fighter-body.attack{transform:translateX(16px) scale(1.08);filter:drop-shadow(0 0 12px rgba(248,214,109,.9))}
+    .enemy-side .fighter-body.attack{transform:translateX(-16px) scale(1.08)}
+    .fighter-body.hit{animation:shake .25s linear}
+    .fighter-body.crit{animation:critPulse .35s linear}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
+    @keyframes critPulse{0%{transform:scale(1)}50%{transform:scale(1.22);filter:drop-shadow(0 0 18px #fff)}100%{transform:scale(1)}}
+    .damage{
+      position:absolute;
+      top:52%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      font-size:28px;
+      font-weight:950;
+      color:#fff;
+      text-shadow:0 3px 14px rgba(0,0,0,.9);
+      opacity:0;
+      pointer-events:none;
+      z-index:3;
+    }
+    .damage.show{animation:damageFloat .65s ease-out}
+    .damage.critText{color:#ffe76d;font-size:34px}
+    .damage.healText{color:#6df2a2}
+    @keyframes damageFloat{0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-120%) scale(1)}}
+    .battle-center{
+      position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      font-size:34px;font-weight:950;color:rgba(255,255,255,.18);
+      pointer-events:none;letter-spacing:.08em;
+    }
+    .battle-message{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:rgba(0,0,0,.24);
+      border:1px solid rgba(255,255,255,.1);
+      min-height:44px;
+      font-size:13px;
+      color:#fff;
+    }
+    .battle-controls{margin-top:10px}
+    .battle-log{margin-top:10px;max-height:170px;overflow:auto;background:rgba(0,0,0,.20);border:1px solid var(--line);border-radius:14px;padding:9px;font-size:12px;color:#d9def0}
+    .battle-log div{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+
+
+
+
+    .skill-area{
+      margin-top:10px;
+      padding:10px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      border-radius:14px;
+    }
+    .skill-chips{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+    .skill-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      padding:5px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      font-size:11px;
+      font-weight:900;
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:manipulation;
+    }
+    .skill-chip:active{
+      transform:scale(.97);
+      filter:brightness(1.2);
+    }
+    .skill-chip.magic{color:#c7e5ff}
+    .skill-chip.support{color:#caffd9}
+    .skill-chip.status{color:#ffd0ef}
+    .skill-chip.physical{color:#ffe4a8}
+    .skill-help{
+      display:block;
+      margin-top:6px;
+      font-size:11px;
+      color:var(--muted);
+    }
+    .skill-modal{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background:rgba(0,0,0,.62);
+      backdrop-filter:blur(6px);
+    }
+    .skill-modal.hidden{display:none}
+    .skill-modal-card{
+      width:min(420px,100%);
+      border:1px solid var(--line);
+      background:#151a28;
+      border-radius:20px;
+      padding:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      position:relative;
+    }
+    .skill-modal-card h3{
+      margin-right:38px;
+      color:#fff1a1;
+    }
+    .skill-modal-card p{
+      margin:8px 0 0;
+      line-height:1.65;
+    }
+    .skill-modal-close{
+      position:absolute;
+      top:10px;
+      right:10px;
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      padding:0;
+    }
+    .box-skill-wrap{
+      margin-top:8px;
+      padding-top:8px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+
+    .mock-layout{
+      display:grid;
+      gap:12px;
+    }
+    .mock-panel{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.045);
+      border-radius:16px;
+      padding:12px;
+    }
+    .mock-selects{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .mock-selects label,
+    .mock-mode label{
+      display:grid;
+      gap:6px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:800;
+    }
+    .mock-selects select,
+    .mock-mode select{
+      font-family:inherit;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      color:var(--text);
+      background:#151a28;
+      outline:none;
+      width:100%;
+    }
+    .mock-mode{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+    .compare-table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 7px;
+      font-size:12px;
+    }
+    .compare-table th{
+      color:var(--muted);
+      text-align:left;
+      padding:4px 8px;
+    }
+    .compare-table td{
+      background:rgba(0,0,0,.18);
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:8px;
+      vertical-align:top;
+    }
+    .compare-table td:first-child{
+      border-left:1px solid var(--line);
+      border-radius:12px 0 0 12px;
+      color:#fff1a1;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .compare-table td:last-child{
+      border-right:1px solid var(--line);
+      border-radius:0 12px 12px 0;
+    }
+    .diff-plus{color:#6df2a2;font-weight:900}
+    .diff-minus{color:#ff9aa8;font-weight:900}
+    .mock-log{
+      max-height:260px;
+      overflow:auto;
+      background:rgba(0,0,0,.22);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+      font-size:12px;
+      line-height:1.6;
+    }
+    .mock-log div{
+      padding:5px 0;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .tournament-line{
+      padding:6px 8px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.16);
+      border-radius:12px;
+      margin:6px 0;
+      font-size:12px;
+    }
+    @media(max-width:700px){
+      .mock-selects{grid-template-columns:1fr}
+      .compare-table{font-size:11px}
+    }
+
+    .tips-grid{
+      display:grid;
+      gap:12px;
+    }
+    .tips-card{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.045);
+      border-radius:16px;
+      padding:12px;
+    }
+    .tips-table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 8px;
+      font-size:12px;
+    }
+    .tips-table th{
+      color:var(--muted);
+      text-align:left;
+      padding:4px 8px;
+      font-weight:800;
+    }
+    .tips-table td{
+      background:rgba(0,0,0,.18);
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:9px 8px;
+      vertical-align:top;
+      line-height:1.45;
+    }
+    .tips-table td:first-child{
+      border-left:1px solid var(--line);
+      border-radius:12px 0 0 12px;
+      font-weight:900;
+      color:#fff1a1;
+      white-space:nowrap;
+    }
+    .tips-table td:last-child{
+      border-right:1px solid var(--line);
+      border-radius:0 12px 12px 0;
+    }
+    .tips-select{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin:8px 0 12px;
+    }
+    .tips-select select{
+      font-family:inherit;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      color:var(--text);
+      background:#151a28;
+      outline:none;
+      min-width:190px;
+    }
+    .stat-tip-box{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:12px;
+    }
+    .stat-tip-box h3{
+      margin-bottom:6px;
+      color:#fff1a1;
+    }
+    .tip-list{
+      margin:8px 0 0;
+      padding-left:18px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+    @media(max-width:620px){
+      .tips-table{font-size:11px}
+      .tips-table th:nth-child(3),
+      .tips-table td:nth-child(3){display:none}
+    }
+
+    .tree-wrap{display:grid;gap:10px;margin-top:12px}
+    .tree-card{border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:16px;padding:12px}
+    .tree-card h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .tree-lines{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow:auto;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .seen{color:#8dffb5;font-weight:800}
+    .unseen{color:#778198}
+    .tree-progress{font-size:12px;color:var(--muted);font-weight:700}
+    .speed-select{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+    .speed-select button.active{outline:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 3px rgba(248,214,109,.18)}
+
+
+    .dex-tree-toolbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin:10px 0 12px;
+      padding:10px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.045);
+      border-radius:14px;
+    }
+    .dex-tree-toolbar select{
+      font-family:inherit;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      color:var(--text);
+      background:#151a28;
+      outline:none;
+      min-width:180px;
+    }
+    .evo-tree-panel{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+      border-radius:18px;
+      padding:12px;
+    }
+    .evo-tree-header{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+    .evo-tree-header strong{font-size:16px}
+    .evo-tree-list{
+      display:grid;
+      gap:8px;
+    }
+    .evo-row{
+      display:grid;
+      grid-template-columns:72px 1fr;
+      gap:8px;
+      align-items:stretch;
+    }
+    .evo-stage{
+      color:var(--muted);
+      font-size:12px;
+      padding-top:10px;
+      text-align:right;
+    }
+    .evo-nodes{
+      display:grid;
+      gap:6px;
+    }
+    .evo-node{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18);
+      border-radius:13px;
+      padding:9px 10px;
+      position:relative;
+    }
+    .evo-node.seen{
+      border-color:rgba(109,242,162,.38);
+      background:rgba(109,242,162,.075);
+    }
+    .evo-node.unseen{
+      opacity:.72;
+      background:rgba(255,255,255,.035);
+    }
+    .evo-node .node-name{
+      font-weight:900;
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .evo-node .node-meta{
+      font-size:11px;
+      color:var(--muted);
+      margin-top:3px;
+      line-height:1.4;
+    }
+    .evo-branch-label{
+      display:inline-flex;
+      font-size:10px;
+      color:#151515;
+      background:var(--accent);
+      border-radius:999px;
+      padding:2px 6px;
+      font-weight:900;
+    }
+    .evo-node.rare .evo-branch-label{
+      background:#ff9ad5;
+    }
+    @media(max-width:540px){
+      .evo-row{grid-template-columns:1fr}
+      .evo-stage{text-align:left;padding-top:0}
+    }
+
+    .result-banner{
+      font-size:22px;
+      font-weight:950;
+      text-align:center;
+      padding:12px;
+      border-radius:16px;
+      background:rgba(248,214,109,.14);
+      border:1px solid rgba(248,214,109,.3);
+      margin-top:10px;
+    }
+  
+    @media(max-width:620px){
+      .tips-table th:nth-child(5),
+      .tips-table td:nth-child(5){display:none}
+      .tips-table th:nth-child(3),
+      .tips-table td:nth-child(3){display:table-cell}
+    }
+
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v21</span></div>
+    <div class="row">
+      <span class="pill">CP <b id="cpText">0</b></span>
+      <span class="pill">AP <b id="apText">0/0</b></span>
+      <span class="pill">時刻 <b id="timeBandText">--</b></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="tabs">
+      <button class="ghost" onclick="showTab('home')">ホーム</button>
+      <button class="ghost" onclick="showTab('raise')">育成</button>
+      <button class="ghost" onclick="showTab('battle')">バトル</button>
+      <button class="ghost" onclick="showTab('mock')">模擬戦</button>
+      <button class="ghost" onclick="showTab('box')">ボックス</button>
+      <button class="ghost" onclick="showTab('dex')">図鑑</button>
+      <button class="ghost" onclick="showTab('tips')">TIPS</button>
+      <button class="ghost" onclick="showTab('settings')">設定</button>
+    </div>
+
+    <div id="tab-home">
+      <h2>ホーム</h2>
+      <div id="eggArea">
+        <div class="egg" id="eggIcon">🥚</div>
+        <h3 id="eggTitle">卵なし</h3>
+        <p id="eggDesc">卵を入手すると、時間経過でランダムな初期クリモンが孵化します。</p>
+        <div class="row">
+          <button onclick="buyEgg()">卵を入手 50CP</button>
+          <button class="secondary" onclick="forceHatch()">開発用：即孵化</button>
+        </div>
+        <p class="small">初回起動時、最初の卵はクールタイムなしで即孵化します。</p>
+      </div>
+
+      <div id="noMonsterHome" class="hint">まだクリモンがいません。まずは卵を孵化させましょう。</div>
+
+      <div id="currentMonsterHome" class="hidden">
+        <h2>育成中のクリモン</h2>
+        <div class="monster-main">
+          <div class="portrait">
+            <img id="monsterImg" alt="クリモン画像">
+            <div class="fallback" id="monsterEmoji">🐣</div>
+          </div>
+          <div>
+            <h2 id="monsterName">---</h2>
+            <div id="monsterBadges"></div>
+            <p id="monsterRole">---</p>
+            <p id="monsterMeta">---</p>
+            <div class="row">
+              <input id="nicknameInput" maxlength="16" placeholder="ニックネーム">
+              <button class="secondary" onclick="renameCurrent()">名前変更</button>
+            </div>
+            <div class="hint" id="evolveHint">---</div>
+            <div id="statsArea"></div>
+            <div id="skillsArea" class="skill-area"></div>
+            <div class="row">
+              <button class="secondary" onclick="gainTestExp()">テストEXP +30</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-raise" class="hidden">
+      <h2>育成</h2>
+      <p>トレーニングはAPを消費して指定ステータスを上げます。休憩はAP全回復とコンディション回復の代わりに、一定確率で成長上限が少し下がります。遊びはランダム変動です。</p>
+      <div id="raiseLocked" class="hint">クリモンがいません。卵を孵化させてください。</div>
+      <div id="raiseArea" class="hidden">
+        <div class="grid2">
+          <div class="card" style="padding:12px;">
+            <h3>トレーニング</h3>
+            <div class="row">
+              <button onclick="train('hp')">体力</button>
+              <button onclick="train('atk')">攻撃</button>
+              <button onclick="train('def')">防御</button>
+              <button onclick="train('mag')">魔法</button>
+              <button onclick="train('luck')">運</button>
+              <button onclick="train('spd')">素早さ</button>
+            </div>
+          </div>
+          <div class="card" style="padding:12px;">
+            <h3>休憩・遊び</h3>
+            <div class="row">
+              <button class="ok" onclick="rest()">休憩</button>
+              <button class="secondary" onclick="play()">遊び</button>
+            </div>
+          </div>
+        </div>
+        <div class="hint" id="conditionText">---</div>
+      </div>
+    </div>
+
+    <div id="tab-battle" class="hidden">
+      <h2>バトル</h2>
+      <p>演出付きのオートバトルです。素早さで行動順・回避・追加行動、運でクリティカルが変わります。</p>
+      <div id="battleLocked" class="hint">クリモンがいません。卵を孵化させてください。</div>
+      <div id="battleArea" class="hidden">
+        <div class="battle-stage">
+          <div class="battle-flash" id="battleFlash"></div>
+          <div class="battle-center">VS</div>
+          <div class="fighters">
+            <div class="fighter me-side">
+              <div class="fighter-top">
+                <div>
+                  <div class="fighter-name" id="bfMyName">---</div>
+                  <div class="fighter-species" id="bfMySpecies">---</div>
+                </div>
+                <div class="small" id="bfMyHpText">HP --/--</div>
+              </div>
+              <div class="hpbar"><span id="bfMyHpBar"></span></div>
+              <div class="fighter-body" id="bfMyBody">🐣</div>
+              <div class="damage" id="myDamage"></div>
+            </div>
+            <div class="fighter enemy-side">
+              <div class="fighter-top">
+                <div>
+                  <div class="fighter-name" id="bfEnemyName">---</div>
+                  <div class="fighter-species">CPU</div>
+                </div>
+                <div class="small" id="bfEnemyHpText">HP --/--</div>
+              </div>
+              <div class="hpbar"><span id="bfEnemyHpBar"></span></div>
+              <div class="fighter-body" id="bfEnemyBody">👾</div>
+              <div class="damage" id="enemyDamage"></div>
+            </div>
+          </div>
+        </div>
+        <div class="battle-message" id="battleMessage">CPU戦を開始しよう。</div>
+        <div class="battle-controls row">
+          <button id="battleStartBtn" onclick="startAnimatedBattle()">CPU戦開始</button>
+          <button class="ghost" onclick="prepareBattlePreview()">相手変更</button>
+        </div>
+        <div class="speed-select">
+          <span class="small">バトル速度</span>
+          <button class="ghost" id="speed1" onclick="setBattleSpeed(1)">標準</button>
+          <button class="ghost" id="speed2" onclick="setBattleSpeed(2)">高速</button>
+          <button class="ghost" id="speed3" onclick="setBattleSpeed(3)">超速</button>
+        </div>
+        <div id="battleResult" class="result-banner hidden"></div>
+        <div class="battle-log" id="battleLog"></div>
+      </div>
+    </div>
+
+
+    <div id="tab-mock" class="hidden">
+      <h2>模擬戦</h2>
+      <p>ボックス内のクリモン同士を戦わせます。HPは一時的に満タン扱いで、バトル後も本体のHP・コンディション・EXP・CPは変化しません。</p>
+      <div id="mockLocked" class="hint">模擬戦にはクリモンが2体以上必要です。</div>
+      <div id="mockArea" class="hidden mock-layout">
+        <div class="mock-panel">
+          <h3>対戦設定</h3>
+          <div class="mock-selects">
+            <label>1体目
+              <select id="mockASelect" onchange="setMockA(this.value)"></select>
+            </label>
+            <label>2体目
+              <select id="mockBSelect" onchange="setMockB(this.value)"></select>
+            </label>
+          </div>
+          <div class="mock-mode">
+            <label>補正モード
+              <select id="mockModeSelect" onchange="setMockMode(this.value)">
+                <option value="normal">通常：現在のレベル・ステータスで戦う</option>
+                <option value="same">同レベル補正：高い方のレベルに合わせて補正</option>
+                <option value="max100">Lv100固定：両方Lv.100想定で補正</option>
+              </select>
+            </label>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <button onclick="startMockBattle()">模擬戦開始</button>
+            <button class="secondary" onclick="startTournament()">最強決定戦トーナメント</button>
+            <button class="ghost" onclick="clearMockHistory()">ログ削除</button>
+          </div>
+        </div>
+
+        <div class="mock-panel">
+          <h3>ステータス比較</h3>
+          <div id="mockCompareArea"></div>
+        </div>
+
+        <div class="mock-panel">
+          <h3>模擬戦ログ</h3>
+          <div id="mockResult" class="result-banner hidden"></div>
+          <div id="mockBattleLog" class="mock-log"></div>
+        </div>
+
+        <div class="mock-panel">
+          <h3>最強決定戦トーナメント</h3>
+          <p class="small">ボックス内の全クリモンで勝ち抜き戦を行います。奇数の場合はランダムで不戦勝が出ます。</p>
+          <div id="tournamentArea"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-box" class="hidden">
+      <h2>ボックス</h2>
+      <p>自分が育てているクリモン一覧です。ここから育成対象を切り替えられます。</p>
+      <div id="boxArea" class="box-grid"></div>
+    </div>
+
+    <div id="tab-dex" class="hidden">
+      <h2>図鑑</h2>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。</p>
+      <div class="collection" id="collectionArea"></div>
+      <h2 style="margin-top:16px;">進化ツリー</h2>
+      <div class="dex-tree-toolbar">
+        <span class="small">表示する系統</span>
+        <select id="treeSpeciesSelect" onchange="setTreeSpecies(this.value)">
+          <option value="shinya">シンヤ系統</option>
+          <option value="onn">ONN系統</option>
+          <option value="gl">GL系統</option>
+          <option value="wacha">わちゃ系統</option>
+          <option value="dentaku">電卓系統</option>
+        </select>
+        <span class="small" id="treeProgressText"></span>
+      </div>
+      <div class="tree-wrap" id="evolutionTreeArea"></div>
+    </div>
+
+
+    <div id="tab-tips" class="hidden">
+      <h2>TIPS</h2>
+      <p>性格やステータスの影響を確認できます。育成方針を決める時の参考にしてください。</p>
+
+      <div class="tips-grid">
+        <div class="tips-card">
+          <h3>性格一覧</h3>
+          <p>性格は孵化時にランダムで決まります。トレーニングやステータスの伸び方に影響します。</p>
+          <div id="personalityTipsArea"></div>
+        </div>
+
+        <div class="tips-card">
+          <h3>ステータスの効果</h3>
+          <p>ステータスごとのバトル・育成・進化への影響を確認できます。</p>
+          <div class="tips-select">
+            <span class="small">確認するステータス</span>
+            <select id="statTipsSelect" onchange="renderStatTip(this.value)">
+              <option value="hp">体力</option>
+              <option value="atk">攻撃</option>
+              <option value="def">防御</option>
+              <option value="mag">魔法</option>
+              <option value="luck">運</option>
+              <option value="spd">素早さ</option>
+            </select>
+          </div>
+          <div id="statTipArea"></div>
+        </div>
+
+        <div class="tips-card">
+          <h3>成長限界</h3>
+          <p>
+            レベル上限は<b>100</b>です。Lv.100到達後はEXPが増えません。<br>
+            ステータス上限は、種族・進化形態・個体差によって変わります。<br>
+            例：ONN系は体力・防御が高く、GL系は攻撃、わちゃ系は魔法、電卓系は運が伸びやすいです。<br>休憩ペナルティで個体ごとの成長上限が少し下がることがあります。
+          </p>
+        </div>
+
+        <div class="tips-card">
+          <h3>休憩</h3>
+          <p>
+            休憩するとAPが全回復し、コンディションが1段階回復します。<br>
+            その代わり、基本25%の確率でランダムなステータスの成長上限が<b>-1</b>されます。<br>
+            Lv.100到達後でも発生しますが、成長上限は現在のステータス値未満には下がりません。<br>
+            発生率は性格によって変わります。
+          </p>
+        </div>
+
+        <div class="tips-card">
+          <h3>魔法・スキル</h3>
+          <p>
+            バトル中、クリモンは一定確率でスキルを自動使用します。<br>
+            沈黙中は魔法・状態異常スキルを使えません。毒・猛毒・再生などはターン開始時に処理されます。<br>
+            スキル候補は種族・進化形態で変化します。ホームやボックスでは、スキル名を長押しすると効果を確認できます。
+          </p>
+          <div class="skill-chips">
+            <span class="skill-chip physical">物理</span>
+            <span class="skill-chip magic">魔法</span>
+            <span class="skill-chip support">補助</span>
+            <span class="skill-chip status">状態異常</span>
+          </div>
+        </div>
+
+        <div class="tips-card">
+          <h3>時間帯進化</h3>
+          <p>
+            朝：5:00〜10:59　補正なし<br>
+            昼：11:00〜16:59　A分岐に少し寄りやすい<br>
+            夕方：17:00〜19:59　通常分岐への補正なし。レア進化に少し有利<br>
+            夜：20:00〜23:59　B分岐に少し寄りやすい<br>
+            深夜：0:00〜4:59　レア進化にかなり有利
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-settings" class="hidden">
+      <h2>設定</h2>
+      <p>開発用の操作です。</p>
+      <div class="row">
+        <button class="secondary" onclick="addCP(500)">CP +500</button>
+        <button class="danger" onclick="resetGame()">全リセット</button>
+      </div>
+      <div class="hint">
+        画像を置く場合は、HTMLと同じ階層に <code>images</code> フォルダを作り、<code>shinya_base.png</code> や <code>shinya_a.png</code> などを入れてください。画像がない場合は絵文字で代替表示します。
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <section>
+      <h2>ログ</h2>
+      <div class="log" id="logArea"></div>
+    </section>
+    <br>
+</aside>
+
+
+  <div id="skillDetailModal" class="skill-modal hidden" onclick="hideSkillDetail()">
+    <div class="skill-modal-card" onclick="event.stopPropagation()">
+      <button class="ghost skill-modal-close" onclick="hideSkillDetail()">×</button>
+      <h3 id="skillDetailTitle">スキル</h3>
+      <p id="skillDetailCategory" class="small"></p>
+      <p id="skillDetailDesc"></p>
+    </div>
+  </div>
+
+  <div class="footer-note">※スキル・魔法は自動バトル内で発動します。</div>
+</main>
+
+<script>
+const STORAGE_KEY = "kurimon_save_v3";
+
+const BASE_SPECIES = {
+  shinya: {speciesName:"シンヤ", role:"バランス型", emoji:"⚖️", baseStats:{hp:32,atk:7,def:7,mag:7,luck:7,spd:7}, image:"images/shinya_base.png"},
+  onn: {speciesName:"ONN", role:"体力・防御の要塞型", emoji:"🛡️", baseStats:{hp:44,atk:4,def:11,mag:3,luck:4,spd:3}, image:"images/onn_base.png"},
+  gl: {speciesName:"GL", role:"攻撃型", emoji:"⚔️", baseStats:{hp:30,atk:11,def:4,mag:4,luck:6,spd:7}, image:"images/gl_base.png"},
+  wacha: {speciesName:"わちゃ", role:"魔法・状態異常・妨害型", emoji:"🌀", baseStats:{hp:30,atk:4,def:5,mag:10,luck:7,spd:5}, image:"images/wacha_base.png"},
+  dentaku: {speciesName:"電卓", role:"運・魔法・確率操作型", emoji:"🧮", baseStats:{hp:28,atk:4,def:5,mag:8,luck:11,spd:5}, image:"images/dentaku_base.png"}
+};
+
+const EGG = { price:50, hatchMs:10*60*1000 };
+
+const PERSONALITIES = {
+  "ふつう": { desc:"補正なし。どの方向にも育つ。", feature:"クセがなく、育成方針を後から決めやすい。", grow:{}, restPenalty:0.25 },
+  "ガチ勢": { desc:"攻撃が伸びやすい。", feature:"攻撃型に向く。休憩リスクは標準。", grow:{atk:1}, restPenalty:0.25 },
+  "堅実": { desc:"防御が伸びやすい。", feature:"無理をしないため、休憩時の成長上限低下が起きにくい。", grow:{def:1}, restPenalty:0.18 },
+  "穏やか": { desc:"体力と防御が伸びやすい。", feature:"休み方が上手く、休憩時の成長上限低下がかなり起きにくい。", grow:{hp:1,def:1}, restPenalty:0.12 },
+  "天才": { desc:"魔法が伸びやすい。", feature:"魔法型に向く。休憩リスクは標準。", grow:{mag:1}, restPenalty:0.25 },
+  "豪運": { desc:"運が伸びやすい。", feature:"運で悪い結果を避けやすく、休憩時の成長上限低下が少し起きにくい。", grow:{luck:1}, restPenalty:0.20 },
+  "俊足": { desc:"素早さが伸びやすい。", feature:"先制・回避・追加行動狙いに向く。休憩リスクは標準。", grow:{spd:1}, restPenalty:0.25 },
+  "短気": { desc:"攻撃は伸びるが、防御が少し低い。", feature:"休憩が苦手で、成長上限低下が起きやすい。", grow:{atk:2,def:-1}, restPenalty:0.35 },
+  "気まぐれ": { desc:"遊びの結果が少し大きくなる。", feature:"遊びの上振れを狙いやすい。休憩リスクは標準。", grow:{}, restPenalty:0.25 },
+  "沼": { desc:"遊びの振れ幅が大きく、レア進化に少し近い。", feature:"レア進化に少し近いが、休憩時の成長上限低下も起きやすい。", grow:{luck:1}, restPenalty:0.40 }
+};
+
+const CONDITIONS = {
+  great:{label:"好調", trainBonus:1, playRisk:0},
+  normal:{label:"普通", trainBonus:0, playRisk:0},
+  tired:{label:"疲労", trainBonus:-1, playRisk:1},
+  bad:{label:"絶不調", trainBonus:-2, playRisk:2}
+};
+
+const STAT_LABEL = { hp:"体力", atk:"攻撃", def:"防御", mag:"魔法", luck:"運", spd:"素早さ" };
+const MAX_LEVEL = 100;
+
+// Lv100・究極体時点を基準にした種族ごとの基本上限。
+// HPは他ステータスより大きいスケールで設計。
+const SPECIES_STAT_CAPS = {
+  shinya:{hp:360,atk:120,def:120,mag:120,luck:120,spd:120},
+  onn:{hp:520,atk:90,def:170,mag:105,luck:100,spd:80},
+  gl:{hp:330,atk:180,def:85,mag:95,luck:135,spd:145},
+  wacha:{hp:330,atk:95,def:115,mag:175,luck:130,spd:110},
+  dentaku:{hp:310,atk:85,def:105,mag:160,luck:185,spd:120}
+};
+const STAGE_CAP_RATE = [0.45,0.62,0.82,1.0];
+
+
+const SKILL_DEFS = {
+  focus:{name:"集中", category:"support", desc:"3ターン、自分の運を上げる。クリティカル・回避が少し狙いやすくなる。"},
+  shunpo:{name:"瞬歩", category:"support", desc:"3ターン、自分の素早さを上げる。先制・回避・追加行動が狙いやすくなる。"},
+  blackFlash:{name:"黒閃", category:"physical", desc:"攻撃依存の高威力攻撃。クリティカル率が高い。"},
+  bunshin:{name:"分身", category:"support", desc:"次に受ける攻撃を1回だけ回避する。"},
+
+  ironWall:{name:"鉄壁", category:"support", desc:"3ターン、自分の防御を上げる。"},
+  regenerate:{name:"再生", category:"support", desc:"3ターン、ターン開始時にHPを回復する。"},
+  guardian:{name:"身代わり", category:"support", desc:"3ターン、受けるダメージを軽減する。"},
+  kazukoBless:{name:"カズコの加護", category:"support", desc:"3ターン、体力を回復し、防御・魔法・運を上げる。"},
+
+  fury:{name:"猛攻", category:"support", desc:"3ターン、自分の攻撃を上げる。"},
+  combo:{name:"連撃", category:"physical", desc:"攻撃依存の2回攻撃。"},
+  reckless:{name:"捨て身", category:"physical", desc:"攻撃依存の大ダメージ。自分にも反動ダメージ。"},
+  dismantle:{name:"解体", category:"physical", desc:"相手の防御を一部無視して攻撃する。"},
+
+  magicBullet:{name:"魔弾", category:"magic", desc:"魔法依存の小ダメージ。"},
+  magicCannon:{name:"魔砲", category:"magic", desc:"魔法依存の中ダメージ。"},
+  poison:{name:"毒", category:"status", desc:"3ターン、相手に継続ダメージを与える。"},
+  venom:{name:"猛毒", category:"status", desc:"3ターン、相手に強い継続ダメージを与える。"},
+  silence:{name:"沈黙", category:"status", desc:"3ターン、相手の魔法・状態異常スキルを封じる。"},
+  stun:{name:"行動不能", category:"status", desc:"相手を1ターン行動不能にする。"},
+  forgetSeal:{name:"忘却封印", category:"status", desc:"相手を沈黙＋行動不能にすることがある。"},
+  skyTree:{name:"禁術・スカイツリーちんぽ", category:"magic", desc:"超高威力魔法。使用後、自分も反動ダメージを受ける。"},
+
+  recalc:{name:"再計算", category:"support", desc:"3ターン、自分の運を上げる。"},
+  rngControl:{name:"乱数支配", category:"support", desc:"3ターン、自分の運と素早さを上げる。"},
+  expectation:{name:"期待値観測", category:"support", desc:"3ターン、受けるダメージを軽減する。"},
+  futureSight:{name:"未来予測", category:"support", desc:"次に受ける攻撃を1回だけ回避する。"},
+  worldLine:{name:"世界線変更", category:"support", desc:"HPが少ない時、回復しつつ未来予測を得る。"}
+};
+const SKILL_CATEGORY_LABEL = {physical:"物理",magic:"魔法",support:"補助",status:"状態異常"};
+
+
+const EVOLUTION_TREE = {
+  shinya: {
+    a:{formName:"修行するシンヤ", profile:"バランスが良い。"}, b:{formName:"学びのシンヤ", profile:"攻撃が高め。"},
+    aa:{formName:"羽化したシンヤ", profile:"バランスが良い。"}, ab:{formName:"反応のシンヤ", profile:"素早さが高い。"},
+    aaa:{formName:"完成のシンヤ", profile:"バランスが良い。"}, aab:{formName:"技巧派のシンヤ", profile:"バランスが良く、魔法も高め。"}, aar:{formName:"超絶技巧のシンヤ", profile:"バランスが良く、妨害魔法も使える。"},
+    aba:{formName:"瞬撃のシンヤ", profile:"素早さが高い。"}, abb:{formName:"分身のシンヤ", profile:"素早さが高いが防御が低い。"}, abr:{formName:"神速のシンヤ", profile:"素早さが超高い。攻撃も高め。"},
+    ba:{formName:"師範シンヤ", profile:"攻撃が高め。"}, bb:{formName:"逆転のシンヤ", profile:"クリティカルが高い。"},
+    baa:{formName:"拳聖シンヤ", profile:"攻撃が高め。"}, bab:{formName:"指導者シンヤ", profile:"拳聖より攻撃寄り。"}, bar:{formName:"伝説の師範シンヤ", profile:"バランスが良く超高水準。"},
+    bba:{formName:"黒閃使いのシンヤ", profile:"クリティカルが高い。"}, bbb:{formName:"不屈のシンヤ", profile:"体力、防御が高め。"}, bbr:{formName:"シン・シンヤ", profile:"クリティカルが超高い。"}
+  },
+  onn: {
+    a:{formName:"鉄壁ONN", profile:"防御が高い。"}, b:{formName:"我慢のONN", profile:"体力が高い。"},
+    aa:{formName:"城塞ONN", profile:"防御が高い。"}, ab:{formName:"重装ONN", profile:"重装備系の耐久分岐。"},
+    aaa:{formName:"要塞ONN", profile:"防御が高い。素早さは遅いが攻撃高め。"}, aab:{formName:"不沈ONN", profile:"防御が高い。"}, aar:{formName:"絶対防衛将軍・ONN", profile:"防御が超高い。"},
+    aba:{formName:"進撃のONN", profile:"運、攻撃が高い。"}, abb:{formName:"反撃のONN", profile:"運、防御が高い。"}, abr:{formName:"鬼に", profile:"運、攻撃、防御が超高い。"},
+    ba:{formName:"耐久のONN", profile:"体力が高い。"}, bb:{formName:"守護のONN", profile:"防御、魔法が高い。"},
+    baa:{formName:"超体力のONN", profile:"体力が超高い。その他は低め。"}, bab:{formName:"再生のONN", profile:"高レベルの回復魔法が使える。"}, bar:{formName:"リバイバルONN", profile:"体力が超高い。高レベルの回復魔法が使える。"},
+    bba:{formName:"守護神ONN", profile:"防御、魔法が高い。バフが使える。"}, bbb:{formName:"身代わりのONN", profile:"防御、素早さが高い。"}, bbr:{formName:"栗学の柱 ONN", profile:"防御、体力、魔法が超高い。バフが豊富。"}
+  },
+  gl: {
+    a:{formName:"猛攻のGL", profile:"攻撃が高め。"}, b:{formName:"怒りのGL", profile:"攻撃が高いがその他は低め。"},
+    aa:{formName:"破壊のGL", profile:"攻撃が高め。"}, ab:{formName:"連撃のGL", profile:"素早さが高い。"},
+    aaa:{formName:"殲滅のGL", profile:"攻撃、素早さが高め。"}, aab:{formName:"一撃のGL", profile:"攻撃が超高いが体力が低い。"}, aar:{formName:"解体屋GL", profile:"攻撃が超高い。その他ステも高め。"},
+    aba:{formName:"乱舞のGL", profile:"素早さが高い。"}, abb:{formName:"追撃のGL", profile:"素早さ、運が高い。たまに2回攻撃。"}, abr:{formName:"GL-無限連射編-", profile:"素早さが超高く、2回攻撃。"},
+    ba:{formName:"狂戦のGL", profile:"攻撃が高いがその他は低め。"}, bb:{formName:"鋭刃のGL", profile:"運が高い。"},
+    baa:{formName:"バーサーカーGL", profile:"攻撃が高いがその他は低め。素早さが高い。"}, bab:{formName:"捨て身のGL", profile:"攻撃、素早さが高い。防御、体力は低い。"}, bar:{formName:"クールなGL", profile:"魔法、攻撃、素早さが超高い。"},
+    bba:{formName:"アサシンGL", profile:"運が高い。"}, bbb:{formName:"斬撃のGL", profile:"運、攻撃が高い。"}, bbr:{formName:"賭博破戒録GL", profile:"運、攻撃が超高い。"}
+  },
+  wacha: {
+    a:{formName:"魔法見習い・わちゃ", profile:"魔法が高い。"}, b:{formName:"わちゃポイズン", profile:"デバフスキルが使える。"},
+    aa:{formName:"一人前魔法使い・わちゃ", profile:"魔法が高い。"}, ab:{formName:"バトマジのわちゃ", profile:"魔法、攻撃が高め。"},
+    aaa:{formName:"大魔法使い・わちゃ", profile:"魔法が高い。"}, aab:{formName:"やまびこのわちゃ", profile:"魔法スキルのみ2回攻撃できる。"}, aar:{formName:"禁術使いのわちゃ", profile:"魔法が超高い。禁術・スカイツリーちんぽが使える。"},
+    aba:{formName:"守護の盾・わちゃ", profile:"魔法、防御が高い。"}, abb:{formName:"パラディンわちゃ", profile:"魔法、攻撃が高い。"}, abr:{formName:"夢幻のわちゃ", profile:"魔法、攻撃、防御が超高い。デバフが使える。"},
+    ba:{formName:"毒使いのわちゃ", profile:"スリップダメージ系魔法が使える。"}, bb:{formName:"封印わちゃ", profile:"封印魔法が使える。"},
+    baa:{formName:"猛毒わちゃ", profile:"強力なスリップダメージ魔法が使える。"}, bab:{formName:"呪毒わちゃ", profile:"スリップダメージ、デバフ魔法が使える。"}, bar:{formName:"ワチャリスク", profile:"魔法が超高い。強力なスリップダメージ魔法が使える。"},
+    bba:{formName:"沈黙わちゃ", profile:"魔法、攻撃が高い。封印魔法が使える。"}, bbb:{formName:"行動不能わちゃ", profile:"魔法、防御が高い。封印魔法が使える。"}, bbr:{formName:"忘れ物キング・わちゃ", profile:"魔法が超高い。強力な封印魔法が使える。"}
+  },
+  dentaku: {
+    a:{formName:"算盤機兵", profile:"魔法が高い。"}, b:{formName:"確率演算機", profile:"運が高い。"},
+    aa:{formName:"改式演算機", profile:"魔法が高い。"}, ab:{formName:"魔導演算機", profile:"魔法、運が高め。"},
+    aaa:{formName:"高位演算機", profile:"魔法、素早さが高い。"}, aab:{formName:"関数制御機", profile:"魔法が高い。デバフ、行動不能魔法が使える。"}, aar:{formName:"スーパーコンピューター・京", profile:"魔法が超高い。攻撃魔法、デバフ、行動不能魔法が使える。"},
+    aba:{formName:"数式詠唱機", profile:"魔法が高い。"}, abb:{formName:"連鎖演算機", profile:"魔法、素早さが高い。"}, abr:{formName:"せいぎのそろばん", profile:"魔法、運が超高い。"},
+    ba:{formName:"期待値観測機", profile:"運、魔法が高い。"}, bb:{formName:"乱数生成機", profile:"運、素早さが高い。"},
+    baa:{formName:"収束演算機", profile:"運が高い。"}, bab:{formName:"偏差制御機", profile:"運が高い。ダメージの振れ幅が大きい。"}, bar:{formName:"超未来予測演算装置", profile:"運、魔法が超高い。未来予測で次の攻撃・魔法を回避する。"},
+    bba:{formName:"乱数支配機", profile:"運が高い。判定をやり直す能力。"}, bbb:{formName:"豪運演算機", profile:"運が超高い。"}, bbr:{formName:"異世界演算装置", profile:"運、魔法が超高い。世界線干渉。"}
+  }
+};
+
+let state = loadGame() || initGame();
+let currentTab = "home";
+let currentEnemy = null;
+let battleBusy = false;
+let currentBattleHp = null;
+
+function initGame(){
+  return {
+    cp:500, ap:5, maxAp:5, lastApAt:Date.now(),
+    egg:null, currentId:null, monsters:[], dex:{},
+    firstEggUsed:false,
+    battleSpeed:1,
+    selectedTreeSpecies:"shinya",
+    mockAId:null,
+    mockBId:null,
+    mockMode:"normal",
+    mockHistory:[],
+    tournamentLog:[],
+    log:["クリモン開始。初回の卵は即孵化します。"]
+  };
+}
+function migrateState(){
+  // 旧版データが混ざった時の保険
+  if(!state.dex && state.collection) state.dex = state.collection;
+  if(typeof state.firstEggUsed !== "boolean") state.firstEggUsed = state.monsters && state.monsters.length > 0;
+  if(!state.battleSpeed) state.battleSpeed = 1;
+  if(!state.selectedTreeSpecies) state.selectedTreeSpecies = "shinya";
+  if(!state.mockMode) state.mockMode = "normal";
+  if(!Array.isArray(state.mockHistory)) state.mockHistory = [];
+  if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
+  for(const mon of state.monsters || []){
+    if(!mon.nickname) mon.nickname = mon.name || mon.formName || BASE_SPECIES[mon.speciesKey]?.speciesName || "クリモン";
+    if(!mon.speciesName) mon.speciesName = BASE_SPECIES[mon.speciesKey]?.speciesName || mon.name;
+    if(!mon.formName) mon.formName = mon.name || mon.speciesName;
+    if(!mon.level || mon.level < 1) mon.level = 1;
+    if(mon.level > MAX_LEVEL) mon.level = MAX_LEVEL;
+    ensureCapBias(mon);
+    capMonsterStats(mon);
+    if(mon.level >= MAX_LEVEL) mon.exp = 0;
+  }
+}
+migrateState();
+
+function saveGame(){localStorage.setItem(STORAGE_KEY, JSON.stringify(state))}
+function loadGame(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):null}catch(e){return null}}
+function resetGame(){if(!confirm("全データをリセットしますか？"))return;localStorage.removeItem(STORAGE_KEY);state=initGame();currentEnemy=null;showTab("home");render();log("リセットしました。初回卵は再び即孵化します。")}
+function log(text){const stamp=new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});state.log.unshift(`[${stamp}] ${text}`);state.log=state.log.slice(0,100);saveGame();renderLog()}
+
+function getTimeBand(date=new Date()){
+  const h=date.getHours();
+  if(h>=5&&h<=10)return{key:"morning",label:"朝",desc:"体力・回復系"};
+  if(h>=11&&h<=16)return{key:"day",label:"昼",desc:"攻撃・通常進化"};
+  if(h>=17&&h<=19)return{key:"evening",label:"夕方",desc:"通常分岐補正なし・レア進化少し有利"};
+  if(h>=20&&h<=23)return{key:"night",label:"夜",desc:"魔法・ミーム系"};
+  return{key:"midnight",label:"深夜",desc:"闇・レア・沼系"};
+}
+function recoverApByTime(){
+  const now=Date.now(), interval=10*60*1000;
+  if(state.ap>=state.maxAp){state.lastApAt=now;return}
+  const gained=Math.floor((now-state.lastApAt)/interval);
+  if(gained>0){state.ap=Math.min(state.maxAp,state.ap+gained);state.lastApAt+=gained*interval;saveGame()}
+}
+
+function buyEgg(){
+  if(state.egg){alert("すでに卵があります。孵化を待ってください。");return}
+  if(state.cp<EGG.price){alert("CPが足りません。");return}
+  const instant = !state.firstEggUsed && (!state.monsters || state.monsters.length===0);
+  state.cp-=EGG.price;
+  state.egg={startAt:Date.now(),hatchAt:Date.now()+(instant?0:EGG.hatchMs)};
+  state.firstEggUsed = true;
+  saveGame();
+  log(instant ? "初回卵を入手。クールタイムなしで孵化します。" : "卵を入手。時間経過で孵化します。");
+  checkHatch();
+  render();
+}
+function forceHatch(){if(!state.egg){alert("卵がありません。");return}state.egg.hatchAt=Date.now();checkHatch()}
+function checkHatch(){if(state.egg&&Date.now()>=state.egg.hatchAt)hatchEgg()}
+function hatchEgg(){
+  const keys=Object.keys(BASE_SPECIES);
+  const speciesKey=keys[Math.floor(Math.random()*keys.length)];
+  const species=BASE_SPECIES[speciesKey];
+  const personality=rollPersonality();
+  const stats={...species.baseStats};
+  for(const key of Object.keys(STAT_LABEL)) stats[key]+=Math.floor(Math.random()*4);
+  const pGrow=PERSONALITIES[personality].grow||{};
+  for(const [k,v] of Object.entries(pGrow)) stats[k]=Math.max(1,stats[k]+v);
+
+  const id="m_"+Date.now()+"_"+Math.floor(Math.random()*9999);
+  const mon={
+    id, speciesKey,
+    speciesName:species.speciesName,
+    formName:species.speciesName,
+    nickname:species.speciesName,
+    formId:`${speciesKey}_base`,
+    stage:0, branchPath:"",
+    role:species.role, profile:species.role, emoji:species.emoji, image:species.image,
+    personality, condition:"normal", level:1, exp:0, stats, hpCurrent:stats.hp,
+    capBias:rollCapBias(),
+    rareScore:Math.floor(Math.random()*4), trait:rollTrait(),
+    history:{train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:getTimeBand().key,miraclePlay:false},
+    createdAt:Date.now()
+  };
+  state.monsters.push(mon);state.currentId=id;
+  registerDex(mon);
+  state.egg=null;
+  saveGame();
+  log(`卵から種族「${mon.speciesName}」が孵化！ 性格は「${personality}」。`);
+  showTab("home");render();
+}
+function rollPersonality(){const arr=Object.keys(PERSONALITIES);return arr[Math.floor(Math.random()*arr.length)]}
+function rollTrait(){const traits=["なし","攻撃が少し伸びやすい","防御が少し伸びやすい","魔法が少し伸びやすい","運が少し伸びやすい","素早さが少し伸びやすい","遊びの振れ幅アップ"];return traits[Math.floor(Math.random()*traits.length)]}
+
+function rollCapBias(){
+  const bias={};
+  for(const key of Object.keys(STAT_LABEL)){
+    const span = key==="hp" ? 31 : 13;
+    const shift = key==="hp" ? -15 : -6;
+    bias[key] = Math.floor(Math.random()*span)+shift;
+  }
+  return bias;
+}
+function ensureCapBias(mon){
+  if(!mon.capBias) mon.capBias = rollCapBias();
+  for(const key of Object.keys(STAT_LABEL)){
+    if(typeof mon.capBias[key] !== "number") mon.capBias[key] = 0;
+  }
+  return mon.capBias;
+}
+function getStatCaps(mon){
+  const base = {...(SPECIES_STAT_CAPS[mon.speciesKey] || SPECIES_STAT_CAPS.shinya)};
+  const name = mon.formName || "";
+  if(name.includes("防衛")||name.includes("鉄壁")||name.includes("城塞")||name.includes("不沈")||name.includes("守護")||name.includes("柱")){
+    base.def += 35; base.hp += 30;
+  }
+  if(name.includes("体力")||name.includes("耐久")||name.includes("我慢")||name.includes("リバイバル")){
+    base.hp += 80;
+  }
+  if(name.includes("攻")||name.includes("破壊")||name.includes("一撃")||name.includes("拳")||name.includes("解体")||name.includes("怒り")){
+    base.atk += 40;
+  }
+  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")){
+    base.mag += 40;
+  }
+  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")){
+    base.luck += 40;
+  }
+  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")){
+    base.spd += 40;
+  }
+  if(name.includes("超")||name.includes("神速")||name.includes("京")||name.includes("異世界")||name.includes("レア")){
+    base.hp += 50; base.atk += 20; base.def += 20; base.mag += 20; base.luck += 20; base.spd += 20;
+  }
+
+  const rate = STAGE_CAP_RATE[Math.max(0,Math.min(3,mon.stage||0))] || 1;
+  const bias = ensureCapBias(mon);
+  const caps = {};
+  for(const key of Object.keys(STAT_LABEL)){
+    caps[key] = Math.max(1, Math.floor(base[key] * rate) + (bias[key] || 0));
+  }
+  return caps;
+}
+function capMonsterStats(mon){
+  const caps = getStatCaps(mon);
+  for(const key of Object.keys(STAT_LABEL)){
+    mon.stats[key] = Math.max(1, Math.min(mon.stats[key] || 1, caps[key]));
+  }
+  mon.hpCurrent = Math.min(mon.hpCurrent || mon.stats.hp, mon.stats.hp);
+  if(mon.hpCurrent < 1) mon.hpCurrent = mon.stats.hp;
+  return caps;
+}
+
+function getRestPenaltyRate(mon){
+  const p=PERSONALITIES[mon.personality]||PERSONALITIES["ふつう"];
+  return typeof p.restPenalty==="number" ? p.restPenalty : 0.25;
+}
+function restPenaltyText(rate){
+  return `${Math.round(rate*100)}%`;
+}
+function reduceRandomStatCap(mon){
+  ensureCapBias(mon);
+  const caps=getStatCaps(mon);
+  const eligible=Object.keys(STAT_LABEL).filter(key=>caps[key] > (mon.stats[key] || 1));
+  if(eligible.length===0){
+    return null;
+  }
+  const stat=eligible[Math.floor(Math.random()*eligible.length)];
+  mon.capBias[stat]-=1;
+  capMonsterStats(mon);
+  return stat;
+}
+
+function addStat(mon, stat, amount){
+  const caps = getStatCaps(mon);
+  const before = mon.stats[stat] || 1;
+  const after = Math.max(1, Math.min(caps[stat], before + amount));
+  mon.stats[stat] = after;
+  if(stat==="hp") mon.hpCurrent = Math.min(mon.stats.hp, Math.max(mon.hpCurrent || mon.stats.hp, mon.stats.hp));
+  return after - before;
+}
+function addExp(mon, amount){
+  if(mon.level >= MAX_LEVEL){
+    mon.level = MAX_LEVEL;
+    mon.exp = 0;
+    return 0;
+  }
+  mon.exp += amount;
+  handleLevelUp(mon);
+  return amount;
+}
+function expText(mon){
+  return mon.level >= MAX_LEVEL ? "MAX" : `${mon.exp}/${expToNext(mon.level)}`;
+}
+
+function getCurrentMonster(){return state.monsters.find(m=>m.id===state.currentId)||null}
+function selectMonster(id){
+  state.currentId=id;
+  currentEnemy=null;
+  currentBattleHp=null;
+  saveGame();
+  log("育成中のクリモンを切り替えました。");
+  showTab("home");
+  render();
+}
+function renameCurrent(){
+  const mon=getCurrentMonster(); if(!mon) return;
+  const input=document.getElementById("nicknameInput");
+  const value=(input.value||"").trim();
+  if(!value){alert("名前を入力してください。");return}
+  mon.nickname=value.slice(0,16);
+  saveGame();log(`「${mon.formName}」に「${mon.nickname}」という名前を付けました。`);render();
+}
+function spendAp(amount=1){recoverApByTime();if(state.ap<amount){alert("APが足りません。");return false}state.ap-=amount;saveGame();return true}
+function train(stat){
+  const mon=getCurrentMonster();if(!mon)return;if(!spendAp(1))return;
+  const condition=CONDITIONS[mon.condition]||CONDITIONS.normal;
+  const pGrow=(PERSONALITIES[mon.personality]||PERSONALITIES["ふつう"]).grow||{};
+  let gain=3+condition.trainBonus+(pGrow[stat]||0);
+  if(mon.trait.includes(STAT_LABEL[stat].replace("体力",""))) gain+=1;
+  if(Math.random()<0.12){gain+=2;log(`トレーニング大成功！ ${STAT_LABEL[stat]}が大きく伸びた。`)}
+  gain=Math.max(1,gain);
+  const actualGain = addStat(mon, stat, gain);
+  mon.history.train[stat]++;
+  addExp(mon,8);
+  worsenCondition(mon);
+  capMonsterStats(mon);
+  saveGame();
+  log(actualGain>0
+    ? `${mon.nickname}の${STAT_LABEL[stat]}トレーニング。${STAT_LABEL[stat]} +${actualGain}`
+    : `${mon.nickname}の${STAT_LABEL[stat]}は上限に達している。`);
+  render();
+}
+function rest(){
+  const mon=getCurrentMonster();if(!mon)return;
+  const before=state.ap;
+  state.ap=state.maxAp;
+  mon.history.rest++;
+  mon.condition=improveCondition(mon.condition);
+
+  const rate=getRestPenaltyRate(mon);
+  let penaltyMsg="";
+  if(Math.random()<rate){
+    const stat=reduceRandomStatCap(mon);
+    penaltyMsg=stat
+      ? ` ただし休みすぎで${STAT_LABEL[stat]}の成長上限が -1。`
+      : " ただし、現在ステータスが上限に届いているため成長上限は下がらなかった。";
+  }else{
+    penaltyMsg=" 成長上限は下がらなかった。";
+  }
+
+  log(`${mon.nickname}は休憩した。AP ${before} → ${state.ap}、コンディション回復。${penaltyMsg}`);
+  saveGame();render();
+}
+function play(){
+  const mon=getCurrentMonster();if(!mon)return;if(!spendAp(1))return;
+  mon.history.play++;
+  const keys=Object.keys(STAT_LABEL);
+  const s1=keys[Math.floor(Math.random()*keys.length)], s2=keys[Math.floor(Math.random()*keys.length)];
+  const cond=CONDITIONS[mon.condition]||CONDITIONS.normal;
+  let roll=Math.random()*100;
+  if(mon.personality==="気まぐれ")roll+=3;
+  if(mon.personality==="沼")roll+=5;
+  if(mon.trait==="遊びの振れ幅アップ")roll+=3;
+  roll-=cond.playRisk*8;
+  let msg="";
+  if(roll>=98){const g=addStat(mon,"luck",10);mon.rareScore+=8;mon.history.miraclePlay=true;msg=`奇跡の遊び！ 運 +${g}。レア進化の気配が強まった。`}
+  else if(roll>=82){const g1=addStat(mon,s1,8), g2=addStat(mon,s2,6);msg=`遊び大成功！ ${STAT_LABEL[s1]} +${g1}、${STAT_LABEL[s2]} +${g2}`}
+  else if(roll>=55){const g=addStat(mon,s1,5);msg=`遊び成功。${STAT_LABEL[s1]} +${g}`}
+  else if(roll>=25){const g=addStat(mon,s1,2);msg=`普通に遊んだ。${STAT_LABEL[s1]} +${g}`}
+  else if(roll>=8){const g=addStat(mon,s1,-3);msg=`遊び失敗。${STAT_LABEL[s1]} ${g}`}
+  else{const g1=addStat(mon,s1,-5), g2=addStat(mon,s2,-5);mon.rareScore+=1;msg=`遊び大失敗…… ${STAT_LABEL[s1]} ${g1}、${STAT_LABEL[s2]} ${g2}。ただし妙な経験を得た。`}
+  addExp(mon,5);worsenCondition(mon);capMonsterStats(mon);
+  saveGame();log(msg);render();
+}
+function worsenCondition(mon){if(Math.random()<0.12){if(mon.condition==="great")mon.condition="normal";else if(mon.condition==="normal")mon.condition="tired";else if(mon.condition==="tired")mon.condition="bad"}}
+function improveCondition(c){if(c==="bad")return"tired";if(c==="tired")return"normal";if(c==="normal")return"great";return"great"}
+
+function makeEnemy(level){
+  const enemies=[
+    {name:"野良クリモン",emoji:"👾"},{name:"ミームスライム",emoji:"🫠"},{name:"定時ゴブリン",emoji:"🕔"},{name:"沼バード",emoji:"🐦‍⬛"},{name:"社畜ワーム",emoji:"🪱"}
+  ];
+  const pick=enemies[Math.floor(Math.random()*enemies.length)];
+  const base=24+level*3;
+  return {name:pick.name, emoji:pick.emoji, level, hp:base+Math.floor(Math.random()*8), atk:5+level+Math.floor(Math.random()*4), def:4+level+Math.floor(Math.random()*4), mag:4+level+Math.floor(Math.random()*4), luck:4+level+Math.floor(Math.random()*4), spd:4+level+Math.floor(Math.random()*4)};
+}
+function prepareBattlePreview(){
+  const mon=getCurrentMonster(); if(!mon || battleBusy)return;
+  currentEnemy=makeEnemy(mon.level);
+  currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+  document.getElementById("battleResult").classList.add("hidden");
+  document.getElementById("battleLog").innerHTML="";
+  updateBattleStage(mon, currentEnemy, currentBattleHp.my, currentBattleHp.enemy);
+  setBattleMessage(`対戦相手は ${currentEnemy.name} Lv.${currentEnemy.level}。`);
+}
+function setBattleMessage(text){document.getElementById("battleMessage").textContent=text}
+function updateBattleStage(mon, enemy, myHp, enemyHp){
+  if(!mon || !enemy) return;
+  document.getElementById("bfMyName").textContent=mon.nickname;
+  document.getElementById("bfMySpecies").textContent=`${mon.formName} / ${mon.speciesName}`;
+  document.getElementById("bfEnemyName").textContent=`${enemy.name} Lv.${enemy.level}`;
+  document.getElementById("bfMyBody").textContent=mon.emoji||"🐣";
+  document.getElementById("bfEnemyBody").textContent=enemy.emoji||"👾";
+  document.getElementById("bfMyHpText").textContent=`HP ${Math.max(0,myHp)}/${mon.stats.hp}`;
+  document.getElementById("bfEnemyHpText").textContent=`HP ${Math.max(0,enemyHp)}/${enemy.hp}`;
+  document.getElementById("bfMyHpBar").style.width=`${Math.max(0,Math.round(myHp/mon.stats.hp*100))}%`;
+  document.getElementById("bfEnemyHpBar").style.width=`${Math.max(0,Math.round(enemyHp/enemy.hp*100))}%`;
+}
+
+function getSkills(actor){
+  const source = actor && actor.source ? actor.source : actor;
+  const species = source.speciesKey || actor.speciesKey || "enemy";
+  const name = source.formName || actor.formName || actor.name || actor.nickname || "";
+  const stage = source.stage || actor.stage || 0;
+  const skills=[];
+  const add=(id)=>{ if(SKILL_DEFS[id] && !skills.includes(id)) skills.push(id); };
+
+  if(species==="shinya"){
+    add("focus");
+    if(stage>=1 || name.includes("反応") || name.includes("瞬撃") || name.includes("神速")) add("shunpo");
+    if(name.includes("黒閃") || name.includes("逆転") || name.includes("シン・")) add("blackFlash");
+    if(name.includes("分身") || name.includes("神速")) add("bunshin");
+    if(name.includes("技巧") || name.includes("超絶")) add("magicBullet");
+  }else if(species==="onn"){
+    add("ironWall");
+    if(stage>=1 || name.includes("耐久") || name.includes("再生") || name.includes("リバイバル")) add("regenerate");
+    if(name.includes("守護") || name.includes("身代わり") || name.includes("柱")) add("guardian");
+    if(name.includes("柱")) add("kazukoBless");
+  }else if(species==="gl"){
+    add("fury");
+    if(name.includes("連撃") || name.includes("乱舞") || name.includes("追撃") || name.includes("無限")) add("combo");
+    if(name.includes("捨て身") || name.includes("バーサーカー") || name.includes("狂戦")) add("reckless");
+    if(name.includes("解体")) add("dismantle");
+    if(name.includes("クール")) add("magicCannon");
+  }else if(species==="wacha"){
+    add("magicBullet");
+    if(stage>=1) add("magicCannon");
+    if(name.includes("毒") || name.includes("ポイズン") || name.includes("ワチャリスク")) add("poison");
+    if(name.includes("猛毒") || name.includes("呪毒") || name.includes("ワチャリスク")) add("venom");
+    if(name.includes("封印") || name.includes("沈黙") || name.includes("忘れ物")) add("silence");
+    if(name.includes("行動不能") || name.includes("忘れ物")) add("stun");
+    if(name.includes("忘れ物")) add("forgetSeal");
+    if(name.includes("禁術")) add("skyTree");
+  }else if(species==="dentaku"){
+    add("magicBullet");
+    add("recalc");
+    if(stage>=1 || name.includes("期待値") || name.includes("乱数")) add("rngControl");
+    if(name.includes("期待値") || name.includes("収束") || name.includes("偏差")) add("expectation");
+    if(name.includes("未来")) add("futureSight");
+    if(name.includes("異世界") || name.includes("世界線")) add("worldLine");
+    if(name.includes("京") || name.includes("魔導") || name.includes("数式")) add("magicCannon");
+  }else{
+    if((actor.mag||0) >= (actor.atk||0)+2) add("magicBullet");
+    if((actor.def||0) >= (actor.atk||0)+2) add("ironWall");
+    if((actor.luck||0) >= 15) add("recalc");
+  }
+  return skills;
+}
+function skillLabel(id){return SKILL_DEFS[id]?.name || id;}
+function makeCombatant(source, side){
+  const stats = source.stats ? {...source.stats} : {hp:source.hp,atk:source.atk,def:source.def,mag:source.mag,luck:source.luck,spd:source.spd};
+  return {
+    source,
+    side,
+    name: source.nickname || source.name || source.formName || "クリモン",
+    emoji: source.emoji || "👾",
+    level: source.level || 1,
+    speciesKey: source.speciesKey || "enemy",
+    formName: source.formName || source.name || "",
+    stats,
+    hp: stats.hp || source.hp || 1,
+    maxHp: stats.hp || source.hp || 1,
+    status:{poison:0,venom:0,silence:0,stun:0,regen:0,future:0},
+    buff:{atk:0,def:0,mag:0,luck:0,spd:0,shield:0}
+  };
+}
+function cStat(c,key){
+  const base=c.stats[key] || 0;
+  const add=(c.buff && c.buff[key]) || 0;
+  return Math.max(1, base + add);
+}
+function shouldUseSkill(attacker){
+  const silence = attacker.status?.silence || 0;
+  const usable = getSkills(attacker).filter(id=>{
+    const cat=SKILL_DEFS[id]?.category;
+    return !(silence>0 && (cat==="magic" || cat==="status"));
+  });
+  if(!usable.length) return null;
+  const chance = Math.min(0.52, 0.18 + (cStat(attacker,"mag") + cStat(attacker,"luck")) / 420 + (attacker.level||1)/500);
+  if(Math.random()>=chance) return null;
+  return usable[Math.floor(Math.random()*usable.length)];
+}
+function pushEvent(events,type,text,a,b,extra={}){
+  events.push({type,text,myHp:a.hp,enemyHp:b.hp,...extra});
+}
+function startTurnEffects(actor, opponent, events){
+  const a = actor.side==="me" ? actor : opponent;
+  const b = actor.side==="me" ? opponent : actor;
+  if(actor.status.poison>0){
+    const d=Math.max(1,Math.round(actor.maxHp*0.06));
+    actor.hp=Math.max(0,actor.hp-d); actor.status.poison--;
+    pushEvent(events,"status",`${actor.name}は毒で${d}ダメージ。`,a,b);
+  }
+  if(actor.status.venom>0){
+    const d=Math.max(2,Math.round(actor.maxHp*0.11));
+    actor.hp=Math.max(0,actor.hp-d); actor.status.venom--;
+    pushEvent(events,"status",`${actor.name}は猛毒で${d}ダメージ。`,a,b);
+  }
+  if(actor.status.regen>0){
+    const heal=Math.max(2,Math.round(actor.maxHp*0.12 + cStat(actor,"mag")*0.25));
+    const before=actor.hp; actor.hp=Math.min(actor.maxHp,actor.hp+heal); actor.status.regen--;
+    pushEvent(events,"status",`${actor.name}は再生でHPを${actor.hp-before}回復。`,a,b);
+  }
+}
+function reduceDurations(actor){
+  for(const k of ["silence","future"]){ if(actor.status[k]>0) actor.status[k]--; }
+  for(const k of Object.keys(actor.buff)){ if(actor.buff[k]>0) actor.buff[k]--; else if(actor.buff[k]<0) actor.buff[k]++; }
+}
+function calcDamage(attacker, defender, kind="physical", power=1, ignoreDef=0){
+  const atk = kind==="magic" ? cStat(attacker,"mag") : cStat(attacker,"atk");
+  const def = Math.max(0, cStat(defender,"def") * (1-ignoreDef));
+  let raw = kind==="magic" ? atk*1.45 - def*0.42 : atk*1.45 - def*0.65;
+  let dmg = Math.max(1, Math.round(raw*power + Math.random()*5));
+  if(defender.buff.shield>0) dmg=Math.max(1,Math.round(dmg*0.68));
+  return dmg;
+}
+function applyDamage(defender,dmg){defender.hp=Math.max(0,defender.hp-dmg);}
+function applyHeal(actor,amount){const before=actor.hp;actor.hp=Math.min(actor.maxHp,actor.hp+amount);return actor.hp-before;}
+function normalAttack(attacker, defender, events, monRef){
+  const a = attacker.side==="me" ? attacker : defender;
+  const b = attacker.side==="me" ? defender : attacker;
+  if(defender.status.future>0){
+    defender.status.future=0;
+    pushEvent(events,"attack",`${attacker.name}の通常攻撃！ しかし${defender.name}は未来予測で回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true});
+    return;
+  }
+  const critRate=Math.min(0.38,0.05+(cStat(attacker,"luck")/120));
+  const dodgeRate=Math.min(0.24,(cStat(defender,"luck")+cStat(defender,"spd"))/240);
+  if(Math.random()<dodgeRate){
+    pushEvent(events,"attack",`${attacker.name}の通常攻撃！ しかし${defender.name}は回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true});
+    return;
+  }
+  let dmg=calcDamage(attacker,defender,"physical",1,0);
+  const isCrit=Math.random()<critRate;
+  if(isCrit) dmg=Math.round(dmg*1.55);
+  applyDamage(defender,dmg);
+  if(isCrit && monRef && attacker.side==="me" && monRef.history) monRef.history.crits++;
+  pushEvent(events,"attack",`${attacker.name}の通常攻撃！ ${defender.name}に${dmg}ダメージ${isCrit?"！ クリティカル！":""}`,a,b,{attacker:attacker.side,target:defender.side,dmg,crit:isCrit});
+}
+function useSkill(attacker, defender, skillId, events, monRef){
+  const name=skillLabel(skillId);
+  const a = attacker.side==="me"?attacker:defender;
+  const b = attacker.side==="me"?defender:attacker;
+  const push=(txt,extra={})=>pushEvent(events,"skill",txt,a,b,{attacker:attacker.side,target:defender.side,skill:skillId,...extra});
+
+  if(defender.status.future>0 && ["blackFlash","combo","reckless","dismantle","magicBullet","magicCannon","skyTree"].includes(skillId)){
+    defender.status.future=0;
+    push(`${attacker.name}の${name}！ しかし${defender.name}は未来予測で回避した。`,{dmg:0,dodge:true}); return;
+  }
+  if(skillId==="focus"){attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}は集中した！ しばらく運が上がる。`);return;}
+  if(skillId==="shunpo"){attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}は瞬歩を使った！ しばらく素早さが上がる。`);return;}
+  if(skillId==="bunshin" || skillId==="futureSight"){attacker.status.future=2;push(`${attacker.name}は${name}を構えた！ 次の攻撃を1回回避する。`);return;}
+  if(skillId==="ironWall"){attacker.buff.def=Math.max(attacker.buff.def,3);push(`${attacker.name}の鉄壁！ 防御が上がった。`);return;}
+  if(skillId==="regenerate"){attacker.status.regen=Math.max(attacker.status.regen,3);push(`${attacker.name}は再生を始めた！`);return;}
+  if(skillId==="guardian" || skillId==="expectation"){attacker.buff.shield=Math.max(attacker.buff.shield,3);push(`${attacker.name}の${name}！ 受けるダメージを軽減する。`);return;}
+  if(skillId==="kazukoBless"){
+    const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.18+cStat(attacker,"mag")*0.4));
+    attacker.buff.def=Math.max(attacker.buff.def,3);attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.luck=Math.max(attacker.buff.luck,3);
+    push(`${attacker.name}にカズコの加護！ HPを${heal}回復し、防御・魔法・運が上がった。`);return;
+  }
+  if(skillId==="fury"){attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の猛攻！ 攻撃が上がった。`);return;}
+  if(skillId==="recalc"){attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}は再計算した！ 運が上がった。`);return;}
+  if(skillId==="rngControl"){attacker.buff.luck=Math.max(attacker.buff.luck,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}が乱数を支配！ 運と素早さが上がった。`);return;}
+  if(skillId==="worldLine"){
+    const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.22));attacker.status.future=2;attacker.buff.luck=Math.max(attacker.buff.luck,3);
+    push(`${attacker.name}は世界線を変更した！ HPを${heal}回復し、次の攻撃を回避する。`);return;
+  }
+  if(skillId==="poison"){defender.status.poison=Math.max(defender.status.poison,3);push(`${attacker.name}の毒！ ${defender.name}は毒状態になった。`);return;}
+  if(skillId==="venom"){defender.status.venom=Math.max(defender.status.venom,3);push(`${attacker.name}の猛毒！ ${defender.name}は猛毒状態になった。`);return;}
+  if(skillId==="silence"){defender.status.silence=Math.max(defender.status.silence,3);push(`${attacker.name}の沈黙！ ${defender.name}は魔法・状態異常スキルを封じられた。`);return;}
+  if(skillId==="stun"){defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の行動不能！ ${defender.name}は次の行動を止められた。`);return;}
+  if(skillId==="forgetSeal"){defender.status.silence=Math.max(defender.status.silence,3); if(Math.random()<0.55) defender.status.stun=Math.max(defender.status.stun,1); push(`${attacker.name}の忘却封印！ ${defender.name}のスキルを封じた。`);return;}
+
+  let dmg=0, crit=false;
+  if(skillId==="blackFlash"){
+    dmg=calcDamage(attacker,defender,"physical",1.45,0);
+    crit=Math.random()<Math.min(0.65,0.18+cStat(attacker,"luck")/100);
+    if(crit)dmg=Math.round(dmg*1.7); applyDamage(defender,dmg);
+  }else if(skillId==="combo"){
+    const d1=calcDamage(attacker,defender,"physical",0.75,0), d2=calcDamage(attacker,defender,"physical",0.75,0); dmg=d1+d2; applyDamage(defender,dmg);
+  }else if(skillId==="reckless"){
+    dmg=calcDamage(attacker,defender,"physical",1.75,0); applyDamage(defender,dmg);
+    const recoil=Math.max(1,Math.round(dmg*0.22)); attacker.hp=Math.max(1,attacker.hp-recoil);
+    push(`${attacker.name}の捨て身！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,crit:false,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="dismantle"){
+    dmg=calcDamage(attacker,defender,"physical",1.2,0.65); applyDamage(defender,dmg);
+  }else if(skillId==="magicCannon"){
+    dmg=calcDamage(attacker,defender,"magic",1.35,0); applyDamage(defender,dmg);
+  }else if(skillId==="skyTree"){
+    dmg=calcDamage(attacker,defender,"magic",2.15,0.15); applyDamage(defender,dmg);
+    const recoil=Math.max(1,Math.round(attacker.maxHp*0.16)); attacker.hp=Math.max(1,attacker.hp-recoil);
+    push(`${attacker.name}の禁術・スカイツリーちんぽ！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+  }else{
+    dmg=calcDamage(attacker,defender,"magic",0.9,0); applyDamage(defender,dmg);
+  }
+  if(crit && monRef && attacker.side==="me" && monRef.history) monRef.history.crits++;
+  push(`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ${crit?"！ クリティカル！":""}`,{dmg,crit,magic:SKILL_DEFS[skillId]?.category==="magic"});
+}
+function takeAction(attacker, defender, events, monRef){
+  if(attacker.status.stun>0){
+    attacker.status.stun=0;
+    const a = attacker.side==="me" ? attacker : defender;
+    const b = attacker.side==="me" ? defender : attacker;
+    pushEvent(events,"status",`${attacker.name}は行動不能で動けない！`,a,b); return;
+  }
+  const skill=shouldUseSkill(attacker);
+  if(skill) useSkill(attacker,defender,skill,events,monRef);
+  else normalAttack(attacker,defender,events,monRef);
+}
+
+function skillCategoryLabel(category){
+  if(category==="magic") return "魔法";
+  if(category==="support") return "補助";
+  if(category==="status") return "状態異常";
+  if(category==="physical") return "物理";
+  return "スキル";
+}
+let skillPressTimer=null;
+function startSkillLongPress(event, skillId){
+  if(event){event.preventDefault();event.stopPropagation();}
+  cancelSkillLongPress();
+  skillPressTimer=setTimeout(()=>showSkillDetail(skillId),520);
+}
+function cancelSkillLongPress(){
+  if(skillPressTimer){
+    clearTimeout(skillPressTimer);
+    skillPressTimer=null;
+  }
+}
+function showSkillDetail(skillId){
+  cancelSkillLongPress();
+  const skill=SKILL_DEFS[skillId];
+  if(!skill) return;
+  const modal=document.getElementById("skillDetailModal");
+  const title=document.getElementById("skillDetailTitle");
+  const category=document.getElementById("skillDetailCategory");
+  const desc=document.getElementById("skillDetailDesc");
+  if(!modal || !title || !category || !desc){
+    alert(`${skill.name}\n${skill.desc}`);
+    return;
+  }
+  title.textContent=skill.name;
+  category.textContent=`分類：${skillCategoryLabel(skill.category)} / 長押しで詳細表示`;
+  desc.textContent=skill.desc;
+  modal.classList.remove("hidden");
+}
+function hideSkillDetail(){
+  cancelSkillLongPress();
+  const modal=document.getElementById("skillDetailModal");
+  if(modal) modal.classList.add("hidden");
+}
+function skillChipHtml(skillId){
+  const skill=SKILL_DEFS[skillId];
+  if(!skill) return "";
+  return `<span class="skill-chip ${escapeHtml(skill.category)}"
+    title="${escapeHtml(skill.desc)}"
+    oncontextmenu="return false"
+    onpointerdown="startSkillLongPress(event,'${escapeHtml(skillId)}')"
+    onpointerup="cancelSkillLongPress()"
+    onpointerleave="cancelSkillLongPress()"
+    onpointercancel="cancelSkillLongPress()">${escapeHtml(skill.name)}</span>`;
+}
+function renderSkillChips(mon){
+  const skills=getSkills(mon);
+  return `<div class="skill-chips">${skills.length?skills.map(skillChipHtml).join(""):'<span class="small">なし</span>'}</div><span class="skill-help">スキル名を長押しで効果を表示</span>`;
+}
+
+function buildBattleEvents(mon, enemy){
+  const me=makeCombatant(mon,"me");
+  const foe=makeCombatant(enemy,"enemy");
+  const events=[];
+  for(let t=1;t<=24;t++){
+    pushEvent(events,"turn",`ターン ${t}`,me,foe);
+    startTurnEffects(me,foe,events); if(me.hp<=0||foe.hp<=0)break;
+    startTurnEffects(foe,me,events); if(me.hp<=0||foe.hp<=0)break;
+    const firstChance=Math.max(0.12,Math.min(0.88,0.5+((cStat(me,"spd")-cStat(foe,"spd"))/140)));
+    const myFirst=Math.random()<firstChance;
+    if(myFirst){takeAction(me,foe,events,mon); if(foe.hp<=0)break; takeAction(foe,me,events,mon);}
+    else{takeAction(foe,me,events,mon); if(me.hp<=0)break; takeAction(me,foe,events,mon);}
+    if(foe.hp>0 && me.hp>0 && cStat(me,"spd")-cStat(foe,"spd")>=8 && Math.random()<0.16){
+      if(mon.history) mon.history.doubleAttacks++;
+      pushEvent(events,"bonus",`${me.name}の素早さが相手を上回る！ 追加行動！`,me,foe);
+      takeAction(me,foe,events,mon);
+    }
+    reduceDurations(me); reduceDurations(foe);
+    if(me.hp<=0||foe.hp<=0)break;
+  }
+  const win=foe.hp<=0 && me.hp>0;
+  pushEvent(events,"result",win?"勝利！":"敗北……",me,foe,{win});
+  return events;
+}
+
+async function startAnimatedBattle(){
+  const mon=getCurrentMonster();if(!mon||battleBusy)return;
+  battleBusy=true;
+  document.getElementById("battleStartBtn").disabled=true;
+  document.getElementById("battleResult").classList.add("hidden");
+  if(!currentEnemy) currentEnemy=makeEnemy(mon.level);
+  const enemy=currentEnemy;
+  currentBattleHp = { my: mon.stats.hp, enemy: enemy.hp };
+  updateBattleStage(mon, enemy, currentBattleHp.my, currentBattleHp.enemy);
+  const events=buildBattleEvents(mon, enemy);
+  const battleLog=document.getElementById("battleLog");
+  battleLog.innerHTML="";
+  setBattleMessage("バトル開始！");
+  await speedWait(350);
+  let finalWin=false;
+  for(const ev of events){
+    if(ev.type==="turn"){
+      setBattleMessage(ev.text);
+      await speedWait(260);
+      continue;
+    }
+    if(ev.type==="bonus"){
+      setBattleMessage(ev.text);
+      battleLog.prepend(logNode(ev.text));
+      flash();
+      await speedWait(520);
+      continue;
+    }
+    if(ev.type==="attack" || ev.type==="skill" || ev.type==="status"){
+      if(ev.type==="status" || (ev.type==="skill" && typeof ev.dmg!=="number" && !ev.dodge)){
+        const mhp=typeof ev.myHp==="number"?ev.myHp:currentBattleHp.my;
+        const ehp=typeof ev.enemyHp==="number"?ev.enemyHp:currentBattleHp.enemy;
+        currentBattleHp = { my: mhp, enemy: ehp };
+        updateBattleStage(mon, enemy, mhp, ehp);
+        setBattleMessage(ev.text);
+        battleLog.prepend(logNode(ev.text));
+        await speedWait(420);
+        continue;
+      }
+      await playAttackAnimation(ev);
+      const mhp=typeof ev.myHp==="number"?ev.myHp:currentBattleHp.my;
+      const ehp=typeof ev.enemyHp==="number"?ev.enemyHp:currentBattleHp.enemy;
+      currentBattleHp = { my: mhp, enemy: ehp };
+      updateBattleStage(mon, enemy, mhp, ehp);
+      setBattleMessage(ev.text);
+      battleLog.prepend(logNode(ev.text));
+      await speedWait(ev.crit?680:520);
+      continue;
+    }
+    if(ev.type==="result"){
+      finalWin=ev.win;
+      currentBattleHp = { my: ev.myHp, enemy: ev.enemyHp };
+      updateBattleStage(mon, enemy, ev.myHp, ev.enemyHp);
+      setBattleMessage(ev.text);
+      document.getElementById("battleResult").textContent=ev.text;
+      document.getElementById("battleResult").classList.remove("hidden");
+    }
+  }
+  finishBattle(mon, enemy, finalWin);
+  currentEnemy=makeEnemy(mon.level);
+  currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+  document.getElementById("battleStartBtn").disabled=false;
+  battleBusy=false;
+  render();
+}
+function logNode(text){const d=document.createElement("div");d.textContent=text;return d}
+async function playAttackAnimation(ev){
+  const attacker=document.getElementById(ev.attacker==="me"?"bfMyBody":"bfEnemyBody");
+  const target=document.getElementById(ev.target==="me"?"bfMyBody":"bfEnemyBody");
+  const dmgEl=document.getElementById(ev.target==="me"?"myDamage":"enemyDamage");
+  attacker.classList.add("attack");
+  await speedWait(160);
+  attacker.classList.remove("attack");
+  if(ev.dodge){
+    dmgEl.textContent="MISS";
+    dmgEl.className="damage show";
+    flash();
+    await speedWait(260);
+    dmgEl.className="damage";
+    return;
+  }
+  target.classList.add(ev.crit?"crit":"hit");
+  dmgEl.textContent=(ev.crit?"CRIT ":"-")+ev.dmg;
+  dmgEl.className="damage show"+(ev.crit?" critText":"");
+  flash(ev.crit);
+  await speedWait(330);
+  target.classList.remove("hit","crit");
+  dmgEl.className="damage";
+}
+function flash(strong=false){
+  const f=document.getElementById("battleFlash");
+  f.classList.add("on");
+  setTimeout(()=>f.classList.remove("on"), strong?180:110);
+}
+function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function speedWait(ms){
+  const speed = state.battleSpeed || 1;
+  const factor = speed === 3 ? 0.25 : speed === 2 ? 0.55 : 1;
+  return wait(Math.max(60, Math.round(ms * factor)));
+}
+function setBattleSpeed(speed){
+  state.battleSpeed = speed;
+  saveGame();
+  renderSpeedButtons();
+  log(`バトル速度を${speed === 1 ? "標準" : speed === 2 ? "高速" : "超速"}に変更しました。`);
+}
+function renderSpeedButtons(){
+  [1,2,3].forEach(n=>{
+    const btn=document.getElementById("speed"+n);
+    if(btn) btn.classList.toggle("active", (state.battleSpeed||1)===n);
+  });
+}
+function finishBattle(mon, enemy, win){
+  if(win){
+    mon.history.wins++;
+    const baseExp=20+enemy.level*5, cp=25+enemy.level*5;
+    const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
+    log(`バトル勝利！ EXP +${exp}、CP +${cp}`);
+  }else{
+    mon.history.losses++;
+    const baseExp=8, cp=10;
+    const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
+    log(`バトル敗北。EXP +${exp}、CP +${cp}`);
+  }
+  saveGame();
+}
+
+function expToNext(level){return level>=MAX_LEVEL ? 0 : 35+level*15}
+function handleLevelUp(mon){
+  if(mon.level>=MAX_LEVEL){
+    mon.level=MAX_LEVEL;
+    mon.exp=0;
+    capMonsterStats(mon);
+    return;
+  }
+  while(mon.level < MAX_LEVEL && mon.exp>=expToNext(mon.level)){
+    mon.exp-=expToNext(mon.level);mon.level++;
+    const g=growthBySpecies(mon.speciesKey);
+    for(const [k,v] of Object.entries(g)) addStat(mon,k,v);
+    addStat(mon,"hp",2);
+    capMonsterStats(mon);
+    log(`${mon.nickname}がLv.${mon.level}になった！`);
+    autoEvolveIfReady(mon);
+  }
+  if(mon.level>=MAX_LEVEL){
+    mon.level=MAX_LEVEL;
+    mon.exp=0;
+    log(`${mon.nickname}はレベル上限のLv.100に到達した！`);
+  }
+}
+function autoEvolveIfReady(mon){
+  while(mon && mon.stage < 3 && canEvolve(mon)){
+    const before = mon.formName;
+    const result = decideEvolution(mon);
+    applyEvolution(mon,result);
+    log(`${mon.nickname}は自動進化！ ${before} → ${result.formName}`);
+  }
+}
+function growthBySpecies(k){
+  if(k==="shinya")return{hp:1,atk:1,def:1,mag:1,luck:1,spd:1};
+  if(k==="onn")return{hp:3,atk:0,def:2,mag:0,luck:0,spd:0};
+  if(k==="gl")return{hp:1,atk:3,def:0,mag:0,luck:1,spd:1};
+  if(k==="wacha")return{hp:1,atk:0,def:0,mag:3,luck:1,spd:0};
+  if(k==="dentaku")return{hp:0,atk:0,def:1,mag:2,luck:2,spd:1};
+  return{hp:1,atk:1,def:1,mag:1,luck:1,spd:1};
+}
+function canEvolve(mon){if(mon.stage===0)return mon.level>=5;if(mon.stage===1)return mon.level>=12;if(mon.stage===2)return mon.level>=22;return false}
+function nextEvolveText(mon){if(mon.stage===0)return"Lv.5到達で自動成長期進化";if(mon.stage===1)return"Lv.12到達で自動完全体進化";if(mon.stage===2)return"Lv.22到達で自動究極体進化";return"最終進化済み"}
+function tryEvolve(){
+  const mon=getCurrentMonster();if(!mon)return;
+  if(mon.stage>=3){alert("これ以上は進化できません。");return}
+  if(!canEvolve(mon)){alert(`まだ進化できません。${nextEvolveText(mon)}。`);return}
+  const result=decideEvolution(mon);applyEvolution(mon,result);saveGame();log(`${mon.nickname}は「${result.formName}」に進化した！`);render();
+}
+function decideEvolution(mon){
+  const scores=calcEvolutionScores(mon), band=getTimeBand();
+  if(mon.stage===2 && isRareEvolution(mon,scores,band)) return buildEvolutionForm(mon,"r");
+  const aScore=scores.power+scores.balance+(band.key==="day"?4:0)+(mon.speciesKey==="onn"?scores.defense/2:0);
+  const bScore=scores.tech+scores.special+(band.key==="night"?4:0);
+  return buildEvolutionForm(mon,aScore>=bScore?"a":"b");
+}
+function calcEvolutionScores(mon){
+  const tr=mon.history.train;
+  return {
+    power:mon.stats.atk+tr.atk*3+mon.history.wins,
+    defense:mon.stats.def+mon.stats.hp/2+tr.def*3+tr.hp*2+mon.history.rest,
+    balance:Math.round((mon.stats.hp+mon.stats.atk+mon.stats.def+mon.stats.mag+mon.stats.luck+mon.stats.spd)/6),
+    tech:mon.stats.mag+mon.stats.luck+mon.stats.spd+tr.mag*2+tr.luck*2+tr.spd*2+mon.history.play*2,
+    special:mon.rareScore+mon.history.crits+mon.history.doubleAttacks+(mon.history.miraclePlay?10:0)+(mon.personality==="沼"?5:0)
+  };
+}
+function isRareEvolution(mon,scores,band){
+  let threshold=38;
+  if(band.key==="midnight")threshold-=6;
+  if(band.key==="evening")threshold-=3;
+  return scores.special+Math.floor(mon.stats.luck/2)>=threshold;
+}
+function buildEvolutionForm(mon,branch){
+  const nextStage=mon.stage+1;
+  const newPath=mon.stage===2 && branch==="r" ? mon.branchPath+"r" : mon.branchPath+branch;
+  const entry=(EVOLUTION_TREE[mon.speciesKey]||{})[newPath] || {formName:`${BASE_SPECIES[mon.speciesKey].speciesName}進化体`, profile:"進化体。"};
+  return {formName:entry.formName, profile:entry.profile, stage:nextStage, branchPath:newPath, formId:`${mon.speciesKey}_${newPath}`, image:`images/${mon.speciesKey}_${newPath}.png`};
+}
+function applyEvolution(mon,result){
+  mon.formName=result.formName;mon.profile=result.profile;mon.stage=result.stage;mon.branchPath=result.branchPath;mon.formId=result.formId;mon.image=result.image;
+  applyFormBonus(mon);
+  capMonsterStats(mon);
+  mon.hpCurrent=mon.stats.hp;
+  registerDex(mon);
+}
+function applyFormBonus(mon){
+  const name=mon.formName;
+  mon.stats.hp+=5+mon.stage*2;
+  if(name.includes("防衛")||name.includes("鉄壁")||name.includes("城塞")||name.includes("不沈")||name.includes("守護")||name.includes("柱")) mon.stats.def+=5;
+  if(name.includes("体力")||name.includes("耐久")||name.includes("我慢")||name.includes("リバイバル")) mon.stats.hp+=8;
+  if(name.includes("攻")||name.includes("破壊")||name.includes("一撃")||name.includes("拳")||name.includes("解体")||name.includes("怒り")) mon.stats.atk+=5;
+  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")) mon.stats.mag+=5;
+  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")) mon.stats.luck+=5;
+  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")) mon.stats.spd+=5;
+  if(name.includes("超")||name.includes("神速")||name.includes("京")||name.includes("異世界")){mon.stats.hp+=4;mon.stats.atk+=3;mon.stats.def+=3;mon.stats.mag+=3;mon.stats.luck+=3;mon.stats.spd+=3}
+  capMonsterStats(mon);
+}
+function getEvolveHint(mon){
+  if(!mon)return"まだクリモンがいません。";
+  if(mon.stage>=3)return"最終進化済み。ここから先は育成とバトルで強化しよう。";
+  const scores=calcEvolutionScores(mon), band=getTimeBand();
+  const top=Object.entries(mon.stats).sort((a,b)=>b[1]-a[1])[0];
+  let mood=`${nextEvolveText(mon)}。${STAT_LABEL[top[0]]}が目立っている。`;
+  if(scores.special>20)mood+=" レアな気配も少しある。";
+  if(band.key==="evening")mood+=" 夕方の空気でレア進化に少し近づいている。";
+  if(band.key==="midnight")mood+=" 深夜の気配でレア進化に近づいている。";
+  return mood;
+}
+
+function registerDex(mon){
+  state.dex[mon.formId]={speciesName:mon.speciesName,formName:mon.formName,role:mon.role,profile:mon.profile||mon.role,formId:mon.formId,stage:mon.stage,seenAt:Date.now()};
+}
+function addCP(n){state.cp+=n;saveGame();log(`CP +${n}`);render()}
+function gainTestExp(){const mon=getCurrentMonster();if(!mon)return;const added=addExp(mon,30);saveGame();log(`${mon.nickname}にテストEXP +${added}`);render()}
+function showTab(tab){
+  currentTab=tab;
+  ["home","raise","battle","mock","box","dex","tips","settings"].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle("hidden",t!==tab));
+  if(tab==="battle" && getCurrentMonster() && !currentEnemy) prepareBattlePreview();
+  if(tab==="mock") renderMockBattle();
+  render();
+}
+function render(){
+  recoverApByTime();checkHatch();
+  const mon=getCurrentMonster();
+  document.getElementById("cpText").textContent=state.cp;
+  document.getElementById("apText").textContent=`${state.ap}/${state.maxAp}`;
+  document.getElementById("timeBandText").textContent=getTimeBand().label;
+  renderEgg();renderMonster(mon);renderRaise(mon);renderBattle(mon);renderMockBattle();renderBox();renderDex();renderEvolutionTree();renderTips();renderLog();saveGame();
+}
+function renderEgg(){
+  const icon=document.getElementById("eggIcon"), title=document.getElementById("eggTitle"), desc=document.getElementById("eggDesc");
+  if(!state.egg){
+    icon.textContent="🥚";title.textContent="卵なし";
+    desc.textContent=(!state.firstEggUsed && state.monsters.length===0) ? "最初の卵はクールタイムなしで即孵化します。" : "卵を入手すると、時間経過でランダムな初期クリモンが孵化します。";
+    return;
+  }
+  const remain=Math.max(0,state.egg.hatchAt-Date.now());
+  icon.textContent="🥚";title.textContent=`卵：孵化まで ${formatRemain(remain)}`;
+  desc.textContent="孵化キャラ、性格、個体補正はランダムです。";
+}
+function renderMonster(mon){
+  const no=document.getElementById("noMonsterHome"), home=document.getElementById("currentMonsterHome");
+  if(!mon){no.classList.remove("hidden");home.classList.add("hidden");return}
+  no.classList.add("hidden");home.classList.remove("hidden");
+  document.getElementById("monsterName").textContent=`${mon.nickname} Lv.${mon.level}`;
+  document.getElementById("monsterRole").textContent=`種族：${mon.speciesName} / 形態：${mon.formName} / 役割：${mon.role}`;
+  document.getElementById("monsterMeta").textContent=`性格：${mon.personality} / コンディション：${CONDITIONS[mon.condition].label} / EXP：${expText(mon)} / ${nextEvolveText(mon)}`;
+  const input=document.getElementById("nicknameInput"); if(input && document.activeElement !== input) input.value=mon.nickname;
+  document.getElementById("monsterBadges").innerHTML=[`段階：${stageName(mon.stage)}`,`Lv上限：${MAX_LEVEL}`,`特徴：${mon.profile||mon.role}`,`特性：${mon.trait||"なし"}`,`進化パス：${mon.branchPath||"base"}`].map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join("");
+  document.getElementById("evolveHint").textContent=getEvolveHint(mon);
+  const skillArea=document.getElementById("skillsArea");
+  if(skillArea){
+    skillArea.innerHTML=`<b>使えるスキル・魔法</b>${renderSkillChips(mon)}`;
+  }
+  const img=document.getElementById("monsterImg"), emoji=document.getElementById("monsterEmoji");
+  img.src=mon.image;img.onload=()=>{img.style.display="block";emoji.style.display="none"};img.onerror=()=>{img.style.display="none";emoji.style.display="block"};emoji.textContent=mon.emoji||"🐣";
+  const caps=getStatCaps(mon);
+  document.getElementById("statsArea").innerHTML=Object.entries(STAT_LABEL).map(([key,label])=>{
+    const val=mon.stats[key], cap=caps[key], pct=Math.min(100,Math.round((val/cap)*100));
+    return `<div class="stat"><div class="stat-head"><span>${label}</span><b>${val}/${cap}</b></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
+  }).join("");
+}
+function renderRaise(mon){
+  document.getElementById("raiseLocked").classList.toggle("hidden",!!mon);
+  document.getElementById("raiseArea").classList.toggle("hidden",!mon);
+  if(mon)document.getElementById("conditionText").textContent=`現在のコンディション：${CONDITIONS[mon.condition].label}。${PERSONALITIES[mon.personality].desc}`;
+}
+
+function deepClone(obj){
+  return JSON.parse(JSON.stringify(obj));
+}
+function mockModeLabel(mode){
+  if(mode==="same") return "同レベル補正";
+  if(mode==="max100") return "Lv100固定";
+  return "通常";
+}
+function mockOptionLabel(mon){
+  const lv = mon.level>=MAX_LEVEL ? "Lv.MAX" : `Lv.${mon.level}`;
+  return `${mon.nickname}（${mon.formName} / ${lv}）`;
+}
+function ensureMockSelection(){
+  const mons=state.monsters||[];
+  if(mons.length<2) return;
+  if(!state.mockAId || !mons.some(m=>m.id===state.mockAId)) state.mockAId=mons[0].id;
+  if(!state.mockBId || !mons.some(m=>m.id===state.mockBId) || state.mockBId===state.mockAId){
+    state.mockBId=(mons.find(m=>m.id!==state.mockAId)||mons[1]).id;
+  }
+}
+function setMockA(id){
+  state.mockAId=id;
+  if(state.mockBId===id){
+    const alt=(state.monsters||[]).find(m=>m.id!==id);
+    if(alt) state.mockBId=alt.id;
+  }
+  saveGame();
+  renderMockBattle();
+}
+function setMockB(id){
+  state.mockBId=id;
+  if(state.mockAId===id){
+    const alt=(state.monsters||[]).find(m=>m.id!==id);
+    if(alt) state.mockAId=alt.id;
+  }
+  saveGame();
+  renderMockBattle();
+}
+function setMockMode(mode){
+  state.mockMode=mode;
+  saveGame();
+  renderMockBattle();
+}
+function getMonsterById(id){
+  return (state.monsters||[]).find(m=>m.id===id) || null;
+}
+function scaleStatsForMock(mon, targetLevel){
+  const stats={...mon.stats};
+  const level = Math.max(1, mon.level || 1);
+  const diff = targetLevel - level;
+  let factor = 1 + diff * 0.018;
+  if(diff < 0) factor = Math.max(0.55, 1 + diff * 0.012);
+  const temp=deepClone(mon);
+  temp.level=targetLevel;
+  ensureCapBias(temp);
+  const caps=getStatCaps(temp);
+  for(const key of Object.keys(STAT_LABEL)){
+    stats[key]=Math.max(1, Math.min(caps[key], Math.round(stats[key]*factor)));
+  }
+  return stats;
+}
+function buildMockFighter(mon, mode, targetLevel){
+  const copy=deepClone(mon);
+  ensureCapBias(copy);
+  let level=copy.level;
+  let stats={...copy.stats};
+  if(mode==="same" || mode==="max100"){
+    level=targetLevel;
+    stats=scaleStatsForMock(copy, targetLevel);
+  }
+  copy.level=level;
+  copy.stats=stats;
+  copy.hpCurrent=stats.hp;
+  copy.name=copy.nickname;
+  copy.hp=stats.hp;
+  copy.atk=stats.atk;
+  copy.def=stats.def;
+  copy.mag=stats.mag;
+  copy.luck=stats.luck;
+  copy.spd=stats.spd;
+  if(!copy.history) copy.history={crits:0,doubleAttacks:0};
+  return copy;
+}
+function getMockPair(){
+  ensureMockSelection();
+  const a=getMonsterById(state.mockAId);
+  const b=getMonsterById(state.mockBId);
+  if(!a || !b || a.id===b.id) return null;
+  const mode=state.mockMode || "normal";
+  const targetLevel = mode==="max100" ? MAX_LEVEL : mode==="same" ? Math.max(a.level||1,b.level||1) : null;
+  return {
+    realA:a,
+    realB:b,
+    a:buildMockFighter(a, mode, targetLevel || a.level),
+    b:buildMockFighter(b, mode, targetLevel || b.level),
+    mode,
+    targetLevel
+  };
+}
+function simulateMockBattle(fighterA, fighterB){
+  const enemy={
+    name:fighterB.nickname,
+    nickname:fighterB.nickname,
+    speciesKey:fighterB.speciesKey,
+    speciesName:fighterB.speciesName,
+    formName:fighterB.formName,
+    stage:fighterB.stage,
+    emoji:fighterB.emoji,
+    level:fighterB.level,
+    stats:{...fighterB.stats},
+    hp:fighterB.stats.hp,
+    atk:fighterB.stats.atk,
+    def:fighterB.stats.def,
+    mag:fighterB.stats.mag,
+    luck:fighterB.stats.luck,
+    spd:fighterB.stats.spd
+  };
+  const events=buildBattleEvents(fighterA, enemy);
+  const result=events.find(e=>e.type==="result");
+  const winner=result && result.win ? fighterA : fighterB;
+  const loser=result && result.win ? fighterB : fighterA;
+  return {events,result,winner,loser};
+}
+function summarizeMockEvents(events){
+  return events
+    .filter(ev=>ev.type==="attack" || ev.type==="skill" || ev.type==="status" || ev.type==="bonus" || ev.type==="result")
+    .map(ev=>ev.text)
+    .slice(-35);
+}
+function startMockBattle(){
+  const pair=getMockPair();
+  if(!pair){alert("模擬戦には別々のクリモンを2体選んでください。");return}
+  const sim=simulateMockBattle(pair.a,pair.b);
+  const winnerName=sim.winner.nickname;
+  const loserName=sim.loser.nickname;
+  const title=`${winnerName}の勝利！`;
+  const stamp=new Date().toLocaleString("ja-JP",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const lines=summarizeMockEvents(sim.events);
+  state.mockHistory.unshift({
+    title,
+    text:`[${stamp}] ${pair.a.nickname} vs ${pair.b.nickname} / ${mockModeLabel(pair.mode)} → ${winnerName} 勝利`,
+    lines
+  });
+  state.mockHistory=state.mockHistory.slice(0,30);
+  saveGame();
+  renderMockBattle();
+}
+function shuffleArray(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function startTournament(){
+  const mons=state.monsters||[];
+  if(mons.length<2){alert("トーナメントにはクリモンが2体以上必要です。");return}
+  const mode=state.mockMode || "normal";
+  let entrants=shuffleArray(mons).map(mon=>{
+    const targetLevel = mode==="max100" ? MAX_LEVEL : mode==="same" ? Math.max(...mons.map(m=>m.level||1)) : mon.level;
+    return buildMockFighter(mon, mode, targetLevel);
+  });
+  const logLines=[];
+  let round=1;
+  while(entrants.length>1 && round<=12){
+    logLines.push(`--- ${round}回戦 ---`);
+    const next=[];
+    if(entrants.length%2===1){
+      const bye=entrants.pop();
+      next.push(bye);
+      logLines.push(`${bye.nickname} は不戦勝`);
+    }
+    for(let i=0;i<entrants.length;i+=2){
+      const a=entrants[i], b=entrants[i+1];
+      const sim=simulateMockBattle(deepClone(a),deepClone(b));
+      next.push(sim.winner);
+      logLines.push(`${a.nickname} vs ${b.nickname} → ${sim.winner.nickname} 勝利`);
+    }
+    entrants=shuffleArray(next);
+    round++;
+  }
+  const champion=entrants[0];
+  const stamp=new Date().toLocaleString("ja-JP",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  state.tournamentLog.unshift({
+    title:`🏆 ${champion.nickname} 優勝`,
+    text:`[${stamp}] ${mockModeLabel(mode)} / 参加 ${mons.length}体`,
+    lines:logLines
+  });
+  state.tournamentLog=state.tournamentLog.slice(0,10);
+  saveGame();
+  renderMockBattle();
+}
+function clearMockHistory(){
+  if(!confirm("模擬戦ログを削除しますか？")) return;
+  state.mockHistory=[];
+  state.tournamentLog=[];
+  saveGame();
+  renderMockBattle();
+}
+function renderMockBattle(){
+  const mons=state.monsters||[];
+  const locked=document.getElementById("mockLocked");
+  const area=document.getElementById("mockArea");
+  if(!locked || !area) return;
+  const ok=mons.length>=2;
+  locked.classList.toggle("hidden", ok);
+  area.classList.toggle("hidden", !ok);
+  if(!ok) return;
+  ensureMockSelection();
+
+  const aSel=document.getElementById("mockASelect");
+  const bSel=document.getElementById("mockBSelect");
+  const modeSel=document.getElementById("mockModeSelect");
+  const options=mons.map(mon=>`<option value="${escapeHtml(mon.id)}">${escapeHtml(mockOptionLabel(mon))}</option>`).join("");
+  if(aSel){aSel.innerHTML=options;aSel.value=state.mockAId;}
+  if(bSel){bSel.innerHTML=options;bSel.value=state.mockBId;}
+  if(modeSel) modeSel.value=state.mockMode || "normal";
+
+  renderMockComparison();
+  renderMockLogs();
+  saveGame();
+}
+function formatDiff(a,b){
+  const d=a-b;
+  if(d>0) return `<span class="diff-plus">+${d}</span>`;
+  if(d<0) return `<span class="diff-minus">${d}</span>`;
+  return "±0";
+}
+function renderMockComparison(){
+  const area=document.getElementById("mockCompareArea");
+  if(!area) return;
+  const pair=getMockPair();
+  if(!pair){area.innerHTML=`<div class="hint">別々のクリモンを2体選んでください。</div>`;return}
+  const a=pair.a,b=pair.b;
+  const rows=[
+    ["形態", escapeHtml(a.formName), escapeHtml(b.formName), "-"],
+    ["スキル", getSkills(a).map(skillLabel).map(escapeHtml).join(" / "), getSkills(b).map(skillLabel).map(escapeHtml).join(" / "), "-"],
+    ["レベル", a.level>=MAX_LEVEL?"MAX":a.level, b.level>=MAX_LEVEL?"MAX":b.level, typeof a.level==="number"&&typeof b.level==="number"?formatDiff(a.level,b.level):"-"],
+    ...Object.entries(STAT_LABEL).map(([key,label])=>[label,a.stats[key],b.stats[key],formatDiff(a.stats[key],b.stats[key])])
+  ];
+  area.innerHTML=`<table class="compare-table">
+    <thead><tr><th>項目</th><th>${escapeHtml(a.nickname)}</th><th>${escapeHtml(b.nickname)}</th><th>差</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join("")}</tbody>
+  </table>
+  <p class="small">現在モード：${mockModeLabel(pair.mode)}。この比較値で模擬戦を行います。</p>`;
+}
+function renderMockLogs(){
+  const result=document.getElementById("mockResult");
+  const logArea=document.getElementById("mockBattleLog");
+  const tournamentArea=document.getElementById("tournamentArea");
+  if(result){
+    const latest=state.mockHistory && state.mockHistory[0];
+    if(latest){result.textContent=latest.title;result.classList.remove("hidden");}
+    else result.classList.add("hidden");
+  }
+  if(logArea){
+    const hist=state.mockHistory||[];
+    logArea.innerHTML=hist.length?hist.map(h=>`
+      <div><b>${escapeHtml(h.text)}</b><br>${(h.lines||[]).map(escapeHtml).join("<br>")}</div>
+    `).join(""):`<div>まだ模擬戦ログがありません。</div>`;
+  }
+  if(tournamentArea){
+    const list=state.tournamentLog||[];
+    tournamentArea.innerHTML=list.length?list.map(t=>`
+      <div class="tournament-line">
+        <b>${escapeHtml(t.title)}</b><br>
+        <span class="small">${escapeHtml(t.text)}</span><br>
+        ${(t.lines||[]).map(x=>escapeHtml(x)).join("<br>")}
+      </div>
+    `).join(""):`<div class="hint">まだトーナメント結果がありません。</div>`;
+  }
+}
+
+
+function renderBattle(mon){
+  document.getElementById("battleLocked").classList.toggle("hidden",!!mon);
+  document.getElementById("battleArea").classList.toggle("hidden",!mon);
+  renderSpeedButtons();
+  if(!mon) return;
+  if(!currentEnemy) currentEnemy=makeEnemy(mon.level);
+  if(!currentBattleHp || currentBattleHp.enemyMaxMismatch){
+    currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+  }
+  if(!battleBusy){
+    updateBattleStage(mon,currentEnemy,currentBattleHp.my,currentBattleHp.enemy);
+  }
+}
+function renderBox(){
+  const area=document.getElementById("boxArea");
+  const mons=state.monsters||[];
+  if(mons.length===0){area.innerHTML=`<div class="hint">まだクリモンがいません。</div>`;return}
+  area.innerHTML=mons.map(mon=>`
+    <div class="mini ${mon.id===state.currentId?"active":""}">
+      <strong>${escapeHtml(mon.nickname)}</strong>
+      <span>種族：${escapeHtml(mon.speciesName)}</span><br>
+      <span>形態：${escapeHtml(mon.formName)}</span><br>
+      <span>${mon.level>=MAX_LEVEL?"Lv.MAX":"Lv."+mon.level} / ${escapeHtml(mon.personality)} / ${escapeHtml(CONDITIONS[mon.condition].label)}</span><br>
+      <span>体${mon.stats.hp} 攻${mon.stats.atk} 防${mon.stats.def}</span><br>
+      <span>魔${mon.stats.mag} 運${mon.stats.luck} 速${mon.stats.spd}</span>
+      <div class="box-skill-wrap">
+        <b class="small">使えるスキル・魔法</b>
+        ${renderSkillChips(mon)}
+      </div>
+      <br>
+      <button class="ghost" onclick="selectMonster('${mon.id}')">${mon.id===state.currentId?"育成中":"育成する"}</button>
+    </div>
+  `).join("");
+}
+
+function stageName(stage){
+  if(stage===0)return "幼年期";
+  if(stage===1)return "成長期";
+  if(stage===2)return "完全体";
+  if(stage===3)return "究極体";
+  return "不明";
+}
+
+function renderDex(){
+  const area=document.getElementById("collectionArea"), items=Object.values(state.dex||{});
+  if(items.length===0){area.innerHTML=`<div class="hint">まだ図鑑登録がありません。</div>`;return}
+  area.innerHTML=items.map(item=>`
+    <div class="mini">
+      <strong>${escapeHtml(item.formName)}</strong>
+      <span>種族：${escapeHtml(item.speciesName)}</span><br>
+      <span>ID：${escapeHtml(item.formId)}</span><br>
+      <span>段階：${stageName(item.stage)}</span><br>
+      <span>${escapeHtml(item.profile||"")}</span>
+    </div>
+  `).join("");
+}
+function renderEvolutionTree(){
+  const area=document.getElementById("evolutionTreeArea");
+  const select=document.getElementById("treeSpeciesSelect");
+  if(!area) return;
+  const key = state.selectedTreeSpecies || "shinya";
+  if(select && select.value !== key) select.value = key;
+  area.innerHTML = buildSelectedSpeciesTreeHtml(key);
+}
+function setTreeSpecies(key){
+  state.selectedTreeSpecies = key;
+  saveGame();
+  renderEvolutionTree();
+}
+function dexHas(formId){
+  return !!(state.dex && state.dex[formId]);
+}
+function nodeData(key,path,label,branchKind){
+  const base = BASE_SPECIES[key];
+  const formId = path === "base" ? `${key}_base` : `${key}_${path}`;
+  const entry = path === "base" ? {formName:base.speciesName, profile:base.role} : (EVOLUTION_TREE[key]||{})[path];
+  const seen = dexHas(formId);
+  const displayName = seen ? (entry?.formName || "？？？") : "？？？";
+  const displayProfile = seen ? (entry?.profile || "") : "未発見";
+  return {formId, seen, name:displayName, profile:displayProfile, label, branchKind};
+}
+function makeNodeHtml(node){
+  return `<div class="evo-node ${node.seen ? "seen" : "unseen"} ${node.branchKind === "rare" ? "rare" : ""}">
+    <div class="node-name">
+      <span>${node.seen ? "✓" : "□"}</span>
+      <span class="evo-branch-label">${escapeHtml(node.label)}</span>
+      <span>${escapeHtml(node.name)}</span>
+    </div>
+    <div class="node-meta">${escapeHtml(node.profile)}</div>
+  </div>`;
+}
+function buildSelectedSpeciesTreeHtml(key){
+  const base = BASE_SPECIES[key];
+  const stages = [
+    {stage:"幼年期", nodes:[nodeData(key,"base","幼年期")]},
+    {stage:"成長期", nodes:[nodeData(key,"a","A"), nodeData(key,"b","B")]},
+    {stage:"完全体", nodes:[
+      nodeData(key,"aa","A-A"), nodeData(key,"ab","A-B"),
+      nodeData(key,"ba","B-A"), nodeData(key,"bb","B-B")
+    ]},
+    {stage:"究極体", nodes:[
+      nodeData(key,"aaa","A-A-A"), nodeData(key,"aab","A-A-B"), nodeData(key,"aar","A-A-レア","rare"),
+      nodeData(key,"aba","A-B-A"), nodeData(key,"abb","A-B-B"), nodeData(key,"abr","A-B-レア","rare"),
+      nodeData(key,"baa","B-A-A"), nodeData(key,"bab","B-A-B"), nodeData(key,"bar","B-A-レア","rare"),
+      nodeData(key,"bba","B-B-A"), nodeData(key,"bbb","B-B-B"), nodeData(key,"bbr","B-B-レア","rare")
+    ]}
+  ];
+  const allNodes = stages.flatMap(s=>s.nodes);
+  const found = allNodes.filter(n=>n.seen).length;
+  const total = allNodes.length;
+  const progress = document.getElementById("treeProgressText");
+  if(progress) progress.textContent = `${found}/${total} 発見`;
+  return `<div class="evo-tree-panel">
+    <div class="evo-tree-header">
+      <strong>${escapeHtml(base.speciesName)}系統</strong>
+      <span class="tree-progress">${found}/${total}</span>
+    </div>
+    <div class="evo-tree-list">
+      ${stages.map(stage=>`
+        <div class="evo-row">
+          <div class="evo-stage">${escapeHtml(stage.stage)}</div>
+          <div class="evo-nodes">${stage.nodes.map(makeNodeHtml).join("")}</div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
+const STAT_TIPS = {
+  hp: {
+    name:"体力",
+    summary:"HPの最大値。長期戦に強くなり、耐久型や回復型のクリモンと相性が良い。",
+    battle:["最大HPが増える。"],
+    training:["体力トレーニングで上昇。", "体力が高い個体は安定してバトルを重ねやすい。"],
+    evolution:[]
+  },
+  atk: {
+    name:"攻撃",
+    summary:"通常攻撃の威力に影響。",
+    battle:["通常攻撃のダメージが上がる。"],
+    training:["攻撃トレーニングで上昇。", "性格『ガチ勢』『短気』だと伸ばしやすい。"],
+    evolution:[]
+  },
+  def: {
+    name:"防御",
+    summary:"受けるダメージを減らす。",
+    battle:["通常攻撃・魔法攻撃の被ダメージを軽減する。"],
+    training:["防御トレーニングで上昇。", "性格『堅実』『穏やか』だと伸ばしやすい。"],
+    evolution:[]
+  },
+  mag: {
+    name:"魔法",
+    summary:"魔法攻撃・回復・バフ・デバフ・状態異常の強さに影響。",
+    battle:["魔法攻撃のダメージが上がる。"],
+    training:["魔法トレーニングで上昇。", "性格『天才』だと伸ばしやすい。"],
+    evolution:[]
+  },
+  luck: {
+    name:"運",
+    summary:"クリティカル・回避・レア進化・遊びの成功に関わるステータス。",
+    battle:["クリティカル率が上がる。", "回避率にも影響する。"],
+    training:["運トレーニングで上昇。", "性格『豪運』『沼』だと伸ばしやすい。", "遊びの結果にも関係する。"],
+    evolution:["レア進化判定に大きく影響する。"]
+  },
+  spd: {
+    name:"素早さ",
+    summary:"行動順・回避・追加行動に影響。",
+    battle:["先制しやすくなる。", "回避率にも影響する。", "相手より大きく高いと追加行動が発生することがある。"],
+    training:["素早さトレーニングで上昇。", "性格『俊足』だと伸ばしやすい。"],
+    evolution:[]
+  }
+};
+
+function renderTips(){
+  renderPersonalityTips();
+  const select = document.getElementById("statTipsSelect");
+  if(select) renderStatTip(select.value || "hp");
+}
+function renderPersonalityTips(){
+  const area=document.getElementById("personalityTipsArea");
+  if(!area) return;
+  const rows = Object.entries(PERSONALITIES).map(([name,data])=>{
+    const grow = data.grow || {};
+    const effects = Object.keys(grow).length
+      ? Object.entries(grow).map(([k,v])=>`${STAT_LABEL[k]} ${v>0?"+":""}${v}`).join(" / ")
+      : "補正なし";
+    return `<tr>
+      <td>${escapeHtml(name)}</td>
+      <td>${escapeHtml(effects)}</td>
+      <td>${escapeHtml(data.feature || "")}</td>
+      <td>${escapeHtml(restPenaltyText(typeof data.restPenalty==="number" ? data.restPenalty : 0.25))}</td>
+      <td>${escapeHtml(data.desc)}</td>
+    </tr>`;
+  }).join("");
+  area.innerHTML = `<table class="tips-table">
+    <thead><tr><th>性格</th><th>ステータス補正</th><th>特徴</th><th>休憩リスク</th><th>説明</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function renderStatTip(key){
+  const area=document.getElementById("statTipArea");
+  if(!area) return;
+  const tip = STAT_TIPS[key] || STAT_TIPS.hp;
+  const rows = [
+    tip.battle && tip.battle.length ? `<li><b>バトル：</b>${tip.battle.map(escapeHtml).join(" / ")}</li>` : "",
+    tip.training && tip.training.length ? `<li><b>育成：</b>${tip.training.map(escapeHtml).join(" / ")}</li>` : "",
+    tip.evolution && tip.evolution.length ? `<li><b>進化：</b>${tip.evolution.map(escapeHtml).join(" / ")}</li>` : ""
+  ].filter(Boolean).join("");
+  area.innerHTML = `<div class="stat-tip-box">
+    <h3>${escapeHtml(tip.name)}</h3>
+    <p>${escapeHtml(tip.summary)}</p>
+    <ul class="tip-list">${rows}</ul>
+  </div>`;
+}
+
+function renderLog(){document.getElementById("logArea").innerHTML=state.log.map(x=>`<div>${escapeHtml(x)}</div>`).join("")}
+function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;if(h>0)return`${h}時間${m}分`;if(m>0)return`${m}分${s}秒`;return`${s}秒`}
+function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+setInterval(render,1000);
+render();
+</script>
+</body>
+</html>
