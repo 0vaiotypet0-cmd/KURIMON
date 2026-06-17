@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v22</title>
+  <title>クリモン - 基礎版 v23</title>
   <style>
     :root{
       --bg:#10131c;
@@ -446,12 +446,10 @@
       line-height:1.65;
     }
     @media(max-width:620px){
-      .tips-table{font-size:11px}
-      .tips-table th:nth-child(3),
-      .tips-table td:nth-child(3){display:none}
+      .tips-table{font-size:11px;min-width:760px}
+      .tips-card{overflow-x:auto}
     }
-
-    .tree-wrap{display:grid;gap:10px;margin-top:12px}
+.tree-wrap{display:grid;gap:10px;margin-top:12px}
     .tree-card{border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:16px;padding:12px}
     .tree-card h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .tree-lines{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow:auto;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:10px}
@@ -575,14 +573,12 @@
     }
   
     @media(max-width:620px){
-      .tips-table th:nth-child(5),
-      .tips-table td:nth-child(5){display:none}
-      .tips-table th:nth-child(3),
-      .tips-table td:nth-child(3){display:table-cell}
+      .tips-table{font-size:11px;min-width:760px}
+      .tips-card{overflow-x:auto}
+      .tips-table th,
+      .tips-table td{display:table-cell}
     }
-
-
-    .dex-card{
+.dex-card{
       display:grid;
       grid-template-columns:54px 1fr;
       gap:10px;
@@ -599,16 +595,21 @@
       justify-content:center;
       overflow:hidden;
       flex:0 0 auto;
+      position:relative;
     }
     .dex-thumb img{
+      position:absolute;
+      inset:0;
       width:100%;
       height:100%;
       object-fit:contain;
       image-rendering:auto;
+      z-index:2;
     }
     .dex-thumb .fallback{
       font-size:28px;
       line-height:1;
+      z-index:1;
     }
     .dex-info{
       min-width:0;
@@ -625,7 +626,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v22</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v23</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1115,6 +1116,14 @@ function migrateState(){
   if(!state.mockMode) state.mockMode = "normal";
   if(!Array.isArray(state.mockHistory)) state.mockHistory = [];
   if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
+  for(const [formId,item] of Object.entries(state.dex || {})){
+    if(!item.formId) item.formId = formId;
+    const parts = String(item.formId || formId).split("_");
+    if(!item.speciesKey) item.speciesKey = parts[0] || "shinya";
+    if(!item.branchPath) item.branchPath = parts.slice(1).join("_") || "base";
+    if(!item.emoji) item.emoji = BASE_SPECIES[item.speciesKey]?.emoji || "❔";
+    if(!item.image) item.image = imagePath(item.speciesKey, item.branchPath || "base");
+  }
   for(const mon of state.monsters || []){
     if(!mon.nickname) mon.nickname = mon.name || mon.formName || BASE_SPECIES[mon.speciesKey]?.speciesName || "クリモン";
     if(!mon.speciesName) mon.speciesName = BASE_SPECIES[mon.speciesKey]?.speciesName || mon.name;
@@ -1940,7 +1949,19 @@ function getEvolveHint(mon){
 }
 
 function registerDex(mon){
-  state.dex[mon.formId]={speciesName:mon.speciesName,formName:mon.formName,role:mon.role,profile:mon.profile||mon.role,formId:mon.formId,stage:mon.stage,seenAt:Date.now()};
+  state.dex[mon.formId]={
+    speciesKey:mon.speciesKey,
+    branchPath:mon.branchPath || "base",
+    emoji:mon.emoji || BASE_SPECIES[mon.speciesKey]?.emoji || "❔",
+    image:mon.image || imagePath(mon.speciesKey, mon.branchPath || "base"),
+    speciesName:mon.speciesName,
+    formName:mon.formName,
+    role:mon.role,
+    profile:mon.profile||mon.role,
+    formId:mon.formId,
+    stage:mon.stage,
+    seenAt:Date.now()
+  };
 }
 function addCP(n){state.cp+=n;saveGame();log(`CP +${n}`);render()}
 function gainTestExp(){const mon=getCurrentMonster();if(!mon)return;const added=addExp(mon,30);saveGame();log(`${mon.nickname}にテストEXP +${added}`);render()}
@@ -2317,12 +2338,21 @@ function stageName(stage){
 }
 
 
+function dexInfoFromItem(item){
+  const formId = item.formId || "";
+  const parts = String(formId).split("_");
+  const speciesKey = item.speciesKey || parts[0] || "shinya";
+  const branchPath = item.branchPath || parts.slice(1).join("_") || "base";
+  const emoji = item.emoji || BASE_SPECIES[speciesKey]?.emoji || "❔";
+  const image = item.image || imagePath(speciesKey, branchPath);
+  return {speciesKey, branchPath, emoji, image};
+}
 function dexThumbHtml(item){
-  const src = imagePath(item.speciesKey, item.branchPath || "base");
-  const fallback = escapeHtml(item.emoji || "❔");
+  const info = dexInfoFromItem(item);
+  const fallback = escapeHtml(info.emoji || "❔");
   return `<div class="dex-thumb">
-    <img src="${escapeHtml(src)}" alt="${escapeHtml(item.formName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-    <span class="fallback" style="display:none">${fallback}</span>
+    <span class="fallback">${fallback}</span>
+    <img src="${escapeHtml(info.image)}" alt="${escapeHtml(item.formName || "クリモン")}" onload="this.previousElementSibling.style.display='none';" onerror="this.style.display='none';">
   </div>`;
 }
 
