@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v21</title>
+  <title>クリモン - 基礎版 v22</title>
   <style>
     :root{
       --bg:#10131c;
@@ -581,12 +581,51 @@
       .tips-table td:nth-child(3){display:table-cell}
     }
 
+
+    .dex-card{
+      display:grid;
+      grid-template-columns:54px 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .dex-thumb{
+      width:54px;
+      height:54px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.22);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .dex-thumb img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      image-rendering:auto;
+    }
+    .dex-thumb .fallback{
+      font-size:28px;
+      line-height:1;
+    }
+    .dex-info{
+      min-width:0;
+    }
+    .dex-info strong{
+      display:block;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v21</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v22</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -2277,16 +2316,29 @@ function stageName(stage){
   return "不明";
 }
 
+
+function dexThumbHtml(item){
+  const src = imagePath(item.speciesKey, item.branchPath || "base");
+  const fallback = escapeHtml(item.emoji || "❔");
+  return `<div class="dex-thumb">
+    <img src="${escapeHtml(src)}" alt="${escapeHtml(item.formName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+    <span class="fallback" style="display:none">${fallback}</span>
+  </div>`;
+}
+
 function renderDex(){
   const area=document.getElementById("collectionArea"), items=Object.values(state.dex||{});
   if(items.length===0){area.innerHTML=`<div class="hint">まだ図鑑登録がありません。</div>`;return}
   area.innerHTML=items.map(item=>`
-    <div class="mini">
-      <strong>${escapeHtml(item.formName)}</strong>
-      <span>種族：${escapeHtml(item.speciesName)}</span><br>
-      <span>ID：${escapeHtml(item.formId)}</span><br>
-      <span>段階：${stageName(item.stage)}</span><br>
-      <span>${escapeHtml(item.profile||"")}</span>
+    <div class="mini dex-card">
+      ${dexThumbHtml(item)}
+      <div class="dex-info">
+        <strong>${escapeHtml(item.formName)}</strong>
+        <span>種族：${escapeHtml(item.speciesName)}</span><br>
+        <span>ID：${escapeHtml(item.formId)}</span><br>
+        <span>段階：${stageName(item.stage)}</span><br>
+        <span>${escapeHtml(item.profile||"")}</span>
+      </div>
     </div>
   `).join("");
 }
