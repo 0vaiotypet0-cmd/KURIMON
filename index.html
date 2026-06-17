@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v24</title>
+  <title>クリモン - 基礎版 v25</title>
   <style>
     :root{
       --bg:#10131c;
@@ -724,7 +724,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v24</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v25</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1273,8 +1273,8 @@ function migrateState(){
     if(!mon.speciesName) mon.speciesName = BASE_SPECIES[mon.speciesKey]?.speciesName || mon.name;
     if(!mon.formName) mon.formName = mon.name || mon.speciesName;
     if(!mon.speciesKey) mon.speciesKey = speciesKeyFromName(mon.speciesName) || "shinya";
-    if(mon.branchPath === undefined || mon.branchPath === null) mon.branchPath = "base";
-    if(mon.branchPath === "") mon.branchPath = "base";
+    if(mon.branchPath === undefined || mon.branchPath === null) mon.branchPath = "";
+    if(mon.stage===0 && mon.branchPath==="base") mon.branchPath = "";
     if(!mon.emoji) mon.emoji = BASE_SPECIES[mon.speciesKey]?.emoji || "❔";
     if(!mon.image) mon.image = imagePath(mon.speciesKey, mon.branchPath || "base");
     if(!mon.level || mon.level < 1) mon.level = 1;
@@ -1337,7 +1337,7 @@ function hatchEgg(){
     formName:species.speciesName,
     nickname:species.speciesName,
     formId:`${speciesKey}_base`,
-    stage:0, branchPath:"base",
+    stage:0, branchPath:"",
     role:species.role, profile:species.role, emoji:species.emoji, image:species.image,
     personality, condition:"normal", level:1, exp:0, stats, hpCurrent:stats.hp,
     capBias:rollCapBias(),
@@ -2066,9 +2066,10 @@ function isRareEvolution(mon,scores,band){
 }
 function buildEvolutionForm(mon,branch){
   const nextStage=mon.stage+1;
-  const newPath=mon.stage===2 && branch==="r" ? mon.branchPath+"r" : mon.branchPath+branch;
+  const currentPath = (!mon.branchPath || mon.branchPath==="base") ? "" : mon.branchPath;
+  const newPath=mon.stage===2 && branch==="r" ? currentPath+"r" : currentPath+branch;
   const entry=(EVOLUTION_TREE[mon.speciesKey]||{})[newPath] || {formName:`${BASE_SPECIES[mon.speciesKey].speciesName}進化体`, profile:"進化体。"};
-  return {formName:entry.formName, profile:entry.profile, stage:nextStage, branchPath:newPath, formId:`${mon.speciesKey}_${newPath}`, image:`images/${mon.speciesKey}_${newPath}.png`};
+  return {formName:entry.formName, profile:entry.profile, stage:nextStage, branchPath:newPath, formId:`${mon.speciesKey}_${newPath}`, image:imagePath(mon.speciesKey,newPath)};
 }
 function applyEvolution(mon,result){
   mon.formName=result.formName;mon.profile=result.profile;mon.stage=result.stage;mon.branchPath=result.branchPath;mon.formId=result.formId;mon.image=result.image;
