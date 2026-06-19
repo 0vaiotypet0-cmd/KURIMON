@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v43 図鑑画像base自動代替版</title>
+  <title>クリモン - 基礎版 v44 図鑑画像ルート配置対応版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -794,7 +794,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v43 図鑑画像base自動代替版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v44 図鑑画像ルート配置対応版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -997,7 +997,7 @@
 
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
-      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。個別進化画像が未配置の場合は同系統のbase画像を自動表示します。</p>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。個別進化画像がimagesフォルダではなくルート直下にある場合も自動検出します。未配置の場合は同系統のbase画像を自動表示します。</p>
       <div class="row" style="margin:8px 0 12px;">
         <button class="ghost" onclick="forceRedrawDexImages()">図鑑画像を再描画</button>
         <button class="ghost" onclick="runDexImageDebug()">画像診断</button>
@@ -1775,7 +1775,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 43;
+  state.schemaVersion = 44;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3364,17 +3364,32 @@ function dexDirectImageHtml(src, emoji, alt, thumbClass="dex-thumb"){
 function absoluteImageUrl(src){
   try{return new URL(src, document.baseURI).href;}catch(e){return src || "";}
 }
-function imageBaseFallbackPath(src){
+function imageRootFallbackPath(src){
+  const s = String(src || "");
+  const parts = s.split("/");
+  return parts[parts.length-1] || "";
+}
+function imageBaseFallbackPath(src, keepDir=true){
   const s = String(src || "");
   const m = s.match(/^(.*\/)?([a-z]+)_[^\/.]+(\.png)$/i);
   if(!m) return "";
-  return `${m[1]||""}${m[2]}_base${m[3]}`;
+  return `${keepDir ? (m[1]||"") : ""}${m[2]}_base${m[3]}`;
 }
 function imageCandidatePaths(src){
   const list = [];
+  const root = imageRootFallbackPath(src);
+  const baseInSameDir = imageBaseFallbackPath(src, true);
+  const baseRoot = imageBaseFallbackPath(src, false);
+
+  // 1. 正規パス images/xxx.png
   if(src) list.push(src);
-  const base = imageBaseFallbackPath(src);
-  if(base && base !== src) list.push(base);
+  // 2. 今回のNetlify配置対策：ルート直下 xxx.png
+  if(root && root !== src) list.push(root);
+  // 3. 個別画像がなければ images/種族_base.png
+  if(baseInSameDir && baseInSameDir !== src) list.push(baseInSameDir);
+  // 4. base画像もルート直下にある場合
+  if(baseRoot && baseRoot !== root && baseRoot !== baseInSameDir) list.push(baseRoot);
+
   return [...new Set(list)];
 }
 function loadThumbCandidate(thumb, candidates, index=0){
@@ -3448,7 +3463,10 @@ async function preloadImageForDebug(src, timeoutMs=5000){
     const r = await preloadOneImage(candidates[i], timeoutMs);
     tried.push(r);
     if(r.ok && r.w>0){
-      return {src, url:r.url, ok:true, w:r.w, h:r.h, used:r.src, mode:i===0?"OK":"BASE代替", tried};
+      let mode = "OK";
+      if(i===1) mode = "ルート直下";
+      if(i>=2) mode = "BASE代替";
+      return {src, url:r.url, ok:true, w:r.w, h:r.h, used:r.src, mode, tried};
     }
   }
   const last = tried[tried.length-1] || {url:absoluteImageUrl(src), w:0, h:0};
@@ -3475,9 +3493,10 @@ async function runDexImageDebug(){
   const results = await Promise.all(unique.map(src=>preloadImageForDebug(src,5000)));
   const okCount = results.filter(r=>r.ok && r.w>0).length;
   const fallbackCount = results.filter(r=>r.mode==="BASE代替").length;
+  const rootCount = results.filter(r=>r.mode==="ルート直下").length;
   const rows = results.slice(0,60).map(r=>`<tr><td>${escapeHtml(r.mode || (r.ok?"OK":"NG"))}</td><td>${r.w}x${r.h}</td><td>${escapeHtml(r.src)}</td><td>${escapeHtml(r.used || "")}</td><td>${escapeHtml(r.url)}</td></tr>`).join("");
-  area.innerHTML = `<b>図鑑画像診断</b><br>対象：${results.length}件 / 表示可能：${okCount}件 / base代替：${fallbackCount}件 / 完全NG：${results.length-okCount}件<br>
-    <span class="small">※完全体などの個別画像が無い場合は、同じ系統の base 画像を自動表示します。</span>
+  area.innerHTML = `<b>図鑑画像診断</b><br>対象：${results.length}件 / 表示可能：${okCount}件 / ルート直下：${rootCount}件 / base代替：${fallbackCount}件 / 完全NG：${results.length-okCount}件<br>
+    <span class="small">※imagesフォルダ内に無い場合はルート直下の同名画像も探します。個別画像が無い場合は同じ系統のbase画像を自動表示します。</span>
     <table class="dex-debug-table"><tr><th>状態</th><th>サイズ</th><th>要求パス</th><th>実際に使ったパス</th><th>実URL</th></tr>${rows}</table>`;
   hydrateDexImages(document.getElementById("tab-dex") || document);
 }
