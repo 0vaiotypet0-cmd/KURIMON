@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v52 図鑑タップ拡大版</title>
+  <title>クリモン - 製品版 v53 CPU戦AP消費版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -888,7 +888,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v52</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v53</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -969,7 +969,7 @@ body{padding-bottom:86px;}
 
     <div id="tab-battle" class="hidden">
       <h2>バトル</h2>
-      <p>演出付きのオートバトルです。素早さで行動順・回避・追加行動、運でクリティカルが変わります。</p>
+      <p>演出付きのオートバトルです。CPU戦はAPを1消費します。素早さで行動順・回避・追加行動、運でクリティカルが変わります。</p>
       <div id="battleLocked" class="hint">クリモンがいません。卵を孵化させてください。</div>
       <div id="battleArea" class="hidden">
         <div class="battle-stage">
@@ -1254,6 +1254,7 @@ const BASE_SPECIES = {
 };
 
 const EGG = { price:50, hatchMs:10*60*1000 };
+const CPU_BATTLE_AP_COST = 1;
 const NORMAL_EGG_SPECIES = ["shinya","onn","gl","wacha","dentaku"];
 const RARE_EGG_SPECIES = [
   {key:"tsumugi", rate:0.02},
@@ -1948,7 +1949,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 52;
+  state.schemaVersion = 53;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -2946,6 +2947,14 @@ function buildBattleEvents(mon, enemy){
 
 async function startAnimatedBattle(){
   const mon=getCurrentMonster();if(!mon||battleBusy)return;
+  recoverApByTime();
+  if(state.ap < CPU_BATTLE_AP_COST){
+    alert(`APが足りません。CPU戦にはAP${CPU_BATTLE_AP_COST}が必要です。`);
+    render();
+    return;
+  }
+  state.ap -= CPU_BATTLE_AP_COST;
+  saveGame();
   battleBusy=true;
   document.getElementById("battleStartBtn").disabled=true;
   document.getElementById("battleResult").classList.add("hidden");
@@ -2956,7 +2965,7 @@ async function startAnimatedBattle(){
   const events=buildBattleEvents(mon, enemy);
   const battleLog=document.getElementById("battleLog");
   battleLog.innerHTML="";
-  setBattleMessage("バトル開始！");
+  setBattleMessage(`AP${CPU_BATTLE_AP_COST}を消費してバトル開始！`);
   await speedWait(350);
   let finalWin=false;
   for(const ev of events){
@@ -3589,6 +3598,11 @@ function renderBattle(mon){
   if(!currentEnemy) currentEnemy=makeEnemy(mon.level);
   if(!currentBattleHp || currentBattleHp.enemyMaxMismatch){
     currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+  }
+  const startBtn=document.getElementById("battleStartBtn");
+  if(startBtn && !battleBusy){
+    startBtn.disabled = state.ap < CPU_BATTLE_AP_COST;
+    startBtn.textContent = state.ap < CPU_BATTLE_AP_COST ? `AP不足（必要AP${CPU_BATTLE_AP_COST}）` : `CPU戦開始（AP${CPU_BATTLE_AP_COST}）`;
   }
   if(!battleBusy){
     updateBattleStage(mon,currentEnemy,currentBattleHp.my,currentBattleHp.enemy);
