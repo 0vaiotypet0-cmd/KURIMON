@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v49 一次バランス調整版</title>
+  <title>クリモン - 製品版 v50 UI整理版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -719,6 +719,102 @@
       margin-bottom:2px;
     }
 
+
+/* v50 製品版UI */
+body{padding-bottom:86px;}
+.top-tips-btn{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+  box-shadow:none;
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.tabs{display:none!important;}
+.bottom-tabs{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:1000;
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(16,19,28,.94);
+  border-top:1px solid var(--line);
+  backdrop-filter:blur(14px);
+}
+.bottom-tabs button{
+  min-width:0;
+  width:auto;
+  flex:1 1 0;
+  max-width:108px;
+  padding:8px 5px;
+  border-radius:14px;
+  font-size:11px;
+  line-height:1.15;
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:none;
+}
+.bottom-tabs button.active{
+  background:var(--accent);
+  color:#151515;
+  border-color:rgba(248,214,109,.75);
+}
+@media(max-width:540px){
+  body{padding-bottom:92px;}
+  .bottom-tabs{gap:4px;padding-left:6px;padding-right:6px;}
+  .bottom-tabs button{font-size:10px;padding:8px 2px;}
+}
+.dex-card{
+  cursor:pointer;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:manipulation;
+}
+.dex-card:active{
+  transform:scale(.985);
+  filter:brightness(1.12);
+}
+.dex-modal-img-wrap{
+  width:100%;
+  height:260px;
+  border-radius:18px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.24);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  margin:10px 0 12px;
+}
+.dex-modal-img-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:none;
+}
+.dex-modal-img-wrap .fallback{
+  font-size:86px;
+}
+.dex-detail-grid{
+  display:grid;
+  grid-template-columns:88px 1fr;
+  gap:6px 10px;
+  font-size:13px;
+  line-height:1.55;
+}
+.dex-detail-grid b{color:#fff1a1;}
+.product-settings{
+  display:grid;
+  gap:10px;
+}
+
 </style>
 
 <style>
@@ -777,45 +873,23 @@
 }
 .evo-node-thumb .dex-direct-fallback{font-size:24px!important;}
 .evo-node-text{min-width:0!important;}
-.dex-debug-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:11px;
-  margin-top:6px;
-}
-.dex-debug-table th,.dex-debug-table td{
-  border-bottom:1px solid rgba(255,255,255,.12);
-  padding:3px 4px;
-  text-align:left;
-  word-break:break-all;
-}
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v49 一次バランス調整版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v50</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
       <span class="pill">時刻 <b id="timeBandText">--</b></span>
+      <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
     </div>
   </div>
 </header>
 
 <main>
   <section>
-    <div class="tabs">
-      <button class="ghost" onclick="showTab('home')">ホーム</button>
-      <button class="ghost" onclick="showTab('raise')">育成</button>
-      <button class="ghost" onclick="showTab('battle')">バトル</button>
-      <button class="ghost" onclick="showTab('mock')">模擬戦</button>
-      <button class="ghost" onclick="showTab('box')">ボックス</button>
-      <button class="ghost" onclick="showTab('dex')">図鑑</button>
-      <button class="ghost" onclick="showTab('tips')">TIPS</button>
-      <button class="ghost" onclick="showTab('settings')">設定</button>
-    </div>
-
     <div id="tab-home">
       <h2>ホーム</h2>
       <div id="eggArea">
@@ -824,7 +898,6 @@
         <p id="eggDesc">卵を入手すると、時間経過でランダムな初期クリモンが孵化します。</p>
         <div class="row">
           <button onclick="buyEgg()">卵を入手 50CP</button>
-          <button class="secondary" onclick="forceHatch()">開発用：即孵化</button>
         </div>
         <p class="small">初回起動時、最初の卵はクールタイムなしで即孵化します。</p>
       </div>
@@ -850,9 +923,6 @@
             <div class="hint" id="evolveHint">---</div>
             <div id="statsArea"></div>
             <div id="skillsArea" class="skill-area"></div>
-            <div class="row">
-              <button class="secondary" onclick="gainTestExp()">テストEXP +30</button>
-            </div>
           </div>
         </div>
       </div>
@@ -997,12 +1067,7 @@
 
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
-      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。個別進化画像がimagesフォルダではなくルート直下にある場合も自動検出します。未配置の場合は同系統のbase画像を自動表示します。</p>
-      <div class="row" style="margin:8px 0 12px;">
-        <button class="ghost" onclick="forceRedrawDexImages()">図鑑画像を再描画</button>
-        <button class="ghost" onclick="runDexImageDebug()">画像診断</button>
-      </div>
-      <div id="dexImageDebugArea" class="hint hidden"></div>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。キャラを長押しすると画像と詳細を拡大表示できます。</p>
       <div class="collection" id="collectionArea"></div>
       <h2 style="margin-top:16px;">進化ツリー</h2>
       <div class="dex-tree-toolbar">
@@ -1100,13 +1165,14 @@
 
     <div id="tab-settings" class="hidden">
       <h2>設定</h2>
-      <p>開発用の操作です。</p>
-      <div class="row">
-        <button class="secondary" onclick="addCP(500)">CP +500</button>
-        <button class="danger" onclick="resetGame()">全リセット</button>
-      </div>
-      <div class="hint">
-        画像を置く場合は、HTMLと同じ階層に <code>images</code> フォルダを作り、<code>shinya_base.png</code> や <code>shinya_a.png</code> などを入れてください。画像がない場合は絵文字で代替表示します。
+      <div class="product-settings">
+        <p>セーブデータの初期化ができます。元には戻せないので注意してください。</p>
+        <div class="row">
+          <button class="danger" onclick="resetGame()">セーブデータ初期化</button>
+        </div>
+        <div class="hint">
+          画像は <code>images</code> フォルダ内、またはHTMLと同じ階層に配置すると表示されます。画像がない場合は絵文字で代替表示します。
+        </div>
       </div>
     </div>
   </section>
@@ -1129,8 +1195,37 @@
     </div>
   </div>
 
+  <div id="dexDetailModal" class="skill-modal hidden" onclick="hideDexDetail()">
+    <div class="skill-modal-card" onclick="event.stopPropagation()">
+      <button class="ghost skill-modal-close" onclick="hideDexDetail()">×</button>
+      <h3 id="dexDetailTitle">図鑑詳細</h3>
+      <div class="dex-modal-img-wrap">
+        <img id="dexDetailImg" alt="図鑑画像">
+        <div class="fallback" id="dexDetailEmoji">❔</div>
+      </div>
+      <div class="dex-detail-grid">
+        <b>種族</b><span id="dexDetailSpecies">---</span>
+        <b>形態</b><span id="dexDetailForm">---</span>
+        <b>段階</b><span id="dexDetailStage">---</span>
+        <b>画像</b><span id="dexDetailImagePath">---</span>
+      </div>
+      <p id="dexDetailDesc"></p>
+    </div>
+  </div>
+
   <div class="footer-note">※スキル・魔法は自動バトル内で発動します。</div>
 </main>
+
+<div class="bottom-tabs" role="navigation" aria-label="メインメニュー">
+  <button data-tab-btn="home" onclick="showTab('home')">🏠<br>ホーム</button>
+  <button data-tab-btn="raise" onclick="showTab('raise')">💪<br>育成</button>
+  <button data-tab-btn="battle" onclick="showTab('battle')">⚔️<br>バトル</button>
+  <button data-tab-btn="mock" onclick="showTab('mock')">🧪<br>模擬戦</button>
+  <button data-tab-btn="box" onclick="showTab('box')">📦<br>ボックス</button>
+  <button data-tab-btn="dex" onclick="showTab('dex')">📖<br>図鑑</button>
+  <button data-tab-btn="settings" onclick="showTab('settings')">⚙️<br>設定</button>
+</div>
+
 
 <script>
 const STORAGE_KEY = "kurimon_save_v3";
@@ -1421,6 +1516,12 @@ function stageFromPath(path){
   if(p.length === 2) return 2;
   return 3;
 }
+function stageForForm(speciesKey, branchPath){
+  const p = normalizeEvolutionPath(branchPath);
+  if(speciesKey==="sipa") return 3;
+  if((speciesKey==="tsumugi" || speciesKey==="forte") && p==="a") return 3;
+  return stageFromPath(p);
+}
 function formIdFor(speciesKey, branchPath){
   const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
   const p = normalizeEvolutionPath(branchPath);
@@ -1657,7 +1758,7 @@ function formDataFor(speciesKey, branchPath){
       speciesName:base.speciesName,
       profile:dexProfileText(`${key}_base`, base.speciesName, base.role),
       role:base.role,
-      stage:0,
+      stage:stageForForm(key,""),
       emoji:base.emoji,
       image:imagePath(key,"")
     };
@@ -1671,7 +1772,7 @@ function formDataFor(speciesKey, branchPath){
     speciesName:base.speciesName,
     profile:dexProfileText(`${key}_${p}`, entry?.formName || `${base.speciesName}進化体`, entry?.profile || "進化体。"),
     role:base.role,
-    stage:stageFromPath(p),
+    stage:stageForForm(key,p),
     emoji:base.emoji,
     image:imagePath(key,p)
   };
@@ -1719,41 +1820,7 @@ function repairDexCollection(){
   }
   state.dex = repaired;
 }
-function unlockAllDex(){
-  if(!state.dex) state.dex = {};
-  for(const key of Object.keys(BASE_SPECIES)){
-    const baseData = formDataFor(key,"");
-    state.dex[baseData.formId] = {
-      speciesKey:baseData.speciesKey,
-      branchPath:"base",
-      emoji:baseData.emoji,
-      image:baseData.image,
-      speciesName:baseData.speciesName,
-      formName:baseData.formName,
-      role:baseData.role,
-      profile:baseData.profile,
-      formId:baseData.formId,
-      stage:baseData.stage,
-      seenAt:state.dex[baseData.formId]?.seenAt || Date.now()
-    };
-    for(const path of Object.keys(EVOLUTION_TREE[key] || {})){
-      const fixed = formDataFor(key,path);
-      state.dex[fixed.formId] = {
-        speciesKey:fixed.speciesKey,
-        branchPath:fixed.branchPath || "base",
-        emoji:fixed.emoji,
-        image:fixed.image,
-        speciesName:fixed.speciesName,
-        formName:fixed.formName,
-        role:fixed.role,
-        profile:fixed.profile,
-        formId:fixed.formId,
-        stage:fixed.stage,
-        seenAt:state.dex[fixed.formId]?.seenAt || Date.now()
-      };
-    }
-  }
-}
+
 
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
@@ -1783,33 +1850,44 @@ function setImageWithFallback(imgEl, fallbackEl, src, emoji){
   const safeEmoji = emoji || "❔";
   fallbackEl.textContent = safeEmoji;
 
-  // 同じ画像ならsrcを入れ直さない。これがチカチカ防止の本体。
-  if(imgEl.dataset.src === (src || "")){
+  const candidates = imageCandidatePaths(src || "");
+  const key = candidates.join("|");
+  if(imgEl.dataset.srcKey === key && imgEl.complete && imgEl.naturalWidth > 0){
     return;
   }
 
-  imgEl.dataset.src = src || "";
+  imgEl.dataset.srcKey = key;
   imgEl.onload = null;
   imgEl.onerror = null;
 
-  if(!src){
+  if(!candidates.length){
     imgEl.removeAttribute("src");
     imgEl.style.display = "none";
     fallbackEl.style.display = "block";
     return;
   }
 
-  fallbackEl.style.display = "block";
-  imgEl.style.display = "none";
-  imgEl.onload = () => {
-    imgEl.style.display = "block";
-    fallbackEl.style.display = "none";
-  };
-  imgEl.onerror = () => {
-    imgEl.style.display = "none";
+  const tryLoad = (index=0) => {
+    const candidate = candidates[index];
+    const url = absoluteImageUrl(candidate);
+    imgEl.dataset.activeSrc = candidate;
     fallbackEl.style.display = "block";
+    imgEl.style.display = "none";
+    imgEl.onload = () => {
+      imgEl.style.display = "block";
+      fallbackEl.style.display = "none";
+    };
+    imgEl.onerror = () => {
+      if(index + 1 < candidates.length){
+        tryLoad(index + 1);
+      }else{
+        imgEl.style.display = "none";
+        fallbackEl.style.display = "block";
+      }
+    };
+    imgEl.src = url;
   };
-  imgEl.src = src;
+  tryLoad(0);
 }
 function setBattleBody(el, actor){
   if(!el) return;
@@ -1860,7 +1938,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 49;
+  state.schemaVersion = 50;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -1872,7 +1950,6 @@ function migrateState(){
   if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
 
   repairDexCollection();
-  unlockAllDex();
 
   for(const mon of state.monsters || []){
     repairMonsterRecord(mon);
@@ -1921,7 +1998,7 @@ function buyEgg(){
   checkHatch();
   render();
 }
-function forceHatch(){if(!state.egg){alert("卵がありません。");return}state.egg.hatchAt=Date.now();checkHatch()}
+
 function checkHatch(){if(state.egg&&Date.now()>=state.egg.hatchAt)hatchEgg()}
 function hatchEgg(){
   const speciesKey=rollEggSpeciesKey();
@@ -3141,11 +3218,17 @@ function registerDex(mon){
     seenAt:Date.now()
   };
 }
-function addCP(n){state.cp+=n;saveGame();log(`CP +${n}`);render()}
-function gainTestExp(){const mon=getCurrentMonster();if(!mon)return;const added=addExp(mon,30);saveGame();log(`${mon.nickname}にテストEXP +${added}`);render()}
+
+
 function showTab(tab){
   currentTab=tab;
-  ["home","raise","battle","mock","box","dex","tips","settings"].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle("hidden",t!==tab));
+  ["home","raise","battle","mock","box","dex","tips","settings"].forEach(t=>{
+    const el=document.getElementById(`tab-${t}`);
+    if(el) el.classList.toggle("hidden",t!==tab);
+  });
+  document.querySelectorAll("[data-tab-btn]").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.tabBtn===tab);
+  });
   if(tab==="battle" && getCurrentMonster() && !currentEnemy) prepareBattlePreview();
   render();
 }
@@ -3187,11 +3270,12 @@ function renderMonster(mon){
   const no=document.getElementById("noMonsterHome"), home=document.getElementById("currentMonsterHome");
   if(!mon){no.classList.remove("hidden");home.classList.add("hidden");return}
   no.classList.add("hidden");home.classList.remove("hidden");
+  repairMonsterRecord(mon);
   document.getElementById("monsterName").textContent=`${mon.nickname} Lv.${mon.level}`;
-  document.getElementById("monsterRole").textContent=`種族：${mon.speciesName} / 形態：${mon.formName} / 役割：${mon.role}`;
+  document.getElementById("monsterRole").textContent=`種族：${mon.speciesName} / 形態：${mon.formName}`;
   document.getElementById("monsterMeta").textContent=`性格：${mon.personality} / コンディション：${CONDITIONS[mon.condition].label} / EXP：${expText(mon)} / ${nextEvolveText(mon)}`;
   const input=document.getElementById("nicknameInput"); if(input && document.activeElement !== input) input.value=mon.nickname;
-  document.getElementById("monsterBadges").innerHTML=[`段階：${stageName(mon.stage)}`,`Lv上限：${MAX_LEVEL}`,`特徴：${mon.profile||mon.role}`,`特性：${mon.trait||"なし"}`,`進化パス：${mon.branchPath||"base"}`].map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join("");
+  document.getElementById("monsterBadges").innerHTML=[`段階：${stageName(mon.stage)}`,`Lv上限：${MAX_LEVEL}`,`特性：${mon.trait||"なし"}`].map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join("");
   document.getElementById("evolveHint").textContent=getEvolveHint(mon);
   const skillArea=document.getElementById("skillsArea");
   if(skillArea){
@@ -3630,61 +3714,12 @@ function hydrateDexImages(root=document){
     loadThumbCandidate(thumb, candidates, 0);
   }
 }
-function preloadOneImage(src, timeoutMs=5000){
-  return new Promise(resolve=>{
-    const url = absoluteImageUrl(src);
-    const img = new Image();
-    const done = (ok) => resolve({src, url, ok, w:img.naturalWidth||0, h:img.naturalHeight||0});
-    const timer = setTimeout(()=>done(false), timeoutMs);
-    img.onload = () => {clearTimeout(timer); done(true);};
-    img.onerror = () => {clearTimeout(timer); done(false);};
-    img.src = url;
-  });
-}
-async function preloadImageForDebug(src, timeoutMs=5000){
-  const candidates = imageCandidatePaths(src);
-  const tried = [];
-  for(let i=0;i<candidates.length;i++){
-    const r = await preloadOneImage(candidates[i], timeoutMs);
-    tried.push(r);
-    if(r.ok && r.w>0){
-      let mode = "OK";
-      if(i===1) mode = "ルート直下";
-      if(i>=2) mode = "BASE代替";
-      return {src, url:r.url, ok:true, w:r.w, h:r.h, used:r.src, mode, tried};
-    }
-  }
-  const last = tried[tried.length-1] || {url:absoluteImageUrl(src), w:0, h:0};
-  return {src, url:last.url, ok:false, w:0, h:0, used:"", mode:"NG", tried};
-}
-function forceRedrawDexImages(){
-  dexRenderKey = "";
-  treeRenderKey = "";
-  repairDexCollection();
-  unlockAllDex();
-  renderDex();
-  renderEvolutionTree();
-  hydrateDexImages(document.getElementById("tab-dex") || document);
-  saveGame();
-}
-async function runDexImageDebug(){
-  forceRedrawDexImages();
-  const area = document.getElementById("dexImageDebugArea");
-  if(!area) return;
-  const thumbs = [...document.querySelectorAll("#tab-dex [data-img-src]")];
-  const unique = [...new Set(thumbs.map(t=>t.dataset.imgSrc).filter(Boolean))];
-  area.classList.remove("hidden");
-  area.innerHTML = `画像ロード確認中... 対象 ${unique.length}件`;
-  const results = await Promise.all(unique.map(src=>preloadImageForDebug(src,5000)));
-  const okCount = results.filter(r=>r.ok && r.w>0).length;
-  const fallbackCount = results.filter(r=>r.mode==="BASE代替").length;
-  const rootCount = results.filter(r=>r.mode==="ルート直下").length;
-  const rows = results.slice(0,60).map(r=>`<tr><td>${escapeHtml(r.mode || (r.ok?"OK":"NG"))}</td><td>${r.w}x${r.h}</td><td>${escapeHtml(r.src)}</td><td>${escapeHtml(r.used || "")}</td><td>${escapeHtml(r.url)}</td></tr>`).join("");
-  area.innerHTML = `<b>図鑑画像診断</b><br>対象：${results.length}件 / 表示可能：${okCount}件 / ルート直下：${rootCount}件 / base代替：${fallbackCount}件 / 完全NG：${results.length-okCount}件<br>
-    <span class="small">※imagesフォルダ内に無い場合はルート直下の同名画像も探します。個別画像が無い場合は同じ系統のbase画像を自動表示します。</span>
-    <table class="dex-debug-table"><tr><th>状態</th><th>サイズ</th><th>要求パス</th><th>実際に使ったパス</th><th>実URL</th></tr>${rows}</table>`;
-  hydrateDexImages(document.getElementById("tab-dex") || document);
-}
+
+async 
+
+
+async 
+
 
 function dexInfoFromItem(item){
   const fixed = repairDexItem(item?.formId || "", item || {});
@@ -3694,6 +3729,47 @@ function dexThumbHtml(item){
   const info = dexInfoFromItem(item);
   const name = item.formName || item.speciesName || item.formId || "クリモン";
   return dexDirectImageHtml(info.image, info.emoji, name, "dex-thumb");
+}
+
+
+let dexPressTimer=null;
+function startDexLongPress(event, formId){
+  if(event){event.preventDefault();event.stopPropagation();}
+  cancelDexLongPress();
+  dexPressTimer=setTimeout(()=>showDexDetail(formId),520);
+}
+function cancelDexLongPress(){
+  if(dexPressTimer){
+    clearTimeout(dexPressTimer);
+    dexPressTimer=null;
+  }
+}
+function hideDexDetail(){
+  cancelDexLongPress();
+  const modal=document.getElementById("dexDetailModal");
+  if(modal) modal.classList.add("hidden");
+}
+function showDexDetail(formId){
+  cancelDexLongPress();
+  const raw = state.dex?.[formId] || null;
+  const item = raw ? repairDexItem(formId, raw) : null;
+  if(!item) return;
+  const info = dexInfoFromItem(item);
+  const formName = item.formName || item.speciesName || formId || "クリモン";
+  const speciesName = item.speciesName || BASE_SPECIES[info.speciesKey]?.speciesName || "不明";
+  const stage = Number.isFinite(item.stage) ? item.stage : stageForForm(info.speciesKey, info.branchPath);
+  const desc = dexProfileText(item.formId || formId, formName, item.profile || item.role || "");
+  const image = info.image || item.image || imagePath(info.speciesKey, info.branchPath || "");
+  const emoji = info.emoji || item.emoji || "❔";
+
+  document.getElementById("dexDetailTitle").textContent = formName;
+  document.getElementById("dexDetailSpecies").textContent = speciesName;
+  document.getElementById("dexDetailForm").textContent = formName;
+  document.getElementById("dexDetailStage").textContent = stageName(stage);
+  document.getElementById("dexDetailImagePath").textContent = image || "画像なし";
+  document.getElementById("dexDetailDesc").textContent = desc || "";
+  setImageWithFallback(document.getElementById("dexDetailImg"), document.getElementById("dexDetailEmoji"), image, emoji);
+  document.getElementById("dexDetailModal").classList.remove("hidden");
 }
 
 function renderDex(){
@@ -3710,12 +3786,17 @@ function renderDex(){
     const speciesName = item.speciesName || BASE_SPECIES[dexInfoFromItem(item).speciesKey]?.speciesName || "不明";
     const formId = item.formId || "";
     const stage = Number.isFinite(item.stage) ? item.stage : 0;
-    return `<div class="mini dex-card">
+    const safeId = safeAttr(formId);
+    return `<div class="mini dex-card"
+      oncontextmenu="return false"
+      onpointerdown="startDexLongPress(event,'${safeId}')"
+      onpointerup="cancelDexLongPress()"
+      onpointerleave="cancelDexLongPress()"
+      onpointercancel="cancelDexLongPress()">
       ${dexThumbHtml(item)}
       <div class="dex-info">
         <strong>${escapeHtml(formName)}</strong>
         <span>種族：${escapeHtml(speciesName)}</span><br>
-        ${formId ? `<span>ID：${escapeHtml(formId)}</span><br>` : ""}
         <span>段階：${stageName(stage)}</span><br>
         <span>${escapeHtml(dexProfileText(formId, formName, item.profile||item.role||""))}</span>
       </div>
@@ -3775,13 +3856,13 @@ function makeNodeHtml(node){
 function evolutionTreeStagesFor(key){
   const paths = Object.keys(EVOLUTION_TREE[key] || {});
   if(paths.length===0){
-    return [{stage:"レア個体", nodes:[nodeData(key,"base","固定")]}];
+    return [{stage:"究極体", nodes:[nodeData(key,"base","究極体")]}];
   }
   const hasDeep = paths.some(p=>p.length>=2);
   if(!hasDeep){
     return [
       {stage:"レア幼年期", nodes:[nodeData(key,"base","幼年期")]},
-      {stage:"一段進化", nodes:paths.sort().map(p=>nodeData(key,p,"一段進化"))}
+      {stage:"究極体", nodes:paths.sort().map(p=>nodeData(key,p,"究極体"))}
     ];
   }
   return [
