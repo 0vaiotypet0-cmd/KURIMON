@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v51 図鑑拡大修正版</title>
+  <title>クリモン - 製品版 v52 図鑑タップ拡大版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -888,7 +888,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v51</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v52</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1077,7 +1077,7 @@ body{padding-bottom:86px;}
 
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
-      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。キャラをタップ、または長押しすると画像と詳細を拡大表示できます。</p>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。キャラをタップすると画像と詳細を拡大表示できます。拡大画面をもう一度タップすると閉じます。</p>
       <div class="collection" id="collectionArea"></div>
       <h2 style="margin-top:16px;">進化ツリー</h2>
       <div class="dex-tree-toolbar">
@@ -1219,7 +1219,7 @@ body{padding-bottom:86px;}
         <b>段階</b><span id="dexDetailStage">---</span>
         <b>画像</b><span id="dexDetailImagePath">---</span>
       </div>
-      <p id="dexDetailDesc"></p>
+      <p id="dexDetailDesc"></p><p class="small">画面をタップすると閉じます。</p>
     </div>
   </div>
 
@@ -1948,7 +1948,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 51;
+  state.schemaVersion = 52;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3243,6 +3243,7 @@ function showTab(tab){
   render();
 }
 function render(){
+  initDexTapOpen();
   recoverApByTime();
   checkHatch();
   const mon=getCurrentMonster();
@@ -3742,68 +3743,22 @@ function dexThumbHtml(item){
 }
 
 
-let dexPressTimer=null;
-let dexPressOpened=false;
-function startDexLongPress(event, formId){
-  if(event){
+function initDexTapOpen(){
+  if(window.__dexTapOpenReady) return;
+  window.__dexTapOpenReady = true;
+  document.addEventListener("click", (event)=>{
+    const card = event.target.closest?.(".dex-card[data-form-id]");
+    if(!card) return;
     event.preventDefault();
     event.stopPropagation();
-  }
-  cancelDexLongPress();
-  dexPressOpened=false;
-  dexPressTimer=setTimeout(()=>{
-    dexPressOpened=true;
-    showDexDetail(formId);
-  },420);
-}
-function cancelDexLongPress(){
-  if(dexPressTimer){
-    clearTimeout(dexPressTimer);
-    dexPressTimer=null;
-  }
-}
-function openDexDetailFromCard(card){
-  const formId = card?.dataset?.formId || "";
-  if(formId) showDexDetail(formId);
-}
-function bindDexCardEvents(root=document){
-  const cards = [...root.querySelectorAll(".dex-card[data-form-id]")];
-  for(const card of cards){
-    if(card.dataset.boundDexDetail==="1") continue;
-    card.dataset.boundDexDetail="1";
-    const formId = card.dataset.formId;
-
-    card.addEventListener("click", (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      if(dexPressOpened){
-        dexPressOpened=false;
-        return;
-      }
-      showDexDetail(formId);
-    });
-
-    card.addEventListener("pointerdown", (e)=>startDexLongPress(e, formId), {passive:false});
-    card.addEventListener("pointerup", ()=>cancelDexLongPress());
-    card.addEventListener("pointerleave", ()=>cancelDexLongPress());
-    card.addEventListener("pointercancel", ()=>cancelDexLongPress());
-
-    card.addEventListener("touchstart", (e)=>startDexLongPress(e, formId), {passive:false});
-    card.addEventListener("touchend", ()=>cancelDexLongPress());
-    card.addEventListener("touchcancel", ()=>cancelDexLongPress());
-
-    card.addEventListener("mousedown", (e)=>startDexLongPress(e, formId));
-    card.addEventListener("mouseup", ()=>cancelDexLongPress());
-    card.addEventListener("mouseleave", ()=>cancelDexLongPress());
-  }
+    showDexDetail(card.dataset.formId || "");
+  }, true);
 }
 function hideDexDetail(){
-  cancelDexLongPress();
   const modal=document.getElementById("dexDetailModal");
   if(modal) modal.classList.add("hidden");
 }
 function showDexDetail(formId){
-  cancelDexLongPress();
   const raw = state.dex?.[formId] || null;
   const item = raw ? repairDexItem(formId, raw) : null;
   if(!item){
@@ -3850,12 +3805,11 @@ function renderDex(){
         <span>種族：${escapeHtml(speciesName)}</span><br>
         <span>段階：${stageName(stage)}</span><br>
         <span>${escapeHtml(dexProfileText(formId, formName, item.profile||item.role||""))}</span>
-        <span class="tap-hint">タップ/長押しで拡大</span>
+        <span class="tap-hint">タップで拡大</span>
       </div>
     </div>`;
   }).join("");
   hydrateDexImages(area);
-  bindDexCardEvents(area);
 }
 function renderEvolutionTree(){
   const area=document.getElementById("evolutionTreeArea");
