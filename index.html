@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v50 UI整理版</title>
+  <title>クリモン - 製品版 v51 図鑑拡大修正版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -815,6 +815,16 @@ body{padding-bottom:86px;}
   gap:10px;
 }
 
+
+.dex-card{
+  -webkit-tap-highlight-color:rgba(248,214,109,.22);
+}
+.dex-info .tap-hint{
+  display:block;
+  margin-top:4px;
+  color:#ffe38b;
+}
+
 </style>
 
 <style>
@@ -878,7 +888,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v50</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v51</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1067,7 +1077,7 @@ body{padding-bottom:86px;}
 
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
-      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。キャラを長押しすると画像と詳細を拡大表示できます。</p>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。キャラをタップ、または長押しすると画像と詳細を拡大表示できます。</p>
       <div class="collection" id="collectionArea"></div>
       <h2 style="margin-top:16px;">進化ツリー</h2>
       <div class="dex-tree-toolbar">
@@ -1938,7 +1948,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 50;
+  state.schemaVersion = 51;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3733,15 +3743,58 @@ function dexThumbHtml(item){
 
 
 let dexPressTimer=null;
+let dexPressOpened=false;
 function startDexLongPress(event, formId){
-  if(event){event.preventDefault();event.stopPropagation();}
+  if(event){
+    event.preventDefault();
+    event.stopPropagation();
+  }
   cancelDexLongPress();
-  dexPressTimer=setTimeout(()=>showDexDetail(formId),520);
+  dexPressOpened=false;
+  dexPressTimer=setTimeout(()=>{
+    dexPressOpened=true;
+    showDexDetail(formId);
+  },420);
 }
 function cancelDexLongPress(){
   if(dexPressTimer){
     clearTimeout(dexPressTimer);
     dexPressTimer=null;
+  }
+}
+function openDexDetailFromCard(card){
+  const formId = card?.dataset?.formId || "";
+  if(formId) showDexDetail(formId);
+}
+function bindDexCardEvents(root=document){
+  const cards = [...root.querySelectorAll(".dex-card[data-form-id]")];
+  for(const card of cards){
+    if(card.dataset.boundDexDetail==="1") continue;
+    card.dataset.boundDexDetail="1";
+    const formId = card.dataset.formId;
+
+    card.addEventListener("click", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      if(dexPressOpened){
+        dexPressOpened=false;
+        return;
+      }
+      showDexDetail(formId);
+    });
+
+    card.addEventListener("pointerdown", (e)=>startDexLongPress(e, formId), {passive:false});
+    card.addEventListener("pointerup", ()=>cancelDexLongPress());
+    card.addEventListener("pointerleave", ()=>cancelDexLongPress());
+    card.addEventListener("pointercancel", ()=>cancelDexLongPress());
+
+    card.addEventListener("touchstart", (e)=>startDexLongPress(e, formId), {passive:false});
+    card.addEventListener("touchend", ()=>cancelDexLongPress());
+    card.addEventListener("touchcancel", ()=>cancelDexLongPress());
+
+    card.addEventListener("mousedown", (e)=>startDexLongPress(e, formId));
+    card.addEventListener("mouseup", ()=>cancelDexLongPress());
+    card.addEventListener("mouseleave", ()=>cancelDexLongPress());
   }
 }
 function hideDexDetail(){
@@ -3753,7 +3806,10 @@ function showDexDetail(formId){
   cancelDexLongPress();
   const raw = state.dex?.[formId] || null;
   const item = raw ? repairDexItem(formId, raw) : null;
-  if(!item) return;
+  if(!item){
+    alert("この図鑑データを開けませんでした。");
+    return;
+  }
   const info = dexInfoFromItem(item);
   const formName = item.formName || item.speciesName || formId || "クリモン";
   const speciesName = item.speciesName || BASE_SPECIES[info.speciesKey]?.speciesName || "不明";
@@ -3787,22 +3843,19 @@ function renderDex(){
     const formId = item.formId || "";
     const stage = Number.isFinite(item.stage) ? item.stage : 0;
     const safeId = safeAttr(formId);
-    return `<div class="mini dex-card"
-      oncontextmenu="return false"
-      onpointerdown="startDexLongPress(event,'${safeId}')"
-      onpointerup="cancelDexLongPress()"
-      onpointerleave="cancelDexLongPress()"
-      onpointercancel="cancelDexLongPress()">
+    return `<div class="mini dex-card" data-form-id="${safeId}" oncontextmenu="return false">
       ${dexThumbHtml(item)}
       <div class="dex-info">
         <strong>${escapeHtml(formName)}</strong>
         <span>種族：${escapeHtml(speciesName)}</span><br>
         <span>段階：${stageName(stage)}</span><br>
         <span>${escapeHtml(dexProfileText(formId, formName, item.profile||item.role||""))}</span>
+        <span class="tap-hint">タップ/長押しで拡大</span>
       </div>
     </div>`;
   }).join("");
   hydrateDexImages(area);
+  bindDexCardEvents(area);
 }
 function renderEvolutionTree(){
   const area=document.getElementById("evolutionTreeArea");
