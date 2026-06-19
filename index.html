@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v53 CPU戦AP消費版</title>
+  <title>クリモン - 製品版 v55 旅闘技場β版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -825,6 +825,47 @@ body{padding-bottom:86px;}
   color:#ffe38b;
 }
 
+
+/* v54 旅オンラインβ */
+.travel-layout{display:grid;gap:12px;}
+.travel-panel{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:16px;
+  padding:12px;
+}
+.travel-form{
+  display:grid;
+  grid-template-columns:1fr 1.35fr auto;
+  gap:8px;
+  align-items:end;
+}
+.travel-form label{display:grid;gap:5px;font-size:12px;color:var(--muted);}
+.travel-form input{width:100%;}
+@media(max-width:760px){.travel-form{grid-template-columns:1fr}.travel-form button{width:100%;}}
+.travel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+.travel-card{
+  padding:10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line);
+}
+.travel-card strong{display:block;font-size:13px;}
+.travel-card span{font-size:11px;color:var(--muted);}
+.travel-card .row{margin-top:8px;}
+.travel-log{
+  max-height:260px;
+  overflow:auto;
+  padding:10px;
+  background:rgba(0,0,0,.18);
+  border-radius:14px;
+  border:1px solid var(--line);
+  font-size:12px;
+  color:#d9def0;
+  line-height:1.55;
+}
+.travel-log div{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+
 </style>
 
 <style>
@@ -888,7 +929,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v53</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v55 旅闘技場β</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1018,6 +1059,50 @@ body{padding-bottom:86px;}
       </div>
     </div>
 
+
+    <div id="tab-travel" class="hidden">
+      <h2>闘技場に預ける</h2>
+      <p>最大3体までオンライン闘技場に預けられます。友達が預けたクリモンと、AP消費なしでバトルできます。</p>
+
+      <div class="travel-layout">
+        <div class="travel-panel">
+          <h3>オンライン闘技場 設定</h3>
+          <div class="travel-form">
+            <label>プレイヤー名
+              <input id="travelPlayerNameInput" maxlength="20" placeholder="例：もん">
+            </label>
+            <label>Firebase Realtime Database URL
+              <input id="travelFirebaseUrlInput" placeholder="https://xxxxx-default-rtdb.firebaseio.com">
+            </label>
+            <button onclick="saveTravelSettings()">保存</button>
+          </div>
+          <p class="small">Realtime DatabaseのURLを入れて使います。友達と同じURLを使うと同じ闘技場に接続できます。</p>
+          <div id="travelStatus" class="hint">未接続</div>
+        </div>
+
+        <div class="travel-panel">
+          <h3>自分の闘技場クリモン</h3>
+          <p class="small">現在育成中のクリモンをオンライン闘技場に預けます。本体はボックスに残ります。</p>
+          <div class="row">
+            <button onclick="sendCurrentMonsterToTravel()">現在のクリモンを闘技場に預ける</button>
+            <button class="ghost" onclick="refreshTravelInn()">闘技場を更新</button>
+          </div>
+          <div id="myTravelersArea" class="travel-grid"></div>
+        </div>
+
+        <div class="travel-panel">
+          <h3>友達の闘技場クリモン</h3>
+          <p class="small">友達が預けたクリモンと、今の育成中クリモンでバトルします。闘技場バトルはAPを消費しません。</p>
+          <div id="friendTravelersArea" class="travel-grid"></div>
+        </div>
+
+        <div class="travel-panel">
+          <h3>闘技場バトルログ</h3>
+          <div id="travelBattleResult" class="result-banner hidden"></div>
+          <div id="travelBattleLog" class="travel-log"></div>
+        </div>
+      </div>
+    </div>
 
     <div id="tab-mock" class="hidden">
       <h2>模擬戦</h2>
@@ -1230,6 +1315,7 @@ body{padding-bottom:86px;}
   <button data-tab-btn="home" onclick="showTab('home')">🏠<br>ホーム</button>
   <button data-tab-btn="raise" onclick="showTab('raise')">💪<br>育成</button>
   <button data-tab-btn="battle" onclick="showTab('battle')">⚔️<br>バトル</button>
+  <button data-tab-btn="travel" onclick="showTab('travel')">🏟️<br>闘技場</button>
   <button data-tab-btn="mock" onclick="showTab('mock')">🧪<br>模擬戦</button>
   <button data-tab-btn="box" onclick="showTab('box')">📦<br>ボックス</button>
   <button data-tab-btn="dex" onclick="showTab('dex')">📖<br>図鑑</button>
@@ -1945,11 +2031,19 @@ function initGame(){
     mockMode:"normal",
     mockHistory:[],
     tournamentLog:[],
+    travel:{
+      playerId:"p_"+Math.random().toString(36).slice(2)+Date.now().toString(36),
+      playerName:"",
+      firebaseUrl:"",
+      myTravelers:[],
+      friendTravelers:[],
+      lastSyncAt:0
+    },
     log:["クリモン開始。初回の卵は即孵化します。"]
   };
 }
 function migrateState(){
-  state.schemaVersion = 53;
+  state.schemaVersion = 55;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -1959,6 +2053,13 @@ function migrateState(){
   if(!state.mockMode) state.mockMode = "normal";
   if(!Array.isArray(state.mockHistory)) state.mockHistory = [];
   if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
+  if(!state.travel) state.travel = {};
+  if(!state.travel.playerId) state.travel.playerId = "p_"+Math.random().toString(36).slice(2)+Date.now().toString(36);
+  if(typeof state.travel.playerName !== "string") state.travel.playerName = "";
+  if(typeof state.travel.firebaseUrl !== "string") state.travel.firebaseUrl = "";
+  if(!Array.isArray(state.travel.myTravelers)) state.travel.myTravelers = [];
+  if(!Array.isArray(state.travel.friendTravelers)) state.travel.friendTravelers = [];
+  if(!state.travel.lastSyncAt) state.travel.lastSyncAt = 0;
 
   repairDexCollection();
 
@@ -3241,7 +3342,7 @@ function registerDex(mon){
 
 function showTab(tab){
   currentTab=tab;
-  ["home","raise","battle","mock","box","dex","tips","settings"].forEach(t=>{
+  ["home","raise","battle","travel","mock","box","dex","tips","settings"].forEach(t=>{
     const el=document.getElementById(`tab-${t}`);
     if(el) el.classList.toggle("hidden",t!==tab);
   });
@@ -3249,6 +3350,7 @@ function showTab(tab){
     btn.classList.toggle("active", btn.dataset.tabBtn===tab);
   });
   if(tab==="battle" && getCurrentMonster() && !currentEnemy) prepareBattlePreview();
+  if(tab==="travel") renderTravel();
   render();
 }
 function render(){
@@ -3267,6 +3369,7 @@ function render(){
   if(currentTab==="home") renderMonster(mon);
   if(currentTab==="raise") renderRaise(mon);
   if(currentTab==="battle") renderBattle(mon);
+  if(currentTab==="travel") renderTravel();
   if(currentTab==="mock") renderMockBattle();
   if(currentTab==="box") renderBox();
   if(currentTab==="dex"){renderDex();renderEvolutionTree();}
@@ -3414,6 +3517,217 @@ function getMockPair(){
     targetLevel
   };
 }
+
+function travelConfigReady(){
+  return !!(state.travel && state.travel.firebaseUrl && state.travel.playerId);
+}
+function normalizeFirebaseUrl(url){
+  let u=String(url||"").trim();
+  if(!u) return "";
+  u=u.replace(/\/+$/,"");
+  if(u.endsWith(".json")) u=u.slice(0,-5);
+  return u;
+}
+function travelPath(path){
+  const base=normalizeFirebaseUrl(state.travel.firebaseUrl);
+  const clean=String(path||"").replace(/^\/+/,"");
+  return `${base}/${clean}.json`;
+}
+async function travelFetch(path, options={}){
+  if(!travelConfigReady()) throw new Error("Firebase URLが未設定です。");
+  const res=await fetch(travelPath(path), {
+    ...options,
+    headers:{"Content-Type":"application/json", ...(options.headers||{})}
+  });
+  if(!res.ok){
+    const txt=await res.text().catch(()=>"");
+    throw new Error(`通信エラー ${res.status} ${txt}`);
+  }
+  return await res.json();
+}
+function saveTravelSettings(){
+  const name=document.getElementById("travelPlayerNameInput")?.value?.trim() || "";
+  const url=normalizeFirebaseUrl(document.getElementById("travelFirebaseUrlInput")?.value || "");
+  state.travel.playerName = name || "名無しトレーナー";
+  state.travel.firebaseUrl = url;
+  saveGame();
+  renderTravel();
+  if(url) refreshTravelInn();
+}
+function ownerName(){
+  return state.travel?.playerName || "名無しトレーナー";
+}
+function travelMonsterSnapshot(mon){
+  repairMonsterRecord(mon);
+  return {
+    travelId: mon.id,
+    ownerId: state.travel.playerId,
+    ownerName: ownerName(),
+    updatedAt: Date.now(),
+    id: mon.id,
+    nickname: mon.nickname,
+    speciesKey: mon.speciesKey,
+    speciesName: mon.speciesName,
+    formName: mon.formName,
+    formId: mon.formId,
+    branchPath: mon.branchPath || "",
+    stage: mon.stage || 0,
+    level: mon.level || 1,
+    role: mon.role || "",
+    profile: mon.profile || "",
+    emoji: mon.emoji || "👾",
+    image: actorImage(mon),
+    stats: {...mon.stats}
+  };
+}
+function travelEnemyFromSnapshot(t){
+  return {
+    name: `${t.nickname || t.formName || "闘技場クリモン"}（${t.ownerName || "友達"}）`,
+    nickname: t.nickname || t.formName || "闘技場クリモン",
+    speciesKey: t.speciesKey || "enemy",
+    speciesName: t.speciesName || "",
+    formName: t.formName || "",
+    stage: t.stage || 0,
+    emoji: t.emoji || "👾",
+    image: t.image || imagePath(t.speciesKey,t.branchPath||""),
+    level: t.level || 1,
+    stats:{...(t.stats || {})},
+    hp: t.stats?.hp || 1,
+    atk: t.stats?.atk || 1,
+    def: t.stats?.def || 1,
+    mag: t.stats?.mag || 1,
+    luck: t.stats?.luck || 1,
+    spd: t.stats?.spd || 1
+  };
+}
+async function sendCurrentMonsterToTravel(){
+  const mon=getCurrentMonster();
+  if(!mon){alert("闘技場に預けるクリモンがいません。");return}
+  if(!travelConfigReady()){alert("先にFirebase URLとプレイヤー名を保存してください。");return}
+  try{
+    const existing=await travelFetch(`kurimon_travelers/${state.travel.playerId}`,"GET");
+    const count=existing ? Object.keys(existing).length : 0;
+    const already=existing && existing[mon.id];
+    if(count>=3 && !already){
+      alert("闘技場に預けられるのは最大3体までです。先に誰かを帰してください。");
+      return;
+    }
+    const snap=travelMonsterSnapshot(mon);
+    await travelFetch(`kurimon_travelers/${state.travel.playerId}/${mon.id}`, {
+      method:"PUT",
+      body:JSON.stringify(snap)
+    });
+    log(`${mon.nickname}を闘技場に預けました。`);
+    await refreshTravelInn();
+  }catch(e){
+    alert(`闘技場に預けられませんでした：${e.message}`);
+  }
+}
+async function returnTraveler(travelId){
+  if(!travelConfigReady()) return;
+  if(!confirm("このクリモンを闘技場から戻しますか？")) return;
+  try{
+    await travelFetch(`kurimon_travelers/${state.travel.playerId}/${travelId}`, {method:"DELETE"});
+    log("闘技場クリモンを帰しました。");
+    await refreshTravelInn();
+  }catch(e){
+    alert(`帰せませんでした：${e.message}`);
+  }
+}
+async function refreshTravelInn(){
+  if(!travelConfigReady()){
+    renderTravel();
+    return;
+  }
+  try{
+    const all=await travelFetch("kurimon_travelers","GET") || {};
+    const mine=[];
+    const friends=[];
+    for(const [ownerId, list] of Object.entries(all || {})){
+      for(const item of Object.values(list || {})){
+        if(!item || !item.travelId) continue;
+        if(ownerId===state.travel.playerId || item.ownerId===state.travel.playerId) mine.push(item);
+        else friends.push(item);
+      }
+    }
+    mine.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+    friends.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+    state.travel.myTravelers=mine.slice(0,3);
+    state.travel.friendTravelers=friends;
+    state.travel.lastSyncAt=Date.now();
+    saveGame();
+    renderTravel();
+  }catch(e){
+    const status=document.getElementById("travelStatus");
+    if(status) status.textContent=`接続エラー：${e.message}`;
+  }
+}
+function travelCardHtml(t, mine=false){
+  const title=escapeHtml(t.nickname || t.formName || "闘技場クリモン");
+  const owner=escapeHtml(t.ownerName || "名無し");
+  const form=escapeHtml(t.formName || "");
+  const species=escapeHtml(t.speciesName || "");
+  const img=dexDirectImageHtml(t.image || imagePath(t.speciesKey,t.branchPath||""), t.emoji || "👾", t.nickname || t.formName || "闘技場クリモン", "dex-thumb");
+  const stats=t.stats||{};
+  const statLine=`HP${stats.hp||"-"} 攻${stats.atk||"-"} 防${stats.def||"-"} 魔${stats.mag||"-"} 運${stats.luck||"-"} 速${stats.spd||"-"}`;
+  return `<div class="travel-card">
+    ${img}
+    <strong>${title}</strong>
+    <span>持ち主：${owner}</span><br>
+    <span>${species} / ${form} / Lv.${t.level||1}</span><br>
+    <span>${escapeHtml(statLine)}</span>
+    <div class="row">
+      ${mine ? `<button class="ghost" onclick="returnTraveler('${safeAttr(t.travelId)}')">帰す</button>` : `<button onclick="battleTravelMonster('${safeAttr(t.ownerId||"")}', '${safeAttr(t.travelId)}')">バトル</button>`}
+    </div>
+  </div>`;
+}
+function renderTravel(){
+  const inputName=document.getElementById("travelPlayerNameInput");
+  const inputUrl=document.getElementById("travelFirebaseUrlInput");
+  if(inputName && document.activeElement!==inputName) inputName.value=state.travel?.playerName || "";
+  if(inputUrl && document.activeElement!==inputUrl) inputUrl.value=state.travel?.firebaseUrl || "";
+  const status=document.getElementById("travelStatus");
+  if(status){
+    if(!state.travel?.firebaseUrl) status.textContent="Firebase URLを保存するとオンライン闘技場に接続できます。";
+    else status.textContent=`接続先：${state.travel.firebaseUrl} / 最終更新：${state.travel.lastSyncAt ? new Date(state.travel.lastSyncAt).toLocaleString("ja-JP") : "未更新"}`;
+  }
+  const myArea=document.getElementById("myTravelersArea");
+  const friendArea=document.getElementById("friendTravelersArea");
+  if(myArea){
+    const mine=state.travel?.myTravelers || [];
+    myArea.innerHTML = mine.length ? mine.map(t=>travelCardHtml(t,true)).join("") : `<div class="hint">まだ闘技場に預けているクリモンはいません。</div>`;
+    hydrateDexImages(myArea);
+  }
+  if(friendArea){
+    const friends=state.travel?.friendTravelers || [];
+    friendArea.innerHTML = friends.length ? friends.map(t=>travelCardHtml(t,false)).join("") : `<div class="hint">友達の闘技場クリモンがまだ見つかりません。更新してみてください。</div>`;
+    hydrateDexImages(friendArea);
+  }
+}
+function battleTravelMonster(ownerId, travelId){
+  const mon=getCurrentMonster();
+  if(!mon){alert("バトルする自分のクリモンがいません。");return}
+  const target=(state.travel?.friendTravelers||[]).find(t=>String(t.ownerId)===String(ownerId) && String(t.travelId)===String(travelId));
+  if(!target){alert("相手の闘技場クリモンが見つかりません。闘技場を更新してください。");return}
+  const myCopy=JSON.parse(JSON.stringify(mon));
+  const enemy=travelEnemyFromSnapshot(target);
+  const events=buildBattleEvents(myCopy, enemy);
+  const result=events.find(e=>e.type==="result");
+  const logArea=document.getElementById("travelBattleLog");
+  const resultArea=document.getElementById("travelBattleResult");
+  const title=result?.win ? `${mon.nickname}の勝利！` : `${target.nickname || target.formName}の勝利……`;
+  if(resultArea){
+    resultArea.textContent=title;
+    resultArea.classList.remove("hidden");
+  }
+  if(logArea){
+    const lines=events.filter(e=>e.type!=="turn").slice(-80).map(e=>`<div>${escapeHtml(e.text)}</div>`).reverse().join("");
+    logArea.innerHTML=`<div><b>${escapeHtml(mon.nickname)} vs ${escapeHtml(target.nickname || target.formName || "闘技場クリモン")}</b></div>${lines}`;
+  }
+  log(`闘技場バトル：${title}`);
+  saveGame();
+}
+
 function simulateMockBattle(fighterA, fighterB){
   const enemy={
     name:fighterB.nickname,
