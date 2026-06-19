@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v26</title>
+  <title>クリモン - 基礎版 v37 図鑑全開放版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -724,7 +724,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v26</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v37 図鑑全開放版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -997,7 +997,7 @@
           <p>
             バトル中、クリモンは一定確率でスキルを自動使用します。<br>
             沈黙中は魔法・状態異常スキルを使えません。毒・猛毒・再生などはターン開始時に処理されます。<br>
-            スキル候補は種族・進化形態で変化します。ホームやボックスでは、スキル名を長押しすると効果を確認できます。
+            スキル候補は種族・進化形態で変化します。ホームやボックスでは、スキル名を長押しすると効果を確認できます。魔法が攻撃より高いクリモンは、通常行動が自動で魔法攻撃になります。スキル発動時も魔法・状態異常スキルを優先して使いやすくなります。さらに一部の形態は、攻撃＋魔法依存の攻撃魔法を使えます。v33では各系統に新しい魔法・状態異常・補助・物理スキルが追加されています。v34ではシンヤ・GL・ONNの専用技と、魔法系究極体/レア究極体の強魔法が追加されています。v35では魔導電卓・数式詠唱士・連鎖の電卓に専用スキルを追加し、戦い方を差別化しています。
           </p>
           <div class="skill-chips">
             <span class="skill-chip physical">物理</span>
@@ -1120,6 +1120,9 @@ const SKILL_DEFS = {
 
   magicBullet:{name:"魔弾", category:"magic", desc:"魔法依存の小ダメージ。"},
   magicCannon:{name:"魔砲", category:"magic", desc:"魔法依存の中ダメージ。"},
+  magicBlade:{name:"魔刃", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存の魔法攻撃。攻撃力が高い魔法型と相性が良い。"},
+  magicSword:{name:"魔法剣", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。相手の防御を少し貫通する。"},
+  dismantleArt:{name:"術式解体", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。防御を一部無視して大きめのダメージを与える。"},
   poison:{name:"毒", category:"status", desc:"3ターン、相手に継続ダメージを与える。"},
   venom:{name:"猛毒", category:"status", desc:"3ターン、相手に強い継続ダメージを与える。"},
   silence:{name:"沈黙", category:"status", desc:"3ターン、相手の魔法・状態異常スキルを封じる。"},
@@ -1131,7 +1134,67 @@ const SKILL_DEFS = {
   rngControl:{name:"乱数支配", category:"support", desc:"3ターン、自分の運と素早さを上げる。"},
   expectation:{name:"期待値観測", category:"support", desc:"3ターン、受けるダメージを軽減する。"},
   futureSight:{name:"未来予測", category:"support", desc:"次に受ける攻撃を1回だけ回避する。"},
-  worldLine:{name:"世界線変更", category:"support", desc:"HPが少ない時、回復しつつ未来予測を得る。"}
+  worldLine:{name:"世界線変更", category:"support", desc:"HPが少ない時、回復しつつ未来予測を得る。"},
+
+  counterStep:{name:"見切り返し", category:"physical", desc:"攻撃依存。防御を少し無視し、会心が出やすい反撃技。"},
+  afterImage:{name:"残像歩法", category:"support", desc:"3ターン、素早さを上げつつ次の攻撃に備える。"},
+  pressurePoint:{name:"急所突き", category:"physical", desc:"攻撃＋運依存。クリティカルが出やすい一撃。"},
+
+  fortressAura:{name:"要塞オーラ", category:"support", desc:"3ターン、防御を大きく上げ、受けるダメージを軽減する。"},
+  tauntGuard:{name:"挑発防御", category:"status", desc:"相手の攻撃を下げ、行動を乱す。"},
+  ironRebound:{name:"鉄壁反射", category:"physical", desc:"防御依存の特殊攻撃。硬いほど威力が上がる。"},
+
+  rageBurst:{name:"怒気爆発", category:"physical", desc:"攻撃依存の大ダメージ。自分の攻撃も少し上がる。"},
+  bladeStorm:{name:"刃嵐", category:"physical", desc:"攻撃依存の連続斬撃。素早さが高いほど強い。"},
+  coldFlame:{name:"冷炎斬", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。クールな怒りを刃に乗せる攻撃魔法。"},
+
+  miniMeteor:{name:"プチメテオ", category:"magic", desc:"魔法依存の中ダメージ。たまに大きく上振れする。"},
+  manaDrain:{name:"マナ吸収", category:"magic", desc:"魔法依存の小ダメージを与え、自分のHPを少し回復する。"},
+  sleepyMist:{name:"ねむけミスト", category:"status", desc:"相手を行動不能にすることがある。魔法が高いほど成功しやすい。"},
+  curseBind:{name:"呪縛", category:"status", desc:"相手を沈黙させ、攻撃も少し下げる。"},
+  echoSpell:{name:"やまびこ魔法", category:"magic", desc:"魔法依存の2回攻撃。"},
+
+  probabilityHack:{name:"確率ハック", category:"support", desc:"3ターン、自分の運と魔法を上げる。"},
+  overflowCalc:{name:"オーバーフロー演算", category:"magic", desc:"魔法＋運依存の大ダメージ。外れ値を引くとさらに強い。"},
+  divideByZero:{name:"ゼロ除算", category:"magic", desc:"魔法依存の危険な大技。反動で自分も少しダメージを受ける。"},
+  debugMode:{name:"デバッグモード", category:"support", desc:"3ターン、魔法・素早さ・運を上げる。"},
+  forcedReroll:{name:"強制再抽選", category:"status", desc:"相手の強化を一部消し、自分の運を上げる。"},
+
+  // v34追加：シンヤ専用
+  completeForm:{name:"完成形", category:"support", desc:"3ターン、攻撃・魔法・素早さを上げる完成の構え。"},
+  techniqueStorm:{name:"技巧乱舞", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存の連続技巧。技巧派・超絶技巧の専用魔法技。"},
+  godspeedZero:{name:"神速零閃", category:"physical", desc:"素早さ＋攻撃依存の高速一撃。神速・瞬撃系の専用技。"},
+  masterLesson:{name:"師範の一喝", category:"status", desc:"相手の攻撃と素早さを下げ、自分の攻撃を上げる。"},
+  blackFlashDomain:{name:"黒閃領域", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法＋運依存の強力な領域技。黒閃使い・シン・シンヤ向け。"},
+
+  // v34追加：ONN専用
+  absoluteWall:{name:"絶対防壁", category:"support", desc:"3ターン、防御を大きく上げ、未来予測を得る。防衛系ONN専用。"},
+  fortressCannon:{name:"要塞砲", category:"magic", damageType:"hybrid", desc:"防御＋魔法依存の重い魔法砲。要塞・城塞系ONN専用。"},
+  revivalPrayer:{name:"リバイバル祈祷", category:"support", desc:"HPを大きく回復し、再生状態になる。再生・リバイバル系専用。"},
+  pillarJudgement:{name:"柱の裁き", category:"magic", damageType:"hybrid", desc:"体力＋防御＋魔法を力に変える栗学の柱の強魔法。"},
+  oniPressure:{name:"鬼圧", category:"status", desc:"相手の攻撃・魔法・素早さを下げる強烈な威圧。"},
+
+  // v34追加：GL専用
+  annihilationShot:{name:"殲滅射撃", category:"physical", desc:"攻撃＋素早さ依存の高威力射撃。殲滅のGL専用。"},
+  oneSlash:{name:"一撃粉砕", category:"physical", desc:"攻撃依存の超高威力一撃。外れないが反動がある。"},
+  infiniteTrigger:{name:"無限トリガー", category:"physical", desc:"攻撃＋素早さ依存の多段攻撃。無限連射系専用。"},
+  gamblerRuin:{name:"破戒録バースト", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法＋運依存。上振れすると凄まじい威力になる。"},
+  coolExecution:{name:"冷徹執行", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存の強魔法斬撃。クールなGL専用。"},
+
+  // v34追加：魔法系究極体・レア究極体の強魔法
+  grandMeteor:{name:"グランドメテオ", category:"magic", desc:"魔法依存の大ダメージ。魔法系究極体が扱う強魔法。"},
+  arcaneOverdrive:{name:"魔力暴走", category:"magic", desc:"魔法依存の超火力。反動で自分も少し傷つく。"},
+  sealCatastrophe:{name:"封印崩壊", category:"status", desc:"相手を沈黙させ、魔法ダメージも与える強力な封印術。"},
+  dreamCollapse:{name:"夢幻崩壊", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存の大技。夢幻・禁術系の強魔法。"},
+  quantumBreak:{name:"量子崩壊", category:"magic", desc:"魔法＋運依存の大ダメージ。電卓系レア進化の強魔法。"},
+
+  // v35追加：魔導電卓・数式詠唱士・連鎖の電卓の専用個性
+  magicConversion:{name:"魔導変換", category:"support", desc:"3ターン、魔法と攻撃を上げる。魔導電卓の変換術。"},
+  formulaCannon:{name:"魔導式砲", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。魔導電卓が使う変換砲撃。"},
+  equationChant:{name:"方程式詠唱", category:"support", desc:"3ターン、魔法を大きく上げる。数式詠唱士の準備技。"},
+  quadraticBurst:{name:"二次関数バースト", category:"magic", desc:"魔法依存の高火力。魔法が上がっているほど強い。"},
+  chainFormula:{name:"連鎖式", category:"support", desc:"3ターン、魔法と素早さを上げる。連鎖の電卓の起点。"},
+  chainReaction:{name:"連鎖反応", category:"magic", desc:"魔法依存の多段攻撃。2〜4回連続でダメージを与える。"}
 };
 const SKILL_CATEGORY_LABEL = {physical:"物理",magic:"魔法",support:"補助",status:"状態異常"};
 
@@ -1174,13 +1237,13 @@ const EVOLUTION_TREE = {
     bba:{formName:"沈黙わちゃ", profile:"魔法、攻撃が高い。封印魔法が使える。"}, bbb:{formName:"行動不能わちゃ", profile:"魔法、防御が高い。封印魔法が使える。"}, bbr:{formName:"忘れ物キング・わちゃ", profile:"魔法が超高い。強力な封印魔法が使える。"}
   },
   dentaku: {
-    a:{formName:"算盤機兵", profile:"魔法が高い。"}, b:{formName:"確率演算機", profile:"運が高い。"},
-    aa:{formName:"改式演算機", profile:"魔法が高い。"}, ab:{formName:"魔導演算機", profile:"魔法、運が高め。"},
-    aaa:{formName:"高位演算機", profile:"魔法、素早さが高い。"}, aab:{formName:"関数制御機", profile:"魔法が高い。デバフ、行動不能魔法が使える。"}, aar:{formName:"スーパーコンピューター・京", profile:"魔法が超高い。攻撃魔法、デバフ、行動不能魔法が使える。"},
-    aba:{formName:"数式詠唱機", profile:"魔法が高い。"}, abb:{formName:"連鎖演算機", profile:"魔法、素早さが高い。"}, abr:{formName:"せいぎのそろばん", profile:"魔法、運が超高い。"},
-    ba:{formName:"期待値観測機", profile:"運、魔法が高い。"}, bb:{formName:"乱数生成機", profile:"運、素早さが高い。"},
-    baa:{formName:"収束演算機", profile:"運が高い。"}, bab:{formName:"偏差制御機", profile:"運が高い。ダメージの振れ幅が大きい。"}, bar:{formName:"超未来予測演算装置", profile:"運、魔法が超高い。未来予測で次の攻撃・魔法を回避する。"},
-    bba:{formName:"乱数支配機", profile:"運が高い。判定をやり直す能力。"}, bbb:{formName:"豪運演算機", profile:"運が超高い。"}, bbr:{formName:"異世界演算装置", profile:"運、魔法が超高い。世界線干渉。"}
+    a:{formName:"そろばん兵", profile:"魔法が高い。"}, b:{formName:"ガチャ計算機", profile:"運が高い。"},
+    aa:{formName:"電卓・改", profile:"魔法が高い。"}, ab:{formName:"魔導電卓", profile:"魔法、運が高め。"},
+    aaa:{formName:"零式電卓-虚数ノ王-", profile:"魔法、素早さが高い。"}, aab:{formName:"数字の魔術師", profile:"魔法が高い。デバフ、行動不能魔法が使える。"}, aar:{formName:"スーパーコンピューター・京", profile:"魔法が超高い。攻撃魔法、デバフ、行動不能魔法が使える。"},
+    aba:{formName:"数式詠唱士", profile:"魔法が高い。"}, abb:{formName:"連鎖の電卓", profile:"魔法、素早さが高い。"}, abr:{formName:"せいぎのそろばん", profile:"魔法、運が超高い。"},
+    ba:{formName:"期待値演算機", profile:"運、魔法が高い。"}, bb:{formName:"乱数サイコロ", profile:"運、素早さが高い。"},
+    baa:{formName:"収束の賢者", profile:"運が高い。"}, bab:{formName:"偏差制御装置", profile:"運が高い。ダメージの振れ幅が大きい。"}, bar:{formName:"超未来予測演算装置", profile:"運、魔法が超高い。未来予測で次の攻撃・魔法を回避する。"},
+    bba:{formName:"乱数の支配者", profile:"運が高い。判定をやり直す能力。"}, bbb:{formName:"豪運スロッター", profile:"運が超高い。"}, bbr:{formName:"異世界スマホ", profile:"運、魔法が超高い。世界線干渉。"}
   }
 };
 
@@ -1224,6 +1287,203 @@ function inferSpeciesAndPath(formId, fallbackSpeciesKey, fallbackPath){
   const path = normalizeEvolutionPath(pathFromId || fallbackPath || "");
   return {speciesKey, path};
 }
+const DEX_PROFILE_TEXT = {
+  "shinya_base": "生まれた時から 反応だけはやたら早い。まだ何に反応しているのかは よく分からない。",
+  "シンヤ": "生まれた時から 反応だけはやたら早い。まだ何に反応しているのかは よく分からない。",
+  "shinya_a": "毎日 修行している風の動きをする。見ている者も なんとなく強くなった気がする。",
+  "修行するシンヤ": "毎日 修行している風の動きをする。見ている者も なんとなく強くなった気がする。",
+  "shinya_b": "負けた相手の動きをメモする。メモはするが 字が雑であとで読めない。",
+  "学びのシンヤ": "負けた相手の動きをメモする。メモはするが 字が雑であとで読めない。",
+  "shinya_aa": "ついに殻を破った姿。本人は羽化と言い張るが 羽は特に生えていない。",
+  "羽化したシンヤ": "ついに殻を破った姿。本人は羽化と言い張るが 羽は特に生えていない。",
+  "shinya_ab": "考えるより先に体が動く。たまに何も起きていないのに避ける。",
+  "反応のシンヤ": "考えるより先に体が動く。たまに何も起きていないのに避ける。",
+  "shinya_ba": "教え方は熱いが だいたい擬音。弟子は雰囲気で理解するしかない。",
+  "師範シンヤ": "教え方は熱いが だいたい擬音。弟子は雰囲気で理解するしかない。",
+  "shinya_bb": "追い込まれてからが本番。最初から本気を出せばいいのに とよく言われる。",
+  "逆転のシンヤ": "追い込まれてからが本番。最初から本気を出せばいいのに とよく言われる。",
+  "shinya_aaa": "完成したと言われている。何が完成したのか聞くと 少し困った顔をする。",
+  "完成のシンヤ": "完成したと言われている。何が完成したのか聞くと 少し困った顔をする。",
+  "shinya_aab": "小技が多すぎて 説明中に試合が終わる。本人はまだ半分も見せていないと言う。",
+  "技巧派のシンヤ": "小技が多すぎて 説明中に試合が終わる。本人はまだ半分も見せていないと言う。",
+  "shinya_aar": "すごすぎて逆に地味に見える。分かる人には分かるタイプの強さ。",
+  "超絶技巧のシンヤ": "すごすぎて逆に地味に見える。分かる人には分かるタイプの強さ。",
+  "shinya_aba": "攻撃後に『今の見えた？』と聞いてくる。見えていなくても頷くのが礼儀。",
+  "瞬撃のシンヤ": "攻撃後に『今の見えた？』と聞いてくる。見えていなくても頷くのが礼儀。",
+  "shinya_abb": "残像を増やしすぎて 自分でも本体が分からなくなることがある。",
+  "分身のシンヤ": "残像を増やしすぎて 自分でも本体が分からなくなることがある。",
+  "shinya_abr": "速すぎて集合時間より前に帰っている。対戦相手はだいたい置いていかれる。",
+  "神速のシンヤ": "速すぎて集合時間より前に帰っている。対戦相手はだいたい置いていかれる。",
+  "shinya_baa": "拳で語るタイプ。会話も拳で済ませようとするので 誤解されやすい。",
+  "拳聖シンヤ": "拳で語るタイプ。会話も拳で済ませようとするので 誤解されやすい。",
+  "shinya_bab": "アドバイスは短いが圧がある。『そこ』だけで全てを伝えようとする。",
+  "指導者シンヤ": "アドバイスは短いが圧がある。『そこ』だけで全てを伝えようとする。",
+  "shinya_bar": "伝説になった師範。弟子たちは話を盛りすぎて 本当の姿が分からない。",
+  "伝説の師範シンヤ": "伝説になった師範。弟子たちは話を盛りすぎて 本当の姿が分からない。",
+  "shinya_bba": "黒い閃光を出す。本人も出し方を聞かれると『集中』としか言わない。",
+  "黒閃使いのシンヤ": "黒い閃光を出す。本人も出し方を聞かれると『集中』としか言わない。",
+  "shinya_bbb": "何度倒れても立つ。立つのが目的になっている時がある。",
+  "不屈のシンヤ": "何度倒れても立つ。立つのが目的になっている時がある。",
+  "shinya_bbr": "技を極め過ぎ、限界を超えた真の姿。すでに人間を辞めている。",
+  "シン・シンヤ": "技を極め過ぎ、限界を超えた真の姿。すでに人間を辞めている。",
+  "onn_base": "小さいのに妙に耐える。痛そうな顔をしているが 本当に痛いかは不明。",
+  "ONN": "小さいのに妙に耐える。痛そうな顔をしているが 本当に痛いかは不明。",
+  "onn_a": "守りだけは一人前。攻撃される前から すでに守っている。",
+  "鉄壁ONN": "守りだけは一人前。攻撃される前から すでに守っている。",
+  "onn_b": "我慢している顔を見せつける。相手の罪悪感で勝つこともある。",
+  "我慢のONN": "我慢している顔を見せつける。相手の罪悪感で勝つこともある。",
+  "onn_aa": "その場から動かない。動かないのではなく 動く必要がないと言い張る。",
+  "城塞ONN": "その場から動かない。動かないのではなく 動く必要がないと言い張る。",
+  "onn_ab": "装備が重すぎて 朝の準備に時間がかかる。遅刻の理由はだいたいこれ。",
+  "重装ONN": "装備が重すぎて 朝の準備に時間がかかる。遅刻の理由はだいたいこれ。",
+  "onn_ba": "攻撃されるほど 余裕の顔になる。内心は少しだけ焦っているらしい。",
+  "耐久のONN": "攻撃されるほど 余裕の顔になる。内心は少しだけ焦っているらしい。",
+  "onn_bb": "本を持つと賢そうに見える。中身を読んでいるかは確認されていない。",
+  "守護のONN": "本を持つと賢そうに見える。中身を読んでいるかは確認されていない。",
+  "onn_aaa": "動く要塞と呼ばれるが ほぼ動かない。敵が勝手に疲れるのを待つ。",
+  "要塞ONN": "動く要塞と呼ばれるが ほぼ動かない。敵が勝手に疲れるのを待つ。",
+  "onn_aab": "沈まないことに定評がある。そもそも水辺に行かないという説もある。",
+  "不沈ONN": "沈まないことに定評がある。そもそも水辺に行かないという説もある。",
+  "onn_aar": "守りの命令だけは完璧。攻めろと言われると急に声が小さくなる。",
+  "絶対防衛将軍・ONN": "守りの命令だけは完璧。攻めろと言われると急に声が小さくなる。",
+  "onn_aba": "ゆっくり進むだけで圧がある。止めようとした者はだいたい押し戻される。",
+  "進撃のONN": "ゆっくり進むだけで圧がある。止めようとした者はだいたい押し戻される。",
+  "onn_abb": "やられたことをしっかり覚えている。優しそうに見えてけっこう根に持つ。",
+  "反撃のONN": "やられたことをしっかり覚えている。優しそうに見えてけっこう根に持つ。",
+  "onn_abr": "何が鬼なのかは不明。ただ近づくと『これは鬼だ』と感じる。",
+  "鬼に": "何が鬼なのかは不明。ただ近づくと『これは鬼だ』と感じる。",
+  "onn_baa": "でかすぎて背景みたいになる。笑っているので まだ余裕があるらしい。",
+  "超体力のONN": "でかすぎて背景みたいになる。笑っているので まだ余裕があるらしい。",
+  "onn_bab": "休んでいるだけに見えるが回復している。仕事中に真似すると怒られる。",
+  "再生のONN": "休んでいるだけに見えるが回復している。仕事中に真似すると怒られる。",
+  "onn_bar": "どんな攻撃を食らっても再生するスライム。闇のマリクが従えている。",
+  "リバイバルONN": "どんな攻撃を食らっても再生するスライム。闇のマリクが従えている。",
+  "onn_bba": "周りに本が浮いている。本人より本の方が忙しそうに動く。",
+  "守護神ONN": "周りに本が浮いている。本人より本の方が忙しそうに動く。",
+  "onn_bbb": "木偶を身代わりにする。木偶の方がたまに人気者になる。",
+  "身代わりのONN": "木偶を身代わりにする。木偶の方がたまに人気者になる。",
+  "onn_bbr": "ONN、お前は栗学の柱になれと言われてなった姿。渡米、ONN。",
+  "栗学の柱 ONN": "ONN、お前は栗学の柱になれと言われてなった姿。渡米、ONN。",
+  "gl_base": "目つきがすでに強い。まだ弱いのに態度だけはラスボス級。",
+  "GL": "目つきがすでに強い。まだ弱いのに態度だけはラスボス級。",
+  "gl_a": "とりあえず前に出る。作戦会議中でも前に出る。",
+  "猛攻のGL": "とりあえず前に出る。作戦会議中でも前に出る。",
+  "gl_b": "怒る理由を探している。理由が見つからない時は それにも怒る。",
+  "怒りのGL": "怒る理由を探している。理由が見つからない時は それにも怒る。",
+  "gl_aa": "壊せそうな物を見つけると目が輝く。備品係からは恐れられている。",
+  "破壊のGL": "壊せそうな物を見つけると目が輝く。備品係からは恐れられている。",
+  "gl_ab": "一発で済む相手にも 何発も入れる。念のためが多すぎる。",
+  "連撃のGL": "一発で済む相手にも 何発も入れる。念のためが多すぎる。",
+  "gl_ba": "戦闘中は話が通じない。戦闘後も少し通じない。",
+  "狂戦のGL": "戦闘中は話が通じない。戦闘後も少し通じない。",
+  "gl_bb": "近くにいると空気が切れそうになる。紙を持つと勝手に切れることがある。",
+  "鋭刃のGL": "近くにいると空気が切れそうになる。紙を持つと勝手に切れることがある。",
+  "gl_aaa": "まとめて片付けるのが好き。掃除は苦手なのに 敵だけはきれいに消す。",
+  "殲滅のGL": "まとめて片付けるのが好き。掃除は苦手なのに 敵だけはきれいに消す。",
+  "gl_aab": "一撃にすべてをかける。外した後の空気が一番の弱点。",
+  "一撃のGL": "一撃にすべてをかける。外した後の空気が一番の弱点。",
+  "gl_aar": "久々にシャバの肉が掴める。と喜んでいる。",
+  "解体屋GL": "久々にシャバの肉が掴める。と喜んでいる。",
+  "gl_aba": "攻撃が多すぎてログが追いつかない。本人はまだウォーミングアップのつもり。",
+  "乱舞のGL": "攻撃が多すぎてログが追いつかない。本人はまだウォーミングアップのつもり。",
+  "gl_abb": "終わったと思ったところに来る。帰り道まで追ってきたという噂もある。",
+  "追撃のGL": "終わったと思ったところに来る。帰り道まで追ってきたという噂もある。",
+  "gl_abr": "攻撃が止まらない編。タイトルに編が付くほど長い。",
+  "GL-無限連射編-": "攻撃が止まらない編。タイトルに編が付くほど長い。",
+  "gl_baa": "止めると怒る。止めなくても怒る。だいたい怒っている。",
+  "バーサーカーGL": "止めると怒る。止めなくても怒る。だいたい怒っている。",
+  "gl_bab": "自分のHPを見ていない。勝ったあとに残りHPを見て少し引く。",
+  "捨て身のGL": "自分のHPを見ていない。勝ったあとに残りHPを見て少し引く。",
+  "gl_bar": "フン・・・。",
+  "クールなGL": "フン・・・。",
+  "gl_bba": "気配を消すのがうまい。注文した昼飯まで消えることがある。",
+  "アサシンGL": "気配を消すのがうまい。注文した昼飯まで消えることがある。",
+  "gl_bbb": "何でも斬ろうとする。会話の流れまで斬るので場が冷える。",
+  "斬撃のGL": "何でも斬ろうとする。会話の流れまで斬るので場が冷える。",
+  "gl_bbr": "運ゲーを実力と言い張る。勝った時だけ計算通りと言う。",
+  "賭博破戒録GL": "運ゲーを実力と言い張る。勝った時だけ計算通りと言う。",
+  "wacha_base": "何かを忘れている顔をしている。何を忘れたかを忘れている可能性が高い。ちんぽはまだ小さい。",
+  "わちゃ": "何かを忘れている顔をしている。何を忘れたかを忘れている可能性が高い。ちんぽはまだ小さい。",
+  "wacha_a": "魔法の練習中によく爆発する。本人は成功演出だと思っている。ちんぽは少し大きい。",
+  "魔法見習い・わちゃ": "魔法の練習中によく爆発する。本人は成功演出だと思っている。ちんぽは少し大きい。",
+  "wacha_b": "毒の瓶を持ち歩くが ラベルを貼り忘れる。周囲は毎回ヒヤヒヤする。ちんぽは少し大きい。",
+  "わちゃポイズン": "毒の瓶を持ち歩くが ラベルを貼り忘れる。周囲は毎回ヒヤヒヤする。ちんぽは少し大きい。",
+  "wacha_aa": "一人前になったはずだが まだ杖を探している時間が長い。ちんぽはかなり大きい。",
+  "一人前魔法使い・わちゃ": "一人前になったはずだが まだ杖を探している時間が長い。ちんぽはかなり大きい。",
+  "wacha_ab": "魔法で殴るのか 殴って魔法を出すのか 分類でもめている。ちんぽはかなり大きい。",
+  "バトマジのわちゃ": "魔法で殴るのか 殴って魔法を出すのか 分類でもめている。ちんぽはかなり大きい。",
+  "wacha_ba": "毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
+  "毒使いのわちゃ": "毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
+  "wacha_bb": "相手の技を封じる前に 自分の予定を封印していることがある。ちんぽはかなり大きい。",
+  "封印わちゃ": "相手の技を封じる前に 自分の予定を封印していることがある。ちんぽはかなり大きい。",
+  "wacha_aaa": "大魔法を使えるが 後片付けはできない。周囲の者が一番大変。ちんぽはデカすぎている。",
+  "大魔法使い・わちゃ": "大魔法を使えるが 後片付けはできない。周囲の者が一番大変。ちんぽはデカすぎている。",
+  "wacha_aab": "魔法が返ってくる。悪口も返ってくるので洞窟では静かにしたい。ちんぽはデカすぎている。",
+  "やまびこのわちゃ": "魔法が返ってくる。悪口も返ってくるので洞窟では静かにしたい。ちんぽはデカすぎている。",
+  "wacha_aar": "魔法を極め、禁術を使えるようになった。ちんぽがデカすぎて観光名所になっている。",
+  "禁術使いのわちゃ": "魔法を極め、禁術を使えるようになった。ちんぽがデカすぎて観光名所になっている。",
+  "wacha_aba": "盾は硬いが本人はゆるい。守っている途中で何を守るか忘れる。ちんぽはデカすぎている。",
+  "守護の盾・わちゃ": "盾は硬いが本人はゆるい。守っている途中で何を守るか忘れる。ちんぽはデカすぎている。",
+  "wacha_abb": "聖なる力で戦う。たまに聖なるうっかりで味方も驚く。ちんぽはデカすぎている。",
+  "パラディンわちゃ": "聖なる力で戦う。たまに聖なるうっかりで味方も驚く。ちんぽはデカすぎている。",
+  "wacha_abr": "夢か現実か分からない。存在しているかも謎。ちんぽがデカすぎており、そこで始めて存在が確認できる。",
+  "夢幻のわちゃ": "夢か現実か分からない。存在しているかも謎。ちんぽがデカすぎており、そこで始めて存在が確認できる。",
+  "wacha_baa": "近づくと空気が紫っぽく感じる。実際に紫かは見た人によって違う。ちんぽはデカすぎている。",
+  "猛毒わちゃ": "近づくと空気が紫っぽく感じる。実際に紫かは見た人によって違う。ちんぽはデカすぎている。",
+  "wacha_bab": "毒と呪いを混ぜる。本人はレシピを忘れたので二度と同じ物は作れない。ちんぽはデカすぎている。",
+  "呪毒わちゃ": "毒と呪いを混ぜる。本人はレシピを忘れたので二度と同じ物は作れない。ちんぽはデカすぎている。",
+  "wacha_bar": "目を合わせると危険。目を合わせなくても まあまあ危険。二股の蛇かと思われていたが実はでかいちんぽだった。",
+  "ワチャリスク": "目を合わせると危険。目を合わせなくても まあまあ危険。二股の蛇かと思われていたが実はでかいちんぽだった。",
+  "wacha_bba": "相手を黙らせるのは得意。ただし自分のおしゃべりは止まらない。ちんぽはデカすぎている。",
+  "沈黙わちゃ": "相手を黙らせるのは得意。ただし自分のおしゃべりは止まらない。ちんぽはデカすぎている。",
+  "wacha_bbb": "相手を止める。止めたあと 何をする予定だったか忘れる。ちんぽはデカすぎている。",
+  "行動不能わちゃ": "相手を止める。止めたあと 何をする予定だったか忘れる。ちんぽはデカすぎている。",
+  "wacha_bbr": "忘れ物の王。相手は技も目的も昼ごはんも忘れる。本人も王冠をよく失くす。ちんぽの大きさだけは忘れない。",
+  "忘れ物キング・わちゃ": "忘れ物の王。相手は技も目的も昼ごはんも忘れる。本人も王冠をよく失くす。ちんぽの大きさだけは忘れない。",
+  "dentaku_base": "カタカタ鳴っている。計算しているのか 機嫌が悪いのかは分からない。",
+  "電卓": "カタカタ鳴っている。計算しているのか 機嫌が悪いのかは分からない。",
+  "dentaku_a": "珠を弾く音で威圧する。暗算が速い相手には少し対抗心を燃やす。",
+  "そろばん兵": "珠を弾く音で威圧する。暗算が速い相手には少し対抗心を燃やす。",
+  "dentaku_b": "低確率をやたら信じる。外れると『今のは収束前』と言う。",
+  "ガチャ計算機": "低確率をやたら信じる。外れると『今のは収束前』と言う。",
+  "dentaku_aa": "改造で速くなったが 熱も持ちやすい。たまに煙を出しながら答える。",
+  "電卓・改": "改造で速くなったが 熱も持ちやすい。たまに煙を出しながら答える。",
+  "dentaku_ab": "魔法陣を計算で出す。計算ミスをすると変な光だけ出る。",
+  "魔導電卓": "魔法陣を計算で出す。計算ミスをすると変な光だけ出る。",
+  "dentaku_ba": "期待値で判断するが ロマンがある選択肢に弱い。結局そっちを押す。",
+  "期待値演算機": "期待値で判断するが ロマンがある選択肢に弱い。結局そっちを押す。",
+  "dentaku_bb": "周りの運をかき混ぜる。ガチャ前に近づけると信じる者もいる。",
+  "乱数サイコロ": "周りの運をかき混ぜる。ガチャ前に近づけると信じる者もいる。",
+  "dentaku_aaa": "ものすごく考える。考えすぎて制限時間を忘れることがある。",
+  "零式電卓-虚数ノ王-": "ものすごく考える。考えすぎて制限時間を忘れることがある。",
+  "dentaku_aab": "相手の動きを式にする。式にできない変な動きには露骨に困る。",
+  "数字の魔術師": "相手の動きを式にする。式にできない変な動きには露骨に困る。",
+  "dentaku_aar": "答えを出すのが速すぎる。だが冷却ファンの音はかなりうるさい。",
+  "スーパーコンピューター・京": "答えを出すのが速すぎる。だが冷却ファンの音はかなりうるさい。",
+  "dentaku_aba": "数式を唱えると魔法が出る。途中で噛むと意味不明な魔法になる。",
+  "数式詠唱士": "数式を唱えると魔法が出る。途中で噛むと意味不明な魔法になる。",
+  "dentaku_abb": "計算が計算を呼ぶ。止め時を失って 朝になることがある。",
+  "連鎖の電卓": "計算が計算を呼ぶ。止め時を失って 朝になることがある。",
+  "dentaku_abr": "実はそのまま殴った方が火力が高い。高く売れる。",
+  "せいぎのそろばん": "実はそのまま殴った方が火力が高い。高く売れる。",
+  "dentaku_baa": "悪い流れを収束させる。良い流れまで収束させる時がある。",
+  "収束の賢者": "悪い流れを収束させる。良い流れまで収束させる時がある。",
+  "dentaku_bab": "上振れを狙う装置。下振れした時は 仕様だと言い張る。",
+  "偏差制御装置": "上振れを狙う装置。下振れした時は 仕様だと言い張る。",
+  "dentaku_bar": "未来予測までたどり着いた計算ができる予測した未来を長々と説明するのが欠点。",
+  "超未来予測演算装置": "未来予測までたどり着いた計算ができる予測した未来を長々と説明するのが欠点。",
+  "dentaku_bba": "乱数を支配したつもりでいる。たまに乱数側に支配されている。",
+  "乱数の支配者": "乱数を支配したつもりでいる。たまに乱数側に支配されている。",
+  "dentaku_bbb": "計算より運が先に勝つ。式はあとから無理やり合わせる。",
+  "豪運スロッター": "計算より運が先に勝つ。式はあとから無理やり合わせる。",
+  "dentaku_bbr": "異世界の計算機を手にした姿。口癖はあれ？またなんかやっちゃいました？",
+  "異世界スマホ": "異世界の計算機を手にした姿。口癖はあれ？またなんかやっちゃいました？"
+};
+
+function dexProfileText(formId, formName, fallback=""){
+  return DEX_PROFILE_TEXT[formId] || DEX_PROFILE_TEXT[formName] || fallback || "";
+}
+
 function formDataFor(speciesKey, branchPath){
   const key = BASE_SPECIES[speciesKey] ? speciesKey : "shinya";
   const p = normalizeEvolutionPath(branchPath);
@@ -1235,7 +1495,7 @@ function formDataFor(speciesKey, branchPath){
       formId:`${key}_base`,
       formName:base.speciesName,
       speciesName:base.speciesName,
-      profile:base.role,
+      profile:dexProfileText(`${key}_base`, base.speciesName, base.role),
       role:base.role,
       stage:0,
       emoji:base.emoji,
@@ -1249,7 +1509,7 @@ function formDataFor(speciesKey, branchPath){
     formId:`${key}_${p}`,
     formName:entry?.formName || `${base.speciesName}進化体`,
     speciesName:base.speciesName,
-    profile:entry?.profile || "進化体。",
+    profile:dexProfileText(`${key}_${p}`, entry?.formName || `${base.speciesName}進化体`, entry?.profile || "進化体。"),
     role:base.role,
     stage:stageFromPath(p),
     emoji:base.emoji,
@@ -1285,7 +1545,7 @@ function repairDexItem(formId, item){
     speciesName:fixed.speciesName,
     formName:fixed.formName,
     role:item?.role || fixed.role,
-    profile:item?.profile && !String(item.profile).includes("進化体。") ? item.profile : fixed.profile,
+    profile:fixed.profile,
     formId:fixed.formId,
     stage:fixed.stage,
     seenAt:item?.seenAt || Date.now()
@@ -1299,6 +1559,42 @@ function repairDexCollection(){
   }
   state.dex = repaired;
 }
+function unlockAllDex(){
+  if(!state.dex) state.dex = {};
+  for(const key of Object.keys(BASE_SPECIES)){
+    const baseData = formDataFor(key,"");
+    state.dex[baseData.formId] = {
+      speciesKey:baseData.speciesKey,
+      branchPath:"base",
+      emoji:baseData.emoji,
+      image:baseData.image,
+      speciesName:baseData.speciesName,
+      formName:baseData.formName,
+      role:baseData.role,
+      profile:baseData.profile,
+      formId:baseData.formId,
+      stage:baseData.stage,
+      seenAt:state.dex[baseData.formId]?.seenAt || Date.now()
+    };
+    for(const path of Object.keys(EVOLUTION_TREE[key] || {})){
+      const fixed = formDataFor(key,path);
+      state.dex[fixed.formId] = {
+        speciesKey:fixed.speciesKey,
+        branchPath:fixed.branchPath || "base",
+        emoji:fixed.emoji,
+        image:fixed.image,
+        speciesName:fixed.speciesName,
+        formName:fixed.formName,
+        role:fixed.role,
+        profile:fixed.profile,
+        formId:fixed.formId,
+        stage:fixed.stage,
+        seenAt:state.dex[fixed.formId]?.seenAt || Date.now()
+      };
+    }
+  }
+}
+
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
   if(!source) return "";
@@ -1321,6 +1617,57 @@ function imageWithFallbackHtml(src, emoji, alt, className){
   }
   return `<span${cls}>${safeEmoji}</span><img src="${safeSrc}" alt="${safeAlt}" onload="this.previousElementSibling.style.display='none';" onerror="this.style.display='none';this.previousElementSibling.style.display='block';">`;
 }
+
+function setImageWithFallback(imgEl, fallbackEl, src, emoji){
+  if(!imgEl || !fallbackEl) return;
+  const safeEmoji = emoji || "❔";
+  fallbackEl.textContent = safeEmoji;
+
+  // 同じ画像ならsrcを入れ直さない。これがチカチカ防止の本体。
+  if(imgEl.dataset.src === (src || "")){
+    return;
+  }
+
+  imgEl.dataset.src = src || "";
+  imgEl.onload = null;
+  imgEl.onerror = null;
+
+  if(!src){
+    imgEl.removeAttribute("src");
+    imgEl.style.display = "none";
+    fallbackEl.style.display = "block";
+    return;
+  }
+
+  fallbackEl.style.display = "block";
+  imgEl.style.display = "none";
+  imgEl.onload = () => {
+    imgEl.style.display = "block";
+    fallbackEl.style.display = "none";
+  };
+  imgEl.onerror = () => {
+    imgEl.style.display = "none";
+    fallbackEl.style.display = "block";
+  };
+  imgEl.src = src;
+}
+function setBattleBody(el, actor){
+  if(!el) return;
+  const src = actorImage(actor);
+  const emoji = actorEmoji(actor);
+  const source = actor && actor.source ? actor.source : actor;
+  const name = source?.nickname || source?.formName || source?.name || "クリモン";
+
+  if(el.dataset.src === (src || "") && el.dataset.emoji === (emoji || "") && el.dataset.name === name){
+    return;
+  }
+
+  el.dataset.src = src || "";
+  el.dataset.emoji = emoji || "";
+  el.dataset.name = name;
+  el.innerHTML = imageWithFallbackHtml(src, emoji, name, "fighter-fallback");
+}
+
 function battlePortraitHtml(actor){
   const source = actor && actor.source ? actor.source : actor;
   const name = source?.nickname || source?.formName || source?.name || "クリモン";
@@ -1332,6 +1679,10 @@ let currentTab = "home";
 let currentEnemy = null;
 let battleBusy = false;
 let currentBattleHp = null;
+let dexRenderKey = "";
+let boxRenderKey = "";
+let treeRenderKey = "";
+let tipsRendered = false;
 
 function initGame(){
   return {
@@ -1349,6 +1700,7 @@ function initGame(){
   };
 }
 function migrateState(){
+  state.schemaVersion = 37;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -1360,6 +1712,7 @@ function migrateState(){
   if(!Array.isArray(state.tournamentLog)) state.tournamentLog = [];
 
   repairDexCollection();
+  unlockAllDex();
 
   for(const mon of state.monsters || []){
     repairMonsterRecord(mon);
@@ -1656,8 +2009,8 @@ function updateBattleStage(mon, enemy, myHp, enemyHp){
   document.getElementById("bfMyName").textContent=mon.nickname;
   document.getElementById("bfMySpecies").textContent=`${mon.formName} / ${mon.speciesName}`;
   document.getElementById("bfEnemyName").textContent=`${enemy.name} Lv.${enemy.level}`;
-  document.getElementById("bfMyBody").innerHTML=battlePortraitHtml(mon);
-  document.getElementById("bfEnemyBody").innerHTML=battlePortraitHtml(enemy);
+  setBattleBody(document.getElementById("bfMyBody"), mon);
+  setBattleBody(document.getElementById("bfEnemyBody"), enemy);
   document.getElementById("bfMyHpText").textContent=`HP ${Math.max(0,myHp)}/${mon.stats.hp}`;
   document.getElementById("bfEnemyHpText").textContent=`HP ${Math.max(0,enemyHp)}/${enemy.hp}`;
   document.getElementById("bfMyHpBar").style.width=`${Math.max(0,Math.round(myHp/mon.stats.hp*100))}%`;
@@ -1711,6 +2064,83 @@ function getSkills(actor){
     if((actor.def||0) >= (actor.atk||0)+2) add("ironWall");
     if((actor.luck||0) >= 15) add("recalc");
   }
+  if(name.includes("クール") || name.includes("バトマジ") || name.includes("パラディン") || name.includes("夢幻")) add("magicBlade"), add("magicSword");
+  if(name.includes("黒閃") || name.includes("解体") || name.includes("スーパーコンピューター") || name.includes("京")) add("dismantleArt");
+  // v33追加スキル
+  if(species==="shinya"){
+    if(stage>=1) add("counterStep");
+    if(name.includes("反応") || name.includes("瞬撃") || name.includes("分身") || name.includes("神速")) add("afterImage");
+    if(name.includes("拳聖") || name.includes("黒閃") || name.includes("シン・")) add("pressurePoint");
+  }
+  if(species==="onn"){
+    if(stage>=1) add("fortressAura");
+    if(name.includes("反撃") || name.includes("進撃") || name.includes("鬼に")) add("ironRebound");
+    if(name.includes("守護") || name.includes("要塞") || name.includes("柱")) add("tauntGuard");
+  }
+  if(species==="gl"){
+    if(stage>=1) add("rageBurst");
+    if(name.includes("斬撃") || name.includes("鋭刃") || name.includes("アサシン") || name.includes("乱舞")) add("bladeStorm");
+    if(name.includes("クール")) add("coldFlame");
+  }
+  if(species==="wacha"){
+    if(stage>=1) add("miniMeteor");
+    if(name.includes("やまびこ")) add("echoSpell");
+    if(name.includes("魔法") || name.includes("夢幻") || name.includes("パラディン")) add("manaDrain");
+    if(name.includes("封印") || name.includes("沈黙") || name.includes("忘れ物")) add("curseBind");
+    if(name.includes("行動不能") || name.includes("忘れ物")) add("sleepyMist");
+  }
+  if(species==="dentaku"){
+    if(stage>=1) add("probabilityHack");
+    if(name.includes("改式") || name.includes("魔導") || name.includes("高位") || name.includes("数式") || name.includes("京")) add("overflowCalc");
+    if(name.includes("京") || name.includes("異世界") || name.includes("未来")) add("divideByZero");
+    if(name.includes("乱数") || name.includes("偏差") || name.includes("収束") || name.includes("豪運")) add("forcedReroll");
+    if(name.includes("スーパーコンピューター") || name.includes("異世界")) add("debugMode");
+  }
+  // v34専用スキル
+  if(species==="shinya"){
+    if(name.includes("完成")) add("completeForm");
+    if(name.includes("技巧") || name.includes("超絶")) add("techniqueStorm");
+    if(name.includes("瞬撃") || name.includes("神速")) add("godspeedZero");
+    if(name.includes("師範") || name.includes("指導者")) add("masterLesson");
+    if(name.includes("黒閃") || name.includes("シン・")) add("blackFlashDomain");
+  }
+  if(species==="onn"){
+    if(name.includes("要塞") || name.includes("城塞") || name.includes("絶対防衛")) add("absoluteWall"), add("fortressCannon");
+    if(name.includes("再生") || name.includes("リバイバル")) add("revivalPrayer");
+    if(name.includes("柱")) add("pillarJudgement");
+    if(name.includes("鬼に")) add("oniPressure");
+  }
+  if(species==="gl"){
+    if(name.includes("殲滅")) add("annihilationShot");
+    if(name.includes("一撃")) add("oneSlash");
+    if(name.includes("無限連射")) add("infiniteTrigger");
+    if(name.includes("賭博")) add("gamblerRuin");
+    if(name.includes("クール")) add("coolExecution");
+  }
+
+  // 魔法系究極体・レア究極体の強魔法
+  if(stage>=3 && (name.includes("魔法") || name.includes("魔導") || name.includes("数式") || name.includes("京") || name.includes("技巧"))) add("grandMeteor");
+  if(stage>=3 && (name.includes("禁術") || name.includes("ワチャリスク") || name.includes("異世界") || name.includes("スーパーコンピューター"))) add("arcaneOverdrive");
+  if(stage>=3 && (name.includes("封印") || name.includes("沈黙") || name.includes("行動不能") || name.includes("忘れ物"))) add("sealCatastrophe");
+  if(stage>=3 && (name.includes("夢幻") || name.includes("禁術"))) add("dreamCollapse");
+  if(stage>=3 && (name.includes("京") || name.includes("未来") || name.includes("異世界") || name.includes("乱数") || name.includes("豪運"))) add("quantumBreak");
+
+  // v35：魔導電卓・数式詠唱士・連鎖の電卓の個性分け
+  if(species==="dentaku"){
+    if(name.includes("魔導電卓")){
+      add("magicConversion");
+      add("formulaCannon");
+    }
+    if(name.includes("数式詠唱士")){
+      add("equationChant");
+      add("quadraticBurst");
+    }
+    if(name.includes("連鎖の電卓")){
+      add("chainFormula");
+      add("chainReaction");
+    }
+  }
+
   return skills;
 }
 function skillLabel(id){return SKILL_DEFS[id]?.name || id;}
@@ -1736,16 +2166,144 @@ function cStat(c,key){
   const add=(c.buff && c.buff[key]) || 0;
   return Math.max(1, base + add);
 }
-function shouldUseSkill(attacker){
+
+function prefersMagicAttack(attacker){
+  const magic=cStat(attacker,"mag");
+  const atk=cStat(attacker,"atk");
+  if(magic >= atk + 8) return true;
+  const species = attacker.speciesKey || attacker.source?.speciesKey || "";
+  const name = attacker.formName || attacker.nickname || attacker.name || "";
+  if((species==="wacha" || species==="dentaku") && magic >= atk) return true;
+  if((name.includes("魔") || name.includes("演算") || name.includes("封印") || name.includes("忘れ物") || name.includes("京")) && magic >= atk - 5) return true;
+  return false;
+}
+function normalActionDamage(attacker, defender){
+  if(prefersMagicAttack(attacker)){
+    return {
+      kind:"magic",
+      label:"魔法攻撃",
+      statLabel:"魔法",
+      base:cStat(attacker,"mag"),
+      guard:Math.floor(cStat(defender,"def")*0.42)
+    };
+  }
+  return {
+    kind:"physical",
+    label:"通常攻撃",
+    statLabel:"攻撃",
+    base:cStat(attacker,"atk"),
+    guard:Math.floor(cStat(defender,"def")*0.55)
+  };
+}
+
+function skillUseRate(attacker){
+  const magic=cStat(attacker,"mag");
+  const atk=cStat(attacker,"atk");
+  const luck=cStat(attacker,"luck");
+  const spd=cStat(attacker,"spd");
+  let chance = 0.22 + magic / 520 + luck / 720;
+
+  // 魔法が攻撃より高い個体は、通常攻撃より魔法・状態異常を使いやすい
+  if(magic >= atk + 15) chance += 0.16;
+  if(magic >= atk + 35) chance += 0.16;
+  if(magic >= atk + 60) chance += 0.10;
+
+  chance += Math.min(0.08, spd/1200);
+
+  const species = attacker.speciesKey || attacker.source?.speciesKey || "";
+  const name = attacker.formName || attacker.nickname || attacker.name || "";
+  if(species==="wacha" || species==="dentaku") chance += 0.10;
+  if(name.includes("魔") || name.includes("封印") || name.includes("沈黙") || name.includes("行動不能") || name.includes("忘れ物") || name.includes("演算") || name.includes("京")) chance += 0.16;
+  if(name.includes("毒") || name.includes("禁術") || name.includes("ワチャリスク")) chance += 0.16;
+
+  return Math.max(0.10, Math.min(0.88, chance));
+}
+function skillScoreForActor(skillId, attacker, defender){
+  const skill=SKILL_DEFS[skillId];
+  if(!skill) return 0;
+  const magic=cStat(attacker,"mag");
+  const atk=cStat(attacker,"atk");
+  const luck=cStat(attacker,"luck");
+  const hp=attacker.hp || 1;
+  const maxHp=attacker.maxHp || hp || 1;
+  const name = attacker.formName || attacker.nickname || attacker.name || "";
+  let score=10;
+
+  if(skill.damageType==="hybrid") score += atk*0.55 + magic*0.55;
+  else if(skill.category==="magic") score += magic*0.9;
+  if(skill.category==="status") score += magic*0.65 + luck*0.25;
+  if(skill.category==="support") score += magic*0.35 + luck*0.18;
+  if(skill.category==="physical") score += atk*0.75;
+
+  // 高魔法なのに通常攻撃を振り続ける問題を防ぐ
+  if(magic >= atk + 40 && (skill.category==="magic" || skill.category==="status")) score += 60;
+
+  // 回復・守り系はHPが減った時に優先
+  if(skillId==="regenerate" || skillId==="kazukoBless" || skillId==="worldLine"){
+    score += (1 - hp/maxHp) * 130;
+  }
+  if(skillId==="ironWall" || skillId==="guardian" || skillId==="expectation" || skillId==="futureSight" || skillId==="bunshin"){
+    score += (1 - hp/maxHp) * 45;
+  }
+
+  // 既に同じ状態異常が入っている場合は優先度を下げる
+  if(defender.status){
+    if(skillId==="poison" && defender.status.poison>0) score -= 40;
+    if(skillId==="venom" && defender.status.venom>0) score -= 40;
+    if(skillId==="silence" && defender.status.silence>0) score -= 40;
+    if(skillId==="stun" && defender.status.stun>0) score -= 30;
+    if(skillId==="forgetSeal" && (defender.status.silence>0 || defender.status.stun>0)) score -= 20;
+  }
+
+  // 新スキルの得意ステータス補正
+  if(["miniMeteor","manaDrain","echoSpell","overflowCalc","divideByZero"].includes(skillId)) score += magic*0.35;
+  if(["counterStep","pressurePoint","rageBurst","bladeStorm"].includes(skillId)) score += atk*0.35;
+  if(skillId==="ironRebound") score += cStat(attacker,"def")*0.65;
+  if(skillId==="coldFlame") score += atk*0.35 + magic*0.35;
+  if(["probabilityHack","forcedReroll","debugMode"].includes(skillId)) score += luck*0.45;
+  if(["sleepyMist","curseBind","tauntGuard"].includes(skillId)) score += magic*0.25 + luck*0.25;
+
+  // 忘れ物キング・封印系は、封印/行動不能をかなり優先
+  if(name.includes("忘れ物") || name.includes("封印") || name.includes("沈黙") || name.includes("行動不能")){
+    if(skillId==="forgetSeal") score += 150;
+    if(skillId==="curseBind" || skillId==="sleepyMist") score += 120;
+    if(skillId==="silence" || skillId==="stun") score += 100;
+    if(skill.category==="magic" || skill.category==="status") score += 35;
+  }
+
+  if(["techniqueStorm","blackFlashDomain","coldFlame","fortressCannon","pillarJudgement","gamblerRuin","coolExecution","dreamCollapse"].includes(skillId)) score += atk*0.35 + magic*0.35;
+  if(["grandMeteor","arcaneOverdrive","sealCatastrophe","quantumBreak"].includes(skillId)) score += magic*0.55 + luck*0.25;
+  if(["godspeedZero","annihilationShot","infiniteTrigger"].includes(skillId)) score += atk*0.45 + cStat(attacker,"spd")*0.35;
+  if(skillId==="oneSlash") score += atk*0.7;
+  if(["absoluteWall","revivalPrayer"].includes(skillId)) score += (1 - hp/maxHp) * 90;
+  if(["completeForm","masterLesson","oniPressure"].includes(skillId)) score += 35;
+
+  if(["formulaCannon"].includes(skillId)) score += atk*0.35 + magic*0.45;
+  if(["quadraticBurst"].includes(skillId)) score += magic*0.75 + ((attacker.buff.mag||0)>0?45:0);
+  if(["chainReaction"].includes(skillId)) score += magic*0.45 + cStat(attacker,"spd")*0.25;
+  if(["magicConversion","equationChant","chainFormula"].includes(skillId)) score += 50 + magic*0.25;
+
+  return Math.max(1, score);
+}
+function chooseWeightedSkill(usable, attacker, defender){
+  const scored=usable.map(id=>({id,score:skillScoreForActor(id,attacker,defender)}));
+  const total=scored.reduce((sum,x)=>sum+x.score,0);
+  let r=Math.random()*total;
+  for(const item of scored){
+    r-=item.score;
+    if(r<=0) return item.id;
+  }
+  return scored[0]?.id || null;
+}
+function shouldUseSkill(attacker, defender){
   const silence = attacker.status?.silence || 0;
   const usable = getSkills(attacker).filter(id=>{
     const cat=SKILL_DEFS[id]?.category;
     return !(silence>0 && (cat==="magic" || cat==="status"));
   });
   if(!usable.length) return null;
-  const chance = Math.min(0.52, 0.18 + (cStat(attacker,"mag") + cStat(attacker,"luck")) / 420 + (attacker.level||1)/500);
-  if(Math.random()>=chance) return null;
-  return usable[Math.floor(Math.random()*usable.length)];
+  if(Math.random()>=skillUseRate(attacker)) return null;
+  return chooseWeightedSkill(usable, attacker, defender);
 }
 function pushEvent(events,type,text,a,b,extra={}){
   events.push({type,text,myHp:a.hp,enemyHp:b.hp,...extra});
@@ -1773,6 +2331,18 @@ function reduceDurations(actor){
   for(const k of ["silence","future"]){ if(actor.status[k]>0) actor.status[k]--; }
   for(const k of Object.keys(actor.buff)){ if(actor.buff[k]>0) actor.buff[k]--; else if(actor.buff[k]<0) actor.buff[k]++; }
 }
+
+function calcHybridDamage(attacker, defender, power=1, pierce=0){
+  // 攻撃＋魔法依存。攻撃型でも魔法スキルを使う意味を出す。
+  const atk = cStat(attacker,"atk");
+  const mag = cStat(attacker,"mag");
+  const guardRate = Math.max(0.05, 0.35 - pierce);
+  const guard = Math.floor(cStat(defender,"def") * guardRate);
+  const base = atk * 0.45 + mag * 0.45 - guard + 6;
+  const variance = 0.88 + Math.random()*0.24;
+  return Math.max(1, Math.round(base * power * variance));
+}
+
 function calcDamage(attacker, defender, kind="physical", power=1, ignoreDef=0){
   const atk = kind==="magic" ? cStat(attacker,"mag") : cStat(attacker,"atk");
   const def = Math.max(0, cStat(defender,"def") * (1-ignoreDef));
@@ -1786,23 +2356,31 @@ function applyHeal(actor,amount){const before=actor.hp;actor.hp=Math.min(actor.m
 function normalAttack(attacker, defender, events, monRef){
   const a = attacker.side==="me" ? attacker : defender;
   const b = attacker.side==="me" ? defender : attacker;
+  const action = normalActionDamage(attacker, defender);
+
   if(defender.status.future>0){
     defender.status.future=0;
-    pushEvent(events,"attack",`${attacker.name}の通常攻撃！ しかし${defender.name}は未来予測で回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true});
+    pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}は未来予測で回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});
     return;
   }
+
   const critRate=Math.min(0.38,0.05+(cStat(attacker,"luck")/120));
   const dodgeRate=Math.min(0.24,(cStat(defender,"luck")+cStat(defender,"spd"))/240);
   if(Math.random()<dodgeRate){
-    pushEvent(events,"attack",`${attacker.name}の通常攻撃！ しかし${defender.name}は回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true});
+    pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}は回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});
     return;
   }
-  let dmg=calcDamage(attacker,defender,"physical",1,0);
+
+  const variance = 0.88 + Math.random()*0.24;
+  let dmg=Math.max(1,Math.round((action.base*0.72 - action.guard + 4) * variance));
   const isCrit=Math.random()<critRate;
   if(isCrit) dmg=Math.round(dmg*1.55);
+
   applyDamage(defender,dmg);
   if(isCrit && monRef && attacker.side==="me" && monRef.history) monRef.history.crits++;
-  pushEvent(events,"attack",`${attacker.name}の通常攻撃！ ${defender.name}に${dmg}ダメージ${isCrit?"！ クリティカル！":""}`,a,b,{attacker:attacker.side,target:defender.side,dmg,crit:isCrit});
+
+  const statNote = action.kind==="magic" ? "魔法依存" : "攻撃依存";
+  pushEvent(events,"attack",`${attacker.name}の${action.label}！ ${defender.name}に${dmg}ダメージ${isCrit?"！ クリティカル！":""}（${statNote}）`,a,b,{attacker:attacker.side,target:defender.side,dmg,crit:isCrit,magic:action.kind==="magic"});
 }
 function useSkill(attacker, defender, skillId, events, monRef){
   const name=skillLabel(skillId);
@@ -1810,14 +2388,20 @@ function useSkill(attacker, defender, skillId, events, monRef){
   const b = attacker.side==="me"?defender:attacker;
   const push=(txt,extra={})=>pushEvent(events,"skill",txt,a,b,{attacker:attacker.side,target:defender.side,skill:skillId,...extra});
 
-  if(defender.status.future>0 && ["blackFlash","combo","reckless","dismantle","magicBullet","magicCannon","skyTree"].includes(skillId)){
+  if(defender.status.future>0 && ["blackFlash","combo","reckless","dismantle","magicBullet","magicCannon","magicBlade","magicSword","dismantleArt","skyTree","counterStep","pressurePoint","ironRebound","rageBurst","bladeStorm","coldFlame","miniMeteor","manaDrain","echoSpell","overflowCalc","divideByZero","techniqueStorm","godspeedZero","blackFlashDomain","fortressCannon","pillarJudgement","annihilationShot","oneSlash","infiniteTrigger","gamblerRuin","coolExecution","grandMeteor","arcaneOverdrive","sealCatastrophe","dreamCollapse","quantumBreak","formulaCannon","quadraticBurst","chainReaction"].includes(skillId)){
     defender.status.future=0;
     push(`${attacker.name}の${name}！ しかし${defender.name}は未来予測で回避した。`,{dmg:0,dodge:true}); return;
   }
   if(skillId==="focus"){attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}は集中した！ しばらく運が上がる。`);return;}
+  if(skillId==="afterImage"){attacker.buff.spd=Math.max(attacker.buff.spd,3);attacker.status.future=Math.max(attacker.status.future,1);push(`${attacker.name}の残像歩法！ 素早さが上がり、次の攻撃に備えた。`);return;}
+  if(skillId==="completeForm"){attacker.buff.atk=Math.max(attacker.buff.atk,3);attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}の完成形！ 攻撃・魔法・素早さが上がった。`);return;}
+  if(skillId==="masterLesson"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);attacker.buff.atk=Math.max(attacker.buff.atk,2);push(`${attacker.name}の師範の一喝！ ${defender.name}の攻撃と素早さが下がった。`);return;}
   if(skillId==="shunpo"){attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}は瞬歩を使った！ しばらく素早さが上がる。`);return;}
   if(skillId==="bunshin" || skillId==="futureSight"){attacker.status.future=2;push(`${attacker.name}は${name}を構えた！ 次の攻撃を1回回避する。`);return;}
   if(skillId==="ironWall"){attacker.buff.def=Math.max(attacker.buff.def,3);push(`${attacker.name}の鉄壁！ 防御が上がった。`);return;}
+  if(skillId==="fortressAura"){attacker.buff.def=Math.max(attacker.buff.def,4);attacker.buff.shield=Math.max(attacker.buff.shield,3);push(`${attacker.name}の要塞オーラ！ 防御が大きく上がり、ダメージを軽減する。`);return;}
+  if(skillId==="absoluteWall"){attacker.buff.def=Math.max(attacker.buff.def,5);attacker.buff.shield=Math.max(attacker.buff.shield,4);attacker.status.future=Math.max(attacker.status.future,1);push(`${attacker.name}の絶対防壁！ 防御が大きく上がり、次の攻撃にも備えた。`);return;}
+  if(skillId==="revivalPrayer"){const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.35+cStat(attacker,"mag")*0.45));attacker.status.regen=Math.max(attacker.status.regen,3);push(`${attacker.name}のリバイバル祈祷！ HPを${heal}回復し、再生状態になった。`);return;}
   if(skillId==="regenerate"){attacker.status.regen=Math.max(attacker.status.regen,3);push(`${attacker.name}は再生を始めた！`);return;}
   if(skillId==="guardian" || skillId==="expectation"){attacker.buff.shield=Math.max(attacker.buff.shield,3);push(`${attacker.name}の${name}！ 受けるダメージを軽減する。`);return;}
   if(skillId==="kazukoBless"){
@@ -1826,15 +2410,25 @@ function useSkill(attacker, defender, skillId, events, monRef){
     push(`${attacker.name}にカズコの加護！ HPを${heal}回復し、防御・魔法・運が上がった。`);return;
   }
   if(skillId==="fury"){attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の猛攻！ 攻撃が上がった。`);return;}
+  if(skillId==="probabilityHack"){attacker.buff.luck=Math.max(attacker.buff.luck,3);attacker.buff.mag=Math.max(attacker.buff.mag,3);push(`${attacker.name}の確率ハック！ 運と魔法が上がった。`);return;}
+  if(skillId==="debugMode"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}はデバッグモードに入った！ 魔法・素早さ・運が上がる。`);return;}
+  if(skillId==="magicConversion"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の魔導変換！ 魔法と攻撃が上がった。`);return;}
+  if(skillId==="equationChant"){attacker.buff.mag=Math.max(attacker.buff.mag,5);push(`${attacker.name}の方程式詠唱！ 魔法が大きく上がった。`);return;}
+  if(skillId==="chainFormula"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}の連鎖式！ 魔法と素早さが上がった。`);return;}
   if(skillId==="recalc"){attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}は再計算した！ 運が上がった。`);return;}
   if(skillId==="rngControl"){attacker.buff.luck=Math.max(attacker.buff.luck,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}が乱数を支配！ 運と素早さが上がった。`);return;}
   if(skillId==="worldLine"){
     const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.22));attacker.status.future=2;attacker.buff.luck=Math.max(attacker.buff.luck,3);
     push(`${attacker.name}は世界線を変更した！ HPを${heal}回復し、次の攻撃を回避する。`);return;
   }
+  if(skillId==="tauntGuard"){defender.buff.atk=Math.min(defender.buff.atk||0,-3); if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1); push(`${attacker.name}の挑発防御！ ${defender.name}の攻撃を下げ、動きを乱した。`);return;}
+  if(skillId==="forcedReroll"){defender.buff.atk=0;defender.buff.def=0;defender.buff.mag=0;defender.buff.luck=0;defender.buff.spd=0;attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}の強制再抽選！ ${defender.name}の強化を消し、自分の運を上げた。`);return;}
+  if(skillId==="oniPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}の鬼圧！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
   if(skillId==="poison"){defender.status.poison=Math.max(defender.status.poison,3);push(`${attacker.name}の毒！ ${defender.name}は毒状態になった。`);return;}
   if(skillId==="venom"){defender.status.venom=Math.max(defender.status.venom,3);push(`${attacker.name}の猛毒！ ${defender.name}は猛毒状態になった。`);return;}
+  if(skillId==="curseBind"){defender.status.silence=Math.max(defender.status.silence,2);defender.buff.atk=Math.min(defender.buff.atk||0,-2);push(`${attacker.name}の呪縛！ ${defender.name}は沈黙し、攻撃も下がった。`);return;}
   if(skillId==="silence"){defender.status.silence=Math.max(defender.status.silence,3);push(`${attacker.name}の沈黙！ ${defender.name}は魔法・状態異常スキルを封じられた。`);return;}
+  if(skillId==="sleepyMist"){const rate=Math.min(0.75,0.28+cStat(attacker,"mag")/160); if(Math.random()<rate){defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}のねむけミスト！ ${defender.name}は眠そうで動けない。`);}else{push(`${attacker.name}のねむけミスト！ しかし${defender.name}は眠気に耐えた。`);}return;}
   if(skillId==="stun"){defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の行動不能！ ${defender.name}は次の行動を止められた。`);return;}
   if(skillId==="forgetSeal"){defender.status.silence=Math.max(defender.status.silence,3); if(Math.random()<0.55) defender.status.stun=Math.max(defender.status.stun,1); push(`${attacker.name}の忘却封印！ ${defender.name}のスキルを封じた。`);return;}
 
@@ -1851,6 +2445,78 @@ function useSkill(attacker, defender, skillId, events, monRef){
     push(`${attacker.name}の捨て身！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,crit:false,myHp:a.hp,enemyHp:b.hp}); return;
   }else if(skillId==="dismantle"){
     dmg=calcDamage(attacker,defender,"physical",1.2,0.65); applyDamage(defender,dmg);
+  }else if(skillId==="magicBlade"){
+    dmg=calcHybridDamage(attacker,defender,1.12,0); applyDamage(defender,dmg);
+  }else if(skillId==="magicSword"){
+    dmg=calcHybridDamage(attacker,defender,1.05,0.10); applyDamage(defender,dmg);
+  }else if(skillId==="dismantleArt"){
+    dmg=calcHybridDamage(attacker,defender,1.18,0.16); applyDamage(defender,dmg);
+  }else if(skillId==="counterStep"){
+    dmg=calcDamage(attacker,defender,"physical",1.05,0.25);
+    crit=Math.random()<Math.min(0.55,0.14+cStat(attacker,"luck")/120);
+    if(crit)dmg=Math.round(dmg*1.55); applyDamage(defender,dmg);
+  }else if(skillId==="pressurePoint"){
+    dmg=calcDamage(attacker,defender,"physical",1.0,0.1)+Math.round(cStat(attacker,"luck")*0.25);
+    crit=Math.random()<Math.min(0.7,0.2+cStat(attacker,"luck")/95);
+    if(crit)dmg=Math.round(dmg*1.65); applyDamage(defender,dmg);
+  }else if(skillId==="ironRebound"){
+    dmg=Math.max(1,Math.round((cStat(attacker,"def")*0.78 - cStat(defender,"def")*0.25 + 5)*(0.9+Math.random()*0.2))); applyDamage(defender,dmg);
+  }else if(skillId==="rageBurst"){
+    dmg=calcDamage(attacker,defender,"physical",1.35,0); attacker.buff.atk=Math.max(attacker.buff.atk,2); applyDamage(defender,dmg);
+  }else if(skillId==="bladeStorm"){
+    dmg=calcDamage(attacker,defender,"physical",0.85,0)+Math.round(cStat(attacker,"spd")*0.25); applyDamage(defender,dmg);
+  }else if(skillId==="coldFlame"){
+    dmg=calcHybridDamage(attacker,defender,1.2,0.08); applyDamage(defender,dmg);
+  }else if(skillId==="miniMeteor"){
+    dmg=calcDamage(attacker,defender,"magic",1.05,0); if(Math.random()<0.2)dmg=Math.round(dmg*1.6); applyDamage(defender,dmg);
+  }else if(skillId==="manaDrain"){
+    dmg=calcDamage(attacker,defender,"magic",0.85,0); applyDamage(defender,dmg); const heal=applyHeal(attacker,Math.max(1,Math.round(dmg*0.35))); push(`${attacker.name}のマナ吸収！ ${defender.name}に${dmg}ダメージ。HPを${heal}回復した。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="echoSpell"){
+    const d1=calcDamage(attacker,defender,"magic",0.72,0), d2=calcDamage(attacker,defender,"magic",0.72,0); dmg=d1+d2; applyDamage(defender,dmg);
+  }else if(skillId==="overflowCalc"){
+    dmg=calcDamage(attacker,defender,"magic",1.15,0)+Math.round(cStat(attacker,"luck")*0.35); if(Math.random()<0.18)dmg=Math.round(dmg*1.7); applyDamage(defender,dmg);
+  }else if(skillId==="divideByZero"){
+    dmg=calcDamage(attacker,defender,"magic",1.75,0.08); applyDamage(defender,dmg); const recoil=Math.max(1,Math.round(attacker.maxHp*0.10)); attacker.hp=Math.max(1,attacker.hp-recoil); push(`${attacker.name}のゼロ除算！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="techniqueStorm"){
+    const d1=calcHybridDamage(attacker,defender,0.72,0.06), d2=calcHybridDamage(attacker,defender,0.72,0.06); dmg=d1+d2; applyDamage(defender,dmg);
+  }else if(skillId==="godspeedZero"){
+    dmg=calcDamage(attacker,defender,"physical",1.05,0.15)+Math.round(cStat(attacker,"spd")*0.45); applyDamage(defender,dmg);
+  }else if(skillId==="blackFlashDomain"){
+    dmg=calcHybridDamage(attacker,defender,1.25,0.08)+Math.round(cStat(attacker,"luck")*0.45);
+    crit=Math.random()<Math.min(0.65,0.18+cStat(attacker,"luck")/110); if(crit)dmg=Math.round(dmg*1.55); applyDamage(defender,dmg);
+  }else if(skillId==="fortressCannon"){
+    dmg=Math.max(1,Math.round((cStat(attacker,"def")*0.45+cStat(attacker,"mag")*0.55-cStat(defender,"def")*0.20+8)*(0.9+Math.random()*0.2))); applyDamage(defender,dmg);
+  }else if(skillId==="pillarJudgement"){
+    dmg=Math.max(1,Math.round((cStat(attacker,"hp")*0.18+cStat(attacker,"def")*0.38+cStat(attacker,"mag")*0.48-cStat(defender,"def")*0.22+10)*(0.9+Math.random()*0.2))); applyDamage(defender,dmg);
+  }else if(skillId==="annihilationShot"){
+    dmg=calcDamage(attacker,defender,"physical",1.22,0.10)+Math.round(cStat(attacker,"spd")*0.30); applyDamage(defender,dmg);
+  }else if(skillId==="oneSlash"){
+    dmg=calcDamage(attacker,defender,"physical",1.95,0.05); applyDamage(defender,dmg); const recoil=Math.max(1,Math.round(attacker.maxHp*0.08)); attacker.hp=Math.max(1,attacker.hp-recoil); push(`${attacker.name}の一撃粉砕！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,crit:false,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="infiniteTrigger"){
+    const hits=3+(Math.random()<0.35?1:0); dmg=0; for(let i=0;i<hits;i++){dmg+=calcDamage(attacker,defender,"physical",0.43,0);} applyDamage(defender,dmg);
+  }else if(skillId==="gamblerRuin"){
+    dmg=calcHybridDamage(attacker,defender,1.0,0.05)+Math.round(cStat(attacker,"luck")*0.55); if(Math.random()<0.22)dmg=Math.round(dmg*2.0); applyDamage(defender,dmg);
+  }else if(skillId==="coolExecution"){
+    dmg=calcHybridDamage(attacker,defender,1.35,0.12); applyDamage(defender,dmg);
+  }else if(skillId==="grandMeteor"){
+    dmg=calcDamage(attacker,defender,"magic",1.65,0.05); applyDamage(defender,dmg);
+  }else if(skillId==="arcaneOverdrive"){
+    dmg=calcDamage(attacker,defender,"magic",2.0,0.1); applyDamage(defender,dmg); const recoil=Math.max(1,Math.round(attacker.maxHp*0.12)); attacker.hp=Math.max(1,attacker.hp-recoil); push(`${attacker.name}の魔力暴走！ ${defender.name}に${dmg}ダメージ。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="sealCatastrophe"){
+    defender.status.silence=Math.max(defender.status.silence,3); dmg=calcDamage(attacker,defender,"magic",1.15,0.05); applyDamage(defender,dmg);
+  }else if(skillId==="dreamCollapse"){
+    dmg=calcHybridDamage(attacker,defender,1.45,0.10); applyDamage(defender,dmg);
+  }else if(skillId==="quantumBreak"){
+    dmg=calcDamage(attacker,defender,"magic",1.25,0.08)+Math.round(cStat(attacker,"luck")*0.75); if(Math.random()<0.18)dmg=Math.round(dmg*1.85); applyDamage(defender,dmg);
+  }else if(skillId==="formulaCannon"){
+    dmg=calcHybridDamage(attacker,defender,1.28,0.08); applyDamage(defender,dmg);
+  }else if(skillId==="quadraticBurst"){
+    const magBonus = Math.max(0,(attacker.buff.mag||0))*0.08;
+    dmg=calcDamage(attacker,defender,"magic",1.45+magBonus,0.06); applyDamage(defender,dmg);
+  }else if(skillId==="chainReaction"){
+    const hits=2 + (Math.random()<0.55?1:0) + (Math.random()<0.25?1:0);
+    dmg=0; for(let i=0;i<hits;i++){dmg+=calcDamage(attacker,defender,"magic",0.46,0);}
+    applyDamage(defender,dmg);
   }else if(skillId==="magicCannon"){
     dmg=calcDamage(attacker,defender,"magic",1.35,0); applyDamage(defender,dmg);
   }else if(skillId==="skyTree"){
@@ -1870,7 +2536,7 @@ function takeAction(attacker, defender, events, monRef){
     const b = attacker.side==="me" ? defender : attacker;
     pushEvent(events,"status",`${attacker.name}は行動不能で動けない！`,a,b); return;
   }
-  const skill=shouldUseSkill(attacker);
+  const skill=shouldUseSkill(attacker,defender);
   if(skill) useSkill(attacker,defender,skill,events,monRef);
   else normalAttack(attacker,defender,events,monRef);
 }
@@ -2221,16 +2887,30 @@ function showTab(tab){
   currentTab=tab;
   ["home","raise","battle","mock","box","dex","tips","settings"].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle("hidden",t!==tab));
   if(tab==="battle" && getCurrentMonster() && !currentEnemy) prepareBattlePreview();
-  if(tab==="mock") renderMockBattle();
   render();
 }
 function render(){
-  recoverApByTime();checkHatch();
+  recoverApByTime();
+  checkHatch();
   const mon=getCurrentMonster();
+
   document.getElementById("cpText").textContent=state.cp;
   document.getElementById("apText").textContent=`${state.ap}/${state.maxAp}`;
   document.getElementById("timeBandText").textContent=getTimeBand().label;
-  renderEgg();renderMonster(mon);renderRaise(mon);renderBattle(mon);renderMockBattle();renderBox();renderDex();renderEvolutionTree();renderTips();renderLog();saveGame();
+
+  // 毎秒必要なものだけ更新。画像や大量DOMを全タブ分作り直さない。
+  renderEgg();
+
+  if(currentTab==="home") renderMonster(mon);
+  if(currentTab==="raise") renderRaise(mon);
+  if(currentTab==="battle") renderBattle(mon);
+  if(currentTab==="mock") renderMockBattle();
+  if(currentTab==="box") renderBox();
+  if(currentTab==="dex"){renderDex();renderEvolutionTree();}
+  if(currentTab==="tips") renderTips();
+
+  renderLog();
+  saveGame();
 }
 function renderEgg(){
   const icon=document.getElementById("eggIcon"), title=document.getElementById("eggTitle"), desc=document.getElementById("eggDesc");
@@ -2258,15 +2938,7 @@ function renderMonster(mon){
     skillArea.innerHTML=`<b>使えるスキル・魔法</b>${renderSkillChips(mon)}`;
   }
   const img=document.getElementById("monsterImg"), emoji=document.getElementById("monsterEmoji");
-  const src=actorImage(mon);
-  emoji.textContent=actorEmoji(mon)||"🐣";
-  emoji.style.display="block";
-  img.style.display="none";
-  if(src){
-    img.onload=()=>{img.style.display="block";emoji.style.display="none"};
-    img.onerror=()=>{img.style.display="none";emoji.style.display="block"};
-    img.src=src;
-  }
+  setImageWithFallback(img, emoji, actorImage(mon), actorEmoji(mon)||"🐣");
   const caps=getStatCaps(mon);
   document.getElementById("statsArea").innerHTML=Object.entries(STAT_LABEL).map(([key,label])=>{
     const val=mon.stats[key], cap=caps[key], pct=Math.min(100,Math.round((val/cap)*100));
@@ -2570,6 +3242,9 @@ function renderBattle(mon){
 function renderBox(){
   const area=document.getElementById("boxArea");
   const mons=state.monsters||[];
+  const key=JSON.stringify(mons.map(m=>[m.id,m.nickname,m.formName,m.level,m.personality,m.condition,m.stats,getSkills(m).join(",")]))+":"+state.currentId;
+  if(boxRenderKey===key && area.innerHTML) return;
+  boxRenderKey=key;
   if(mons.length===0){area.innerHTML=`<div class="hint">まだクリモンがいません。</div>`;return}
   area.innerHTML=mons.map(mon=>`
     <div class="mini ${mon.id===state.currentId?"active":""}">
@@ -2611,7 +3286,11 @@ function dexThumbHtml(item){
 function renderDex(){
   const area=document.getElementById("collectionArea");
   if(!area) return;
-  const items=Object.values(state.dex||{});
+  repairDexCollection();
+  const items=Object.values(state.dex||{}).sort((a,b)=>String(a.formId||"").localeCompare(String(b.formId||"")));
+  const key=items.map(x=>`${x.formId}:${x.formName}:${dexProfileText(x.formId,x.formName,x.profile||x.role||"")}`).join("|");
+  if(dexRenderKey===key && area.innerHTML) return;
+  dexRenderKey=key;
   if(items.length===0){area.innerHTML=`<div class="hint">まだ図鑑登録がありません。</div>`;return}
   area.innerHTML=items.map(item=>{
     const formName = item.formName || item.speciesName || item.formId || "クリモン";
@@ -2625,7 +3304,7 @@ function renderDex(){
         <span>種族：${escapeHtml(speciesName)}</span><br>
         ${formId ? `<span>ID：${escapeHtml(formId)}</span><br>` : ""}
         <span>段階：${stageName(stage)}</span><br>
-        <span>${escapeHtml(item.profile||item.role||"")}</span>
+        <span>${escapeHtml(dexProfileText(formId, formName, item.profile||item.role||""))}</span>
       </div>
     </div>`;
   }).join("");
@@ -2635,7 +3314,10 @@ function renderEvolutionTree(){
   const select=document.getElementById("treeSpeciesSelect");
   if(!area) return;
   const key = state.selectedTreeSpecies || "shinya";
+  const renderKey = key + ":" + Object.keys(state.dex||{}).sort().join(",");
   if(select && select.value !== key) select.value = key;
+  if(treeRenderKey===renderKey && area.innerHTML) return;
+  treeRenderKey=renderKey;
   area.innerHTML = buildSelectedSpeciesTreeHtml(key);
 }
 function setTreeSpecies(key){
