@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v42 図鑑画像JS読込版</title>
+  <title>クリモン - 基礎版 v43 図鑑画像base自動代替版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -794,7 +794,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v42 図鑑画像JS読込版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v43 図鑑画像base自動代替版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -997,7 +997,7 @@
 
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
-      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。</p>
+      <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。個別進化画像が未配置の場合は同系統のbase画像を自動表示します。</p>
       <div class="row" style="margin:8px 0 12px;">
         <button class="ghost" onclick="forceRedrawDexImages()">図鑑画像を再描画</button>
         <button class="ghost" onclick="runDexImageDebug()">画像診断</button>
@@ -1775,7 +1775,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 42;
+  state.schemaVersion = 43;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3364,39 +3364,73 @@ function dexDirectImageHtml(src, emoji, alt, thumbClass="dex-thumb"){
 function absoluteImageUrl(src){
   try{return new URL(src, document.baseURI).href;}catch(e){return src || "";}
 }
+function imageBaseFallbackPath(src){
+  const s = String(src || "");
+  const m = s.match(/^(.*\/)?([a-z]+)_[^\/.]+(\.png)$/i);
+  if(!m) return "";
+  return `${m[1]||""}${m[2]}_base${m[3]}`;
+}
+function imageCandidatePaths(src){
+  const list = [];
+  if(src) list.push(src);
+  const base = imageBaseFallbackPath(src);
+  if(base && base !== src) list.push(base);
+  return [...new Set(list)];
+}
+function loadThumbCandidate(thumb, candidates, index=0){
+  const img = thumb.querySelector("img.dex-direct-img");
+  const fallback = thumb.querySelector(".dex-direct-fallback");
+  if(!img || !candidates.length){
+    if(fallback) fallback.style.display = "block";
+    return;
+  }
+  const src = candidates[index];
+  const url = absoluteImageUrl(src);
+  thumb.dataset.activeCandidate = src;
+  thumb.dataset.activeUrl = url;
+  thumb.dataset.candidateIndex = String(index);
+  thumb.style.backgroundImage = `url("${url}")`;
+  if(fallback) fallback.style.display = "block";
+  img.style.display = "none";
+  img.onload = () => {
+    img.style.display = "block";
+    if(fallback) fallback.style.display = "none";
+    thumb.dataset.loadStatus = index === 0 ? "ok" : "fallback";
+    thumb.dataset.naturalSize = `${img.naturalWidth}x${img.naturalHeight}`;
+  };
+  img.onerror = () => {
+    if(index + 1 < candidates.length){
+      loadThumbCandidate(thumb, candidates, index + 1);
+    }else{
+      img.style.display = "none";
+      thumb.style.backgroundImage = "";
+      if(fallback) fallback.style.display = "block";
+      thumb.dataset.loadStatus = "ng";
+      thumb.dataset.naturalSize = "0x0";
+    }
+  };
+  img.src = url;
+}
 function hydrateDexImages(root=document){
   const thumbs = [...root.querySelectorAll("[data-img-src]")];
   for(const thumb of thumbs){
     const src = thumb.dataset.imgSrc || "";
     const img = thumb.querySelector("img.dex-direct-img");
     const fallback = thumb.querySelector(".dex-direct-fallback");
-    if(!src || !img){
+    const candidates = imageCandidatePaths(src);
+    if(!src || !img || !candidates.length){
       if(fallback) fallback.style.display = "block";
       continue;
     }
-    const url = absoluteImageUrl(src);
-    if(thumb.dataset.hydratedSrc === url && img.complete && img.naturalWidth > 0) continue;
-    thumb.dataset.hydratedSrc = url;
-    thumb.style.backgroundImage = `url("${url}")`;
-    if(fallback) fallback.style.display = "block";
-    img.style.display = "none";
-    img.onload = () => {
-      img.style.display = "block";
-      if(fallback) fallback.style.display = "none";
-      thumb.dataset.loadStatus = "ok";
-      thumb.dataset.naturalSize = `${img.naturalWidth}x${img.naturalHeight}`;
-    };
-    img.onerror = () => {
-      img.style.display = "none";
-      thumb.style.backgroundImage = "";
-      if(fallback) fallback.style.display = "block";
-      thumb.dataset.loadStatus = "ng";
-      thumb.dataset.naturalSize = "0x0";
-    };
-    img.src = url;
+    const key = candidates.join("|");
+    if(thumb.dataset.hydratedSrc === key && img.complete && img.naturalWidth > 0) continue;
+    thumb.dataset.hydratedSrc = key;
+    thumb.dataset.originalSrc = src;
+    thumb.dataset.fallbackSrc = candidates[1] || "";
+    loadThumbCandidate(thumb, candidates, 0);
   }
 }
-function preloadImageForDebug(src, timeoutMs=5000){
+function preloadOneImage(src, timeoutMs=5000){
   return new Promise(resolve=>{
     const url = absoluteImageUrl(src);
     const img = new Image();
@@ -3406,6 +3440,19 @@ function preloadImageForDebug(src, timeoutMs=5000){
     img.onerror = () => {clearTimeout(timer); done(false);};
     img.src = url;
   });
+}
+async function preloadImageForDebug(src, timeoutMs=5000){
+  const candidates = imageCandidatePaths(src);
+  const tried = [];
+  for(let i=0;i<candidates.length;i++){
+    const r = await preloadOneImage(candidates[i], timeoutMs);
+    tried.push(r);
+    if(r.ok && r.w>0){
+      return {src, url:r.url, ok:true, w:r.w, h:r.h, used:r.src, mode:i===0?"OK":"BASE代替", tried};
+    }
+  }
+  const last = tried[tried.length-1] || {url:absoluteImageUrl(src), w:0, h:0};
+  return {src, url:last.url, ok:false, w:0, h:0, used:"", mode:"NG", tried};
 }
 function forceRedrawDexImages(){
   dexRenderKey = "";
@@ -3427,10 +3474,11 @@ async function runDexImageDebug(){
   area.innerHTML = `画像ロード確認中... 対象 ${unique.length}件`;
   const results = await Promise.all(unique.map(src=>preloadImageForDebug(src,5000)));
   const okCount = results.filter(r=>r.ok && r.w>0).length;
-  const rows = results.slice(0,50).map(r=>`<tr><td>${r.ok && r.w>0 ? "OK" : "NG"}</td><td>${r.w}x${r.h}</td><td>${escapeHtml(r.src)}</td><td>${escapeHtml(r.url)}</td></tr>`).join("");
-  area.innerHTML = `<b>図鑑画像診断</b><br>対象：${results.length}件 / OK：${okCount}件 / NG：${results.length-okCount}件<br>
-    <span class="small">※この診断は画像ロード完了を最大5秒待ってから判定します。</span>
-    <table class="dex-debug-table"><tr><th>状態</th><th>サイズ</th><th>相対パス</th><th>実URL</th></tr>${rows}</table>`;
+  const fallbackCount = results.filter(r=>r.mode==="BASE代替").length;
+  const rows = results.slice(0,60).map(r=>`<tr><td>${escapeHtml(r.mode || (r.ok?"OK":"NG"))}</td><td>${r.w}x${r.h}</td><td>${escapeHtml(r.src)}</td><td>${escapeHtml(r.used || "")}</td><td>${escapeHtml(r.url)}</td></tr>`).join("");
+  area.innerHTML = `<b>図鑑画像診断</b><br>対象：${results.length}件 / 表示可能：${okCount}件 / base代替：${fallbackCount}件 / 完全NG：${results.length-okCount}件<br>
+    <span class="small">※完全体などの個別画像が無い場合は、同じ系統の base 画像を自動表示します。</span>
+    <table class="dex-debug-table"><tr><th>状態</th><th>サイズ</th><th>要求パス</th><th>実際に使ったパス</th><th>実URL</th></tr>${rows}</table>`;
   hydrateDexImages(document.getElementById("tab-dex") || document);
 }
 
