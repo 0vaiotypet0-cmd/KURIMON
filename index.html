@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v61 CPU整理・アイテム確認版</title>
+  <title>クリモン - 製品版 v62 CPU整理・バトル修正版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -996,7 +996,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v60 持ち物</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v62 CPU整理・持ち物</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -2198,7 +2198,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 57;
+  state.schemaVersion = 62;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -2680,7 +2680,6 @@ function renderAwakeningPanel(mon){
 }
 
 function makeEnemy(level){
-  // v61: 旧CPU定義は削除。実際のCPUは後段のENEMY_MASTERから生成する。
   if(typeof makeEnemyFromMaster === "function") return makeEnemyFromMaster(level);
   const fallbackLevel = level || 1;
   return {name:"コタロー", emoji:"🐕", image:"images/enemy_kotaro.png", level:fallbackLevel, hp:40+fallbackLevel*3, atk:8+fallbackLevel, def:8+fallbackLevel, mag:8+fallbackLevel, luck:8+fallbackLevel, spd:8+fallbackLevel};
@@ -4533,12 +4532,6 @@ function hydrateDexImages(root=document){
   }
 }
 
-async 
-
-
-async 
-
-
 function dexInfoFromItem(item){
   const fixed = repairDexItem(item?.formId || "", item || {});
   return {speciesKey:fixed.speciesKey, branchPath:fixed.branchPath, emoji:fixed.emoji, image:fixed.image};
@@ -4832,7 +4825,7 @@ function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
 
-/* v61 持ち物・レアエネミー・闘技場連勝戦 */
+/* v62 持ち物・レアエネミー・闘技場連勝戦 */
 const KURIMON_V60_ORIGINALS = {
   makeEnemy,
   makeCombatant,
@@ -5444,7 +5437,7 @@ function renderV61Catalog(){
     return items?`<h3>${escapeHtml(r)}アイテム</h3><ul class="tip-list">${items}</ul>`:"";
   }).join("");
   const enemyRows=ENEMY_MASTER.map(e=>`<tr><td>${escapeHtml(e.type==="rare"?"レア":"通常")}</td><td>${escapeHtml(e.name)}</td><td>${escapeHtml(e.rank)}</td><td>${escapeHtml(e.direction)}</td><td>${escapeHtml(e.dropTableId||"")}</td></tr>`).join("");
-  area.innerHTML=`<h3>🎁 アイテム・エネミー確認リスト</h3><p>v61で追加済みのアイテムとCPUエネミー一覧です。所持していないアイテムもここで確認できます。</p>${itemGroups}<h3>CPUエネミー一覧</h3><div style="overflow-x:auto;"><table class="tips-table"><thead><tr><th>種別</th><th>敵名</th><th>ランク</th><th>方向性</th><th>報酬テーブル</th></tr></thead><tbody>${enemyRows}</tbody></table></div>`;
+  area.innerHTML=`<h3>🎁 アイテム・エネミー確認リスト</h3><p>v62で追加済みのアイテムとCPUエネミー一覧です。所持していないアイテムもここで確認できます。</p>${itemGroups}<h3>CPUエネミー一覧</h3><div style="overflow-x:auto;"><table class="tips-table"><thead><tr><th>種別</th><th>敵名</th><th>ランク</th><th>方向性</th><th>報酬テーブル</th></tr></thead><tbody>${enemyRows}</tbody></table></div>`;
 }
 const KURIMON_V61_ORIGINAL_RENDER_TIPS = renderTips;
 renderTips = function(){
