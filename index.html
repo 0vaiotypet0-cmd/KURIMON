@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - v68</title>
+  <title>クリモン - 製品版 v69</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1007,7 +1007,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v68 持ち物・TIPS・レア進化調整版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v69</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -4799,10 +4799,10 @@ const STAT_TIPS = {
   },
   luck: {
     name:"運",
-    summary:"クリティカル・回避・遊びの成功に関わるステータス。レア進化では補助的に影響します。",
+    summary:"クリティカル・回避・レア進化・遊びの成功に関わるステータス。",
     battle:["クリティカル率が上がる。", "回避率にも影響する。"],
     training:["運トレーニングで上昇。", "性格『豪運』『沼』だと伸ばしやすい。", "遊びの結果にも関係する。"],
-    evolution:["レア進化判定に補助的に影響する。ただし運だけではレア進化しにくく、特殊経験も必要。"]
+    evolution:["レア進化判定に大きく影響する。"]
   },
   spd: {
     name:"素早さ",
@@ -4857,7 +4857,7 @@ function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
 
-/* v68 覚醒補助・闘技場画像修正継承 */
+/* v67 覚醒補助・闘技場画像修正 */
 const KURIMON_V60_ORIGINALS = {
   makeEnemy,
   makeCombatant,
