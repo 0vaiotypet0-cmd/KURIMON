@@ -996,7 +996,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v64 持ち物装備修正版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v65 スマホ持ち物装備修正版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -4999,6 +4999,18 @@ function rollDropFromTable(tableId){
   if(entry.rarity)return randomItemByRarity(entry.rarity);
   return null;
 }
+function pauseItemAutoRender(ms=8000){
+  window.__kurimonPauseAutoRenderUntil = Date.now() + ms;
+}
+function canAutoRenderNow(){
+  const active=document.activeElement;
+  if(active && (active.id==="holdItemSelect" || active.closest?.(".item-area"))) return false;
+  return !(window.__kurimonPauseAutoRenderUntil && Date.now() < window.__kurimonPauseAutoRenderUntil);
+}
+function equipItemByButton(id){
+  pauseItemAutoRender(2500);
+  equipCurrentItem(id);
+}
 function equipCurrentItem(selectedId){
   ensureItemSystems();
   const mon=getCurrentMonster(); if(!mon)return;
@@ -5048,7 +5060,8 @@ function renderItemPanel(mon){
   const holdOptions=HOLD_ITEM_IDS.filter(id=>ownedCount(id)>0 || current===id).sort((a,b)=>RARITY_ORDER[ITEM_MASTER[a].rarity]-RARITY_ORDER[ITEM_MASTER[b].rarity] || itemName(a).localeCompare(itemName(b),"ja"));
   const opts=['<option value="">持ち物なし</option>'].concat(holdOptions.map(id=>`<option value="${escapeHtml(id)}" ${current===id?"selected":""}>${escapeHtml(itemLabel(id))}（空き${availableCount(id)}）</option>`)).join("");
   const held=current ? `${itemLabel(current)}：${ITEM_MASTER[current]?.desc || ""}` : "なし";
-  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect" onchange="equipCurrentItem(this.value)">${opts}</select><button onclick="equipCurrentItem()">持ち物を変更</button></div><p class="small">選択した時点で装備が反映されます。1秒ごとの画面更新で選択が戻る問題を修正済みです。</p>${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
+  const holdButtons=holdOptions.length ? `<div class="item-row"><button class="ghost" onclick="equipItemByButton('')">持ち物を外す</button>${holdOptions.map(id=>`<button class="ghost" onclick="equipItemByButton('${escapeHtml(id)}')">${escapeHtml(itemLabel(id))}を持たせる</button>`).join("")}</div>` : "";
+  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect" onfocus="pauseItemAutoRender(12000)" onblur="pauseItemAutoRender(1500)" ontouchstart="pauseItemAutoRender(12000)" onclick="pauseItemAutoRender(12000)" onchange="pauseItemAutoRender(2500);equipCurrentItem(this.value)">${opts}</select><button ontouchstart="pauseItemAutoRender(2500)" onclick="equipCurrentItem()">持ち物を変更</button></div><p class="small">スマホで選択中に画面更新が入らないよう修正。うまく反映されない時は下の直接装備ボタンを使ってください。</p>${holdButtons}${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
 }
 function renderAwakeningAssistSelector(){
   ensureItemSystems();
@@ -5528,7 +5541,7 @@ resetGame = function(){
 ensureItemSystems();
 injectV60Styles();
 
-setInterval(render,1000);
+setInterval(()=>{ if(canAutoRenderNow()) render(); },1000);
 render();
 </script>
 </body>
