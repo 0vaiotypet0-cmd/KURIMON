@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v56 闘技場アニメーション版</title>
+  <title>クリモン - 製品版 v57 覚醒ノ儀版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -874,6 +874,52 @@ body{padding-bottom:86px;}
   min-height:280px;
 }
 
+
+
+/* v57 覚醒ノ儀 */
+.awakening-area{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(248,214,109,.26);
+  background:linear-gradient(180deg,rgba(248,214,109,.10),rgba(0,0,0,.12));
+  border-radius:16px;
+}
+.awakening-area h3{color:#fff1a1;display:flex;align-items:center;gap:6px;}
+.awakening-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;}
+.awakening-option{
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.22);
+  border-radius:14px;
+  padding:10px;
+}
+.awakening-option strong{display:block;font-size:13px;color:#fff1a1;margin-bottom:4px;}
+.awakening-option .small{display:block;line-height:1.45;}
+.awakening-option button{width:100%;margin-top:8px;padding:8px 9px;font-size:12px;}
+.awakening-result{
+  margin-top:10px;
+  padding:10px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.20);
+  font-size:12px;
+  line-height:1.6;
+}
+.awakening-result b{color:#fff1a1;}
+.awakening-risk{color:#ffb7c0;font-weight:900;}
+.awakening-success{color:#8dffb5;font-weight:900;}
+.awakening-great{color:#ffe76d;font-weight:950;}
+.awakening-title-badge{
+  display:inline-flex;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(248,214,109,.42);
+  background:rgba(248,214,109,.14);
+  color:#ffe38b;
+  font-size:12px;
+  font-weight:900;
+  margin:2px 3px 2px 0;
+}
+
 </style>
 
 <style>
@@ -937,7 +983,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v56 闘技場アニメ</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v57 覚醒ノ儀</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -981,6 +1027,7 @@ body{padding-bottom:86px;}
             </div>
             <div class="hint" id="evolveHint">---</div>
             <div id="statsArea"></div>
+            <div id="awakeningArea" class="awakening-area"></div>
             <div id="skillsArea" class="skill-area"></div>
           </div>
         </div>
@@ -1262,6 +1309,16 @@ body{padding-bottom:86px;}
         </div>
 
         <div class="tips-card">
+          <h3>覚醒ノ儀</h3>
+          <p>
+            Lv.100到達後に1体につき1回だけ挑戦できる危険な最終強化です。<br>
+            体力・攻撃・防御・魔法は成功率40%、運・素早さは35%、特別なスキルは25%、オールステータスは15%です。<br>
+            大成功すると、通常成功より大きく伸び、称号を獲得します。特別なスキルは、成功時に各キャラ専用スキル候補から2つ付与されます。<br>
+            失敗時は選んだ能力、またはランダム能力が大幅に低下します。
+          </p>
+        </div>
+
+        <div class="tips-card">
           <h3>休憩</h3>
           <p>
             休憩するとAPが全回復し、コンディションが1段階回復します。<br>
@@ -1443,6 +1500,39 @@ const CONDITIONS = {
 
 const STAT_LABEL = { hp:"体力", atk:"攻撃", def:"防御", mag:"魔法", luck:"運", spd:"素早さ" };
 const MAX_LEVEL = 100;
+
+
+const AWAKENING_OPTIONS = {
+  hp:{label:"体力", successRate:0.40, greatRate:0.05, successPct:0.25, greatPct:0.40, failPct:0.20, target:["hp"], successText:"HP +25%", failText:"HP -20%"},
+  atk:{label:"攻撃", successRate:0.40, greatRate:0.05, successPct:0.25, greatPct:0.40, failPct:0.20, target:["atk"], successText:"攻撃 +25%", failText:"攻撃 -20%"},
+  def:{label:"防御", successRate:0.40, greatRate:0.05, successPct:0.25, greatPct:0.40, failPct:0.20, target:["def"], successText:"防御 +25%", failText:"防御 -20%"},
+  mag:{label:"魔法", successRate:0.40, greatRate:0.05, successPct:0.25, greatPct:0.40, failPct:0.20, target:["mag"], successText:"魔法 +25%", failText:"魔法 -20%"},
+  luck:{label:"運", successRate:0.35, greatRate:0.04, successPct:0.30, greatPct:0.45, failPct:0.25, target:["luck"], successText:"運 +30%", failText:"運 -25%"},
+  spd:{label:"素早さ", successRate:0.35, greatRate:0.04, successPct:0.30, greatPct:0.45, failPct:0.25, target:["spd"], successText:"素早さ +30%", failText:"素早さ -25%"},
+  special:{label:"特別なスキル", successRate:0.25, greatRate:0.03, successPct:0, greatPct:0, failPct:0.15, target:[], successText:"専用レアスキル2つ獲得", failText:"ランダム能力2つ -15%"},
+  all:{label:"オールステータス", successRate:0.15, greatRate:0.02, successPct:0.15, greatPct:0.25, failPct:0.15, target:["hp","atk","def","mag","luck","spd"], successText:"全能力 +15%", failText:"全能力 -15%"}
+};
+const AWAKENING_ORDER = ["hp","atk","def","mag","luck","spd","special","all"];
+const AWAKENING_SKILL_POOLS = {
+  shinya:["completeForm","godspeedZero","blackFlashDomain","techniqueStorm","masterLesson","pressurePoint"],
+  onn:["absoluteWall","fortressCannon","revivalPrayer","pillarJudgement","oniPressure","ironRebound"],
+  gl:["annihilationShot","oneSlash","infiniteTrigger","gamblerRuin","coolExecution","bladeStorm"],
+  wacha:["grandMeteor","arcaneOverdrive","sealCatastrophe","dreamCollapse","echoSpell","manaDrain"],
+  dentaku:["divideByZero","quantumBreak","debugMode","forcedReroll","formulaCannon","chainReaction"],
+  tsumugi:["darkHotpot","vomitAlchemy","superVenom","failedCooking","areaMove","poison"],
+  forte:["fortissimoRush","riseUp","crescendo","sonicWave","combo","shunpo"],
+  sipa:["sipaDeathblow","sipaGuard","sipaPressure","counterStep","dismantleArt","pressurePoint"]
+};
+const AWAKENING_TITLES = {
+  hp:["不屈の生命","生命燃ゆる者","超回復の器"],
+  atk:["赤き剛腕","破壊の拳","一撃粉砕"],
+  def:["鉄壁の守護者","不沈の盾","絶対防衛"],
+  mag:["禁術の継承者","魔導を極めし者","深淵の詠唱者"],
+  luck:["運命を掴む者","豪運の星","確率を超えし者"],
+  spd:["神速の影","零秒の閃き","疾風迅雷"],
+  special:["秘技を継ぐ者","二つの奥義","禁技解放"],
+  all:["覚醒せし王者","全能の器","限界を超えし者"]
+};
 
 // Lv100・究極体時点を基準にした種族ごとの基本上限。
 // HPは他ステータスより大きいスケールで設計。
@@ -2085,7 +2175,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 56;
+  state.schemaVersion = 57;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -2113,6 +2203,7 @@ function migrateState(){
     if(!mon.history) mon.history = {train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:getTimeBand().key,miraclePlay:false};
     if(!mon.history.train) mon.history.train = {hp:0,atk:0,def:0,mag:0,luck:0,spd:0};
     ensureCapBias(mon);
+    ensureAwakeningRecord(mon);
     capMonsterStats(mon);
     if(mon.level >= MAX_LEVEL) mon.exp = 0;
     registerDex(mon);
@@ -2174,6 +2265,7 @@ function hatchEgg(){
     role:species.role, profile:species.role, emoji:species.emoji, image:imagePath(speciesKey,""),
     personality, condition:"normal", level:1, exp:0, stats, hpCurrent:stats.hp,
     capBias:rollCapBias(),
+    awakening:{done:false,type:"",result:"",title:"",skills:[],effects:[],at:0},
     rareScore:Math.floor(Math.random()*4), trait:rollTrait(),
     history:{train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:getTimeBand().key,miraclePlay:false},
     createdAt:Date.now()
@@ -2204,6 +2296,68 @@ function ensureCapBias(mon){
   }
   return mon.capBias;
 }
+
+function ensureAwakeningRecord(mon){
+  if(!mon.awakening || typeof mon.awakening !== "object") mon.awakening = {};
+  if(typeof mon.awakening.done !== "boolean") mon.awakening.done = false;
+  if(typeof mon.awakening.type !== "string") mon.awakening.type = "";
+  if(typeof mon.awakening.result !== "string") mon.awakening.result = "";
+  if(typeof mon.awakening.title !== "string") mon.awakening.title = "";
+  if(!Array.isArray(mon.awakening.skills)) mon.awakening.skills = [];
+  if(!Array.isArray(mon.awakening.effects)) mon.awakening.effects = [];
+  if(!mon.awakening.at) mon.awakening.at = 0;
+  return mon.awakening;
+}
+function shuffleCopy(arr){
+  const copy=[...arr];
+  for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];}
+  return copy;
+}
+function formatPercentRate(rate){return `${Math.round(rate*100)}%`;}
+function awakeningResultLabel(result){
+  if(result==="great") return "大成功";
+  if(result==="success") return "成功";
+  if(result==="fail") return "失敗";
+  return "未実行";
+}
+function getAwakeningTitle(type, mon){
+  if(mon?.speciesKey==="sipa" && type==="atk") return "赤き剛腕";
+  const pool=AWAKENING_TITLES[type] || ["覚醒者"];
+  return pool[Math.floor(Math.random()*pool.length)] || "覚醒者";
+}
+function applyAwakeningStatPercent(mon, stat, pct){
+  ensureCapBias(mon);
+  const before=Math.max(1, mon.stats[stat] || 1);
+  const raw=Math.max(1, Math.round(before * Math.abs(pct)));
+  let delta = pct >= 0 ? raw : -Math.min(before-1, raw);
+  if(pct < 0 && before + delta < 1) delta = 1 - before;
+  mon.capBias[stat] = (mon.capBias[stat] || 0) + delta;
+  mon.stats[stat] = Math.max(1, before + delta);
+  if(stat==="hp"){
+    if(delta>=0) mon.hpCurrent = Math.min(mon.stats.hp, (mon.hpCurrent || before) + delta);
+    else mon.hpCurrent = Math.min(mon.hpCurrent || mon.stats.hp, mon.stats.hp);
+    if(mon.hpCurrent < 1) mon.hpCurrent = mon.stats.hp;
+  }
+  return delta;
+}
+function getAwakeningSkillCandidates(mon){
+  const pool=AWAKENING_SKILL_POOLS[mon.speciesKey] || [];
+  return pool.filter(id=>SKILL_DEFS[id]);
+}
+function pickAwakeningSkills(mon, count=2){
+  ensureAwakeningRecord(mon);
+  const owned=new Set(mon.awakening.skills || []);
+  let candidates=getAwakeningSkillCandidates(mon).filter(id=>!owned.has(id));
+  if(candidates.length < count) candidates=getAwakeningSkillCandidates(mon).filter(id=>!owned.has(id) || !mon.awakening.skills.includes(id));
+  return shuffleCopy(candidates).slice(0,count);
+}
+function awakeningSummary(mon){
+  ensureAwakeningRecord(mon);
+  if(!mon.awakening.done) return "未実行";
+  const opt=AWAKENING_OPTIONS[mon.awakening.type];
+  return `${opt?.label || mon.awakening.type} ${awakeningResultLabel(mon.awakening.result)}`;
+}
+
 function getStatCaps(mon){
   const base = {...(SPECIES_STAT_CAPS[mon.speciesKey] || SPECIES_STAT_CAPS.shinya)};
   const name = mon.formName || "";
@@ -2371,6 +2525,94 @@ function play(){
 }
 function worsenCondition(mon){if(Math.random()<0.12){if(mon.condition==="great")mon.condition="normal";else if(mon.condition==="normal")mon.condition="tired";else if(mon.condition==="tired")mon.condition="bad"}}
 function improveCondition(c){if(c==="bad")return"tired";if(c==="tired")return"normal";if(c==="normal")return"great";return"great"}
+
+
+function performAwakening(type){
+  const mon=getCurrentMonster();
+  if(!mon) return;
+  ensureAwakeningRecord(mon);
+  const opt=AWAKENING_OPTIONS[type];
+  if(!opt){alert("覚醒ノ儀の項目が不正です。");return;}
+  if(mon.level < MAX_LEVEL){alert("覚醒ノ儀はLv.100到達後に挑戦できます。");return;}
+  if(mon.awakening.done){alert("このクリモンはすでに覚醒ノ儀を終えています。");return;}
+  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？\n\n成功率：${formatPercentRate(opt.successRate)}\n成功時：${opt.successText}\n失敗時：${opt.failText}\n\n失敗すると能力が大幅に下がります。`;
+  if(!confirm(msg)) return;
+
+  let result="fail";
+  const roll=Math.random();
+  if(roll < opt.greatRate) result="great";
+  else if(roll < opt.successRate) result="success";
+
+  const effects=[];
+  let gainedSkills=[];
+  let title="";
+
+  if(result==="great"){
+    title=getAwakeningTitle(type, mon);
+    if(type==="special"){
+      gainedSkills=pickAwakeningSkills(mon,2);
+      mon.awakening.skills.push(...gainedSkills);
+      effects.push(`専用スキル「${gainedSkills.map(skillLabel).join("」「")}」を習得`);
+    }else{
+      for(const stat of opt.target){
+        const delta=applyAwakeningStatPercent(mon, stat, opt.greatPct);
+        effects.push(`${STAT_LABEL[stat]} ${delta>=0?"+":""}${delta}`);
+      }
+    }
+  }else if(result==="success"){
+    if(type==="special"){
+      gainedSkills=pickAwakeningSkills(mon,2);
+      mon.awakening.skills.push(...gainedSkills);
+      effects.push(`専用スキル「${gainedSkills.map(skillLabel).join("」「")}」を習得`);
+    }else{
+      for(const stat of opt.target){
+        const delta=applyAwakeningStatPercent(mon, stat, opt.successPct);
+        effects.push(`${STAT_LABEL[stat]} ${delta>=0?"+":""}${delta}`);
+      }
+    }
+  }else{
+    const targets = type==="special" ? shuffleCopy(Object.keys(STAT_LABEL)).slice(0,2) : opt.target;
+    for(const stat of targets){
+      const delta=applyAwakeningStatPercent(mon, stat, -opt.failPct);
+      effects.push(`${STAT_LABEL[stat]} ${delta}`);
+    }
+  }
+
+  mon.awakening.done=true;
+  mon.awakening.type=type;
+  mon.awakening.result=result;
+  mon.awakening.title=title;
+  mon.awakening.effects=effects;
+  mon.awakening.at=Date.now();
+  mon.awakening.skills=[...new Set(mon.awakening.skills)];
+  capMonsterStats(mon);
+  saveGame();
+
+  const resultText=awakeningResultLabel(result);
+  if(result==="great") log(`覚醒ノ儀・${opt.label}が大成功！ ${mon.nickname}は称号「${title}」を獲得。${effects.join("、")}`);
+  else if(result==="success") log(`覚醒ノ儀・${opt.label}が成功！ ${effects.join("、")}`);
+  else log(`覚醒ノ儀・${opt.label}が失敗…… ${effects.join("、")}`);
+  render();
+}
+function renderAwakeningPanel(mon){
+  if(!mon) return "";
+  ensureAwakeningRecord(mon);
+  const titleHtml = mon.awakening.title ? `<span class="awakening-title-badge">称号：${escapeHtml(mon.awakening.title)}</span>` : `<span class="small">称号：なし</span>`;
+  if(mon.level < MAX_LEVEL){
+    return `<h3>🌘 覚醒ノ儀</h3><p>Lv.100到達後に1回だけ挑戦できる危険な最終強化です。成功で大幅強化、大成功で称号獲得、失敗で能力が大幅低下します。</p><div class="awakening-result"><b>解放条件：</b>Lv.100到達 / 現在 Lv.${escapeHtml(mon.level)}</div>`;
+  }
+  if(mon.awakening.done){
+    const opt=AWAKENING_OPTIONS[mon.awakening.type] || {};
+    const resultClass=mon.awakening.result==="great"?"awakening-great":mon.awakening.result==="success"?"awakening-success":"awakening-risk";
+    const skills=(mon.awakening.skills||[]).map(skillLabel).join(" / ") || "なし";
+    return `<h3>🌘 覚醒ノ儀</h3>${titleHtml}<div class="awakening-result"><b>結果：</b><span class="${resultClass}">${escapeHtml(opt.label || mon.awakening.type)} ${escapeHtml(awakeningResultLabel(mon.awakening.result))}</span><br><b>効果：</b>${escapeHtml((mon.awakening.effects||[]).join("、") || "なし")}<br><b>覚醒スキル：</b>${escapeHtml(skills)}</div>`;
+  }
+  const rows=AWAKENING_ORDER.map(key=>{
+    const opt=AWAKENING_OPTIONS[key];
+    return `<div class="awakening-option"><strong>${escapeHtml(opt.label)}</strong><span class="small">成功率：${formatPercentRate(opt.successRate)} / 大成功：${formatPercentRate(opt.greatRate)}</span><span class="small awakening-success">成功：${escapeHtml(opt.successText)}</span><span class="small awakening-risk">失敗：${escapeHtml(opt.failText)}</span><button class="magic" onclick="performAwakening('${escapeHtml(key)}')">この力で挑む</button></div>`;
+  }).join("");
+  return `<h3>🌘 覚醒ノ儀</h3><p>Lv.100到達者だけが挑める最終強化。1体につき1回のみ。大成功すると称号を獲得します。</p><div class="awakening-options">${rows}</div>`;
+}
 
 function makeEnemy(level){
   const enemies=[
@@ -2554,6 +2796,7 @@ function getSkills(actor){
     }
   }
 
+  if(source.awakening && Array.isArray(source.awakening.skills)) source.awakening.skills.forEach(add);
   return skills;
 }
 function skillLabel(id){return SKILL_DEFS[id]?.name || id;}
@@ -3440,8 +3683,12 @@ function renderMonster(mon){
   document.getElementById("monsterRole").textContent=`種族：${mon.speciesName} / 形態：${mon.formName}`;
   document.getElementById("monsterMeta").textContent=`性格：${mon.personality} / コンディション：${CONDITIONS[mon.condition].label} / EXP：${expText(mon)} / ${nextEvolveText(mon)}`;
   const input=document.getElementById("nicknameInput"); if(input && document.activeElement !== input) input.value=mon.nickname;
-  document.getElementById("monsterBadges").innerHTML=[`段階：${stageName(mon.stage)}`,`Lv上限：${MAX_LEVEL}`,`特性：${mon.trait||"なし"}`].map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join("");
+  ensureAwakeningRecord(mon);
+  const badges=[`段階：${stageName(mon.stage)}`,`Lv上限：${MAX_LEVEL}`,`特性：${mon.trait||"なし"}`];
+  document.getElementById("monsterBadges").innerHTML=badges.map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join("") + (mon.awakening.title ? `<span class="awakening-title-badge">称号：${escapeHtml(mon.awakening.title)}</span>` : "");
   document.getElementById("evolveHint").textContent=getEvolveHint(mon);
+  const awakeningArea=document.getElementById("awakeningArea");
+  if(awakeningArea) awakeningArea.innerHTML=renderAwakeningPanel(mon);
   const skillArea=document.getElementById("skillsArea");
   if(skillArea){
     skillArea.innerHTML=`<b>使えるスキル・魔法</b>${renderSkillChips(mon)}`;
@@ -4096,7 +4343,7 @@ function renderBattle(mon){
 function renderBox(){
   const area=document.getElementById("boxArea");
   const mons=state.monsters||[];
-  const key=JSON.stringify(mons.map(m=>[m.id,m.nickname,m.formName,m.level,m.personality,m.condition,m.stats,getSkills(m).join(",")]))+":"+state.currentId;
+  const key=JSON.stringify(mons.map(m=>[m.id,m.nickname,m.formName,m.level,m.personality,m.condition,m.stats,m.awakening,getSkills(m).join(",")]))+":"+state.currentId;
   if(boxRenderKey===key && area.innerHTML) return;
   boxRenderKey=key;
   if(mons.length===0){area.innerHTML=`<div class="hint">まだクリモンがいません。</div>`;return}
@@ -4106,6 +4353,7 @@ function renderBox(){
       <span>種族：${escapeHtml(mon.speciesName)}</span><br>
       <span>形態：${escapeHtml(mon.formName)}</span><br>
       <span>${mon.level>=MAX_LEVEL?"Lv.MAX":"Lv."+mon.level} / ${escapeHtml(mon.personality)} / ${escapeHtml(CONDITIONS[mon.condition].label)}</span><br>
+      <span>${escapeHtml(mon.awakening?.title ? "称号："+mon.awakening.title : "覚醒ノ儀："+awakeningSummary(mon))}</span><br>
       <span>体${mon.stats.hp} 攻${mon.stats.atk} 防${mon.stats.def}</span><br>
       <span>魔${mon.stats.mag} 運${mon.stats.luck} 速${mon.stats.spd}</span>
       <div class="box-skill-wrap">
