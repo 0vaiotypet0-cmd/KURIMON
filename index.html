@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v44 図鑑画像ルート配置対応版</title>
+  <title>クリモン - 基礎版 v49 一次バランス調整版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -794,7 +794,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v44 図鑑画像ルート配置対応版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v49 一次バランス調整版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1013,6 +1013,9 @@
           <option value="gl">GL系統</option>
           <option value="wacha">わちゃ系統</option>
           <option value="dentaku">電卓系統</option>
+          <option value="tsumugi">つむぎ系統（レア）</option>
+          <option value="forte">フォルテ系統（レア）</option>
+          <option value="sipa">シパ（レア・進化なし）</option>
         </select>
         <span class="small" id="treeProgressText"></span>
       </div>
@@ -1137,10 +1140,53 @@ const BASE_SPECIES = {
   onn: {speciesName:"ONN", role:"体力・防御の要塞型", emoji:"🛡️", baseStats:{hp:44,atk:4,def:11,mag:3,luck:4,spd:3}, image:"images/onn_base.png"},
   gl: {speciesName:"GL", role:"攻撃型", emoji:"⚔️", baseStats:{hp:30,atk:11,def:4,mag:4,luck:6,spd:7}, image:"images/gl_base.png"},
   wacha: {speciesName:"わちゃ", role:"魔法・状態異常・妨害型", emoji:"🌀", baseStats:{hp:30,atk:4,def:5,mag:10,luck:7,spd:5}, image:"images/wacha_base.png"},
-  dentaku: {speciesName:"電卓", role:"運・魔法・確率操作型", emoji:"🧮", baseStats:{hp:28,atk:4,def:5,mag:8,luck:11,spd:5}, image:"images/dentaku_base.png"}
+  dentaku: {speciesName:"電卓", role:"運・魔法・確率操作型", emoji:"🧮", baseStats:{hp:28,atk:4,def:5,mag:8,luck:11,spd:5}, image:"images/dentaku_base.png"},
+
+  // v46追加：卵から低確率で出るレアキャラ
+  tsumugi: {speciesName:"つむぎ", role:"超ハイリスク料理魔法型", emoji:"🍳", baseStats:{hp:28,atk:3,def:5,mag:14,luck:9,spd:5}, image:"images/tsumugi_base.png"},
+  forte: {speciesName:"フォルテ", role:"音圧バフ・高速連撃型", emoji:"🎼", baseStats:{hp:31,atk:8,def:6,mag:8,luck:7,spd:12}, image:"images/forte_base.png"},
+  sipa: {speciesName:"シパ", role:"進化なし完成型・必殺守護", emoji:"🐺", baseStats:{hp:36,atk:12,def:10,mag:2,luck:8,spd:7}, image:"images/sipa_base.png"}
 };
 
 const EGG = { price:50, hatchMs:10*60*1000 };
+const NORMAL_EGG_SPECIES = ["shinya","onn","gl","wacha","dentaku"];
+const RARE_EGG_SPECIES = [
+  {key:"tsumugi", rate:0.02},
+  {key:"forte", rate:0.02},
+  {key:"sipa", rate:0.02}
+];
+function rollEggSpeciesKey(){
+  const r = Math.random();
+  let acc = 0;
+  for(const item of RARE_EGG_SPECIES){
+    acc += item.rate;
+    if(r < acc) return item.key;
+  }
+  return NORMAL_EGG_SPECIES[Math.floor(Math.random()*NORMAL_EGG_SPECIES.length)];
+}
+const EVOLUTION_LEVELS = {
+  // 通常5系統：進化タイミングに個性を出す
+  // シンヤ：標準寄り。扱いやすい安定型。
+  shinya:[5,14,24],
+  // ONN：晩成寄り。耐久型なので完成まで少し遅い。
+  onn:[6,16,30],
+  // GL：早熟。攻撃型なので早めに火力が伸びる。
+  gl:[4,10,20],
+  // わちゃ：中盤から伸びる魔法型。
+  wacha:[5,15,28],
+  // 電卓：晩成の確率操作型。最終進化は遅め。
+  dentaku:[7,17,32],
+  // レア枠：一段進化のみ。Lv.30で進化。
+  tsumugi:[30],
+  forte:[30],
+  // シパ：進化なし
+  sipa:[]
+};
+function evolutionLevelFor(mon){
+  const levels = EVOLUTION_LEVELS[mon?.speciesKey] || [5,12,22];
+  return levels[mon?.stage || 0] || 0;
+}
+
 
 const PERSONALITIES = {
   "ふつう": { desc:"補正なし。どの方向にも育つ。", feature:"クセがなく、育成方針を後から決めやすい。", grow:{}, restPenalty:0.25 },
@@ -1172,7 +1218,10 @@ const SPECIES_STAT_CAPS = {
   onn:{hp:520,atk:90,def:170,mag:105,luck:100,spd:80},
   gl:{hp:330,atk:180,def:85,mag:95,luck:135,spd:145},
   wacha:{hp:330,atk:95,def:115,mag:175,luck:130,spd:110},
-  dentaku:{hp:310,atk:85,def:105,mag:160,luck:185,spd:120}
+  dentaku:{hp:310,atk:85,def:105,mag:160,luck:185,spd:120},
+  tsumugi:{hp:260,atk:70,def:70,mag:220,luck:160,spd:100},
+  forte:{hp:330,atk:150,def:110,mag:150,luck:125,spd:210},
+  sipa:{hp:420,atk:190,def:185,mag:55,luck:145,spd:130}
 };
 const STAGE_CAP_RATE = [0.45,0.62,0.82,1.0];
 
@@ -1269,7 +1318,23 @@ const SKILL_DEFS = {
   equationChant:{name:"方程式詠唱", category:"support", desc:"3ターン、魔法を大きく上げる。数式詠唱士の準備技。"},
   quadraticBurst:{name:"二次関数バースト", category:"magic", desc:"魔法依存の高火力。魔法が上がっているほど強い。"},
   chainFormula:{name:"連鎖式", category:"support", desc:"3ターン、魔法と素早さを上げる。連鎖の電卓の起点。"},
-  chainReaction:{name:"連鎖反応", category:"magic", desc:"魔法依存の多段攻撃。2〜4回連続でダメージを与える。"}
+  chainReaction:{name:"連鎖反応", category:"magic", desc:"魔法依存の多段攻撃。2〜4回連続でダメージを与える。"},
+
+  // v48：レア卵キャラ専用・CSV反映
+  failedCooking:{name:"失敗料理", category:"status", desc:"相手に毒3ターン。自分に最大HP6%反動。"},
+  vomitAlchemy:{name:"ゲロ錬成", category:"magic", desc:"魔法依存1.55倍、防御貫通5%、猛毒3ターン、自分に最大HP10%反動。"},
+  areaMove:{name:"エリア移動", category:"support", desc:"2ターンの間、あらゆる攻撃・妨害を受けない。"},
+  darkHotpot:{name:"闇鍋フルコース", category:"magic", desc:"魔法依存1.95倍、防御貫通8%。50%で猛毒、50%で行動不能。"},
+  superVenom:{name:"超猛毒", category:"status", desc:"相手に5ターンの強力な継続ダメージを与える。"},
+
+  crescendo:{name:"Make you unhappy", category:"status", desc:"3ターン、相手の攻撃・魔法・素早さを下げる。"},
+  sonicWave:{name:"CLAP CLAP", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。相手防御を下げ、2〜5回の音圧で攻撃する。"},
+  fortissimoRush:{name:"YOAKE", category:"support", desc:"最大HPの30%を回復する。"},
+  riseUp:{name:"RISE UP", category:"support", desc:"3ターン、すべてのステータスを上げる。"},
+
+  sipaGuard:{name:"シパガード", category:"support", desc:"3ターン、防御+4、ダメージ軽減+3。"},
+  sipaDeathblow:{name:"アカウントハック", category:"physical", desc:"攻撃依存の高クリティカル必殺。35%で相手を1ターン行動不能にする。"},
+  sipaPressure:{name:"煽る", category:"status", desc:"相手攻撃-2、防御-2。28%で行動不能。"}
 };
 const SKILL_CATEGORY_LABEL = {physical:"物理",magic:"魔法",support:"補助",status:"状態異常"};
 
@@ -1319,7 +1384,14 @@ const EVOLUTION_TREE = {
     ba:{formName:"期待値演算機", profile:"運、魔法が高い。"}, bb:{formName:"乱数サイコロ", profile:"運、素早さが高い。"},
     baa:{formName:"収束の賢者", profile:"運が高い。"}, bab:{formName:"偏差制御装置", profile:"運が高い。ダメージの振れ幅が大きい。"}, bar:{formName:"超未来予測演算装置", profile:"運、魔法が超高い。未来予測で次の攻撃・魔法を回避する。"},
     bba:{formName:"乱数の支配者", profile:"運が高い。判定をやり直す能力。"}, bbb:{formName:"豪運スロッター", profile:"運が超高い。"}, bbr:{formName:"異世界スマホ", profile:"運、魔法が超高い。世界線干渉。"}
-  }
+  },
+  tsumugi: {
+    a:{formName:"闇鍋つむぎ", profile:"超火力・毒・猛毒・反動"}
+  },
+  forte: {
+    a:{formName:"フォルテシモ", profile:"攻撃・魔法・素早さバフから多段攻撃"}
+  },
+  sipa: {}
 };
 
 
@@ -1487,8 +1559,8 @@ const DEX_PROFILE_TEXT = {
   "一人前魔法使い・わちゃ": "一人前になったはずだが まだ杖を探している時間が長い。ちんぽはかなり大きい。",
   "wacha_ab": "魔法で殴るのか 殴って魔法を出すのか 分類でもめている。ちんぽはかなり大きい。",
   "バトマジのわちゃ": "魔法で殴るのか 殴って魔法を出すのか 分類でもめている。ちんぽはかなり大きい。",
-  "wacha_ba": "毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
-  "毒使いのわちゃ": "毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
+  "wacha_ba": "完全に毒を克服した姿。毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
+  "毒使いのわちゃ": "完全に毒を克服した姿。毒の管理は雑。本人は『だいたい紫なら毒』で判断している。ちんぽはかなり大きい。",
   "wacha_bb": "相手の技を封じる前に 自分の予定を封印していることがある。ちんぽはかなり大きい。",
   "封印わちゃ": "相手の技を封じる前に 自分の予定を封印していることがある。ちんぽはかなり大きい。",
   "wacha_aaa": "大魔法を使えるが 後片付けはできない。周囲の者が一番大変。ちんぽはデカすぎている。",
@@ -1529,8 +1601,8 @@ const DEX_PROFILE_TEXT = {
   "期待値演算機": "期待値で判断するが ロマンがある選択肢に弱い。結局そっちを押す。",
   "dentaku_bb": "周りの運をかき混ぜる。ガチャ前に近づけると信じる者もいる。",
   "乱数サイコロ": "周りの運をかき混ぜる。ガチャ前に近づけると信じる者もいる。",
-  "dentaku_aaa": "ものすごく考える。考えすぎて制限時間を忘れることがある。",
-  "零式電卓-虚数ノ王-": "ものすごく考える。考えすぎて制限時間を忘れることがある。",
+  "dentaku_aaa": "計算の果てに、実数の世界から零れ落ちた電卓。存在しないはずの数を従え、答えのない問いにだけ正解を出す。液晶に「i」が浮かんだ時、虚数ノ王の演算領域が開く。",
+  "零式電卓-虚数ノ王-": "計算の果てに、実数の世界から零れ落ちた電卓。存在しないはずの数を従え、答えのない問いにだけ正解を出す。液晶に「i」が浮かんだ時、虚数ノ王の演算領域が開く。",
   "dentaku_aab": "相手の動きを式にする。式にできない変な動きには露骨に困る。",
   "数字の魔術師": "相手の動きを式にする。式にできない変な動きには露骨に困る。",
   "dentaku_aar": "答えを出すのが速すぎる。だが冷却ファンの音はかなりうるさい。",
@@ -1552,7 +1624,20 @@ const DEX_PROFILE_TEXT = {
   "dentaku_bbb": "計算より運が先に勝つ。式はあとから無理やり合わせる。",
   "豪運スロッター": "計算より運が先に勝つ。式はあとから無理やり合わせる。",
   "dentaku_bbr": "異世界の計算機を手にした姿。口癖はあれ？またなんかやっちゃいました？",
-  "異世界スマホ": "異世界の計算機を手にした姿。口癖はあれ？またなんかやっちゃいました？"
+  "異世界スマホ": "異世界の計算機を手にした姿。口癖はあれ？またなんかやっちゃいました？",
+
+  "tsumugi_base": "料理を作るつもりが、なぜか戦場に事故物件を生み出すレアクリモン。味方も敵も距離を取るが、本人だけは自信満々。",
+  "つむぎ": "料理を作るつもりが、なぜか戦場に事故物件を生み出すレアクリモン。味方も敵も距離を取るが、本人だけは自信満々。",
+  "tsumugi_a": "全ての食材と失敗を一つの鍋に沈めた姿。完成した料理は誰も食べないが、なぜか敵にはよく効く。",
+  "闇鍋つむぎ": "全ての食材と失敗を一つの鍋に沈めた姿。完成した料理は誰も食べないが、なぜか敵にはよく効く。",
+
+  "forte_base": "NiziUを愛するレアクリモン。常に踊っており、バフデバフと強力なスキルで攻撃を仕掛ける。",
+  "フォルテ": "NiziUを愛するレアクリモン。常に踊っており、バフデバフと強力なスキルで攻撃を仕掛ける。",
+  "forte_a": "ついにNiziUのトップオタに登りつめた姿。リクの個人LINEを知っている。",
+  "フォルテシモ": "ついにNiziUのトップオタに登りつめた姿。リクの個人LINEを知っている。",
+
+  "sipa_base": "生まれた時から既に最初から完成しているレアクリモン。時々Discordを乗っ取られている。",
+  "シパ": "生まれた時から既に最初から完成しているレアクリモン。時々Discordを乗っ取られている。"
 };
 
 function dexProfileText(formId, formName, fallback=""){
@@ -1775,7 +1860,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 44;
+  state.schemaVersion = 49;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -1839,8 +1924,7 @@ function buyEgg(){
 function forceHatch(){if(!state.egg){alert("卵がありません。");return}state.egg.hatchAt=Date.now();checkHatch()}
 function checkHatch(){if(state.egg&&Date.now()>=state.egg.hatchAt)hatchEgg()}
 function hatchEgg(){
-  const keys=Object.keys(BASE_SPECIES);
-  const speciesKey=keys[Math.floor(Math.random()*keys.length)];
+  const speciesKey=rollEggSpeciesKey();
   const species=BASE_SPECIES[speciesKey];
   const personality=rollPersonality();
   const stats={...species.baseStats};
@@ -1867,7 +1951,7 @@ function hatchEgg(){
   registerDex(mon);
   state.egg=null;
   saveGame();
-  log(`卵から種族「${mon.speciesName}」が孵化！ 性格は「${personality}」。`);
+  log(`${RARE_EGG_SPECIES.some(x=>x.key===mon.speciesKey)?"レア卵演出！ ":""}卵から種族「${mon.speciesName}」が孵化！ 性格は「${personality}」。`);
   showTab("home");render();
 }
 function rollPersonality(){const arr=Object.keys(PERSONALITIES);return arr[Math.floor(Math.random()*arr.length)]}
@@ -1901,13 +1985,13 @@ function getStatCaps(mon){
   if(name.includes("攻")||name.includes("破壊")||name.includes("一撃")||name.includes("拳")||name.includes("解体")||name.includes("怒り")){
     base.atk += 40;
   }
-  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")){
+  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")||name.includes("つむぎ")||name.includes("闇鍋")){
     base.mag += 40;
   }
-  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")){
+  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")||name.includes("シパ")){
     base.luck += 40;
   }
-  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")){
+  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")||name.includes("フォルテ")){
     base.spd += 40;
   }
   if(name.includes("超")||name.includes("神速")||name.includes("京")||name.includes("異世界")||name.includes("レア")){
@@ -2108,6 +2192,7 @@ function getSkills(actor){
     if(name.includes("技巧") || name.includes("超絶")) add("magicBullet");
   }else if(species==="onn"){
     add("ironWall");
+    add("ironRebound"); // v49：ONN全形態に防御依存火力を追加
     if(stage>=1 || name.includes("耐久") || name.includes("再生") || name.includes("リバイバル")) add("regenerate");
     if(name.includes("守護") || name.includes("身代わり") || name.includes("柱")) add("guardian");
     if(name.includes("柱")) add("kazukoBless");
@@ -2134,6 +2219,28 @@ function getSkills(actor){
     if(name.includes("未来")) add("futureSight");
     if(name.includes("異世界") || name.includes("世界線")) add("worldLine");
     if(name.includes("京") || name.includes("魔導") || name.includes("数式")) add("magicCannon");
+  }else if(species==="tsumugi"){
+    add("failedCooking");
+    add("poison");
+    add("areaMove");
+    if(stage>=1 || name.includes("闇鍋")){
+      add("vomitAlchemy");
+      add("darkHotpot");
+      add("superVenom");
+      add("venom");
+    }
+  }else if(species==="forte"){
+    add("crescendo");
+    add("sonicWave");
+    if(stage>=1 || name.includes("フォルテシモ") || name.includes("フォルテッシモ")){
+      add("fortissimoRush");
+      add("riseUp");
+    }
+  }else if(species==="sipa"){
+    add("sipaGuard");
+    add("sipaDeathblow");
+    add("sipaPressure");
+    add("counterStep");
   }else{
     if((actor.mag||0) >= (actor.atk||0)+2) add("magicBullet");
     if((actor.def||0) >= (actor.atk||0)+2) add("ironWall");
@@ -2232,7 +2339,7 @@ function makeCombatant(source, side){
     stats,
     hp: stats.hp || source.hp || 1,
     maxHp: stats.hp || source.hp || 1,
-    status:{poison:0,venom:0,silence:0,stun:0,regen:0,future:0},
+    status:{poison:0,venom:0,superVenom:0,silence:0,stun:0,regen:0,future:0,invincible:0},
     buff:{atk:0,def:0,mag:0,luck:0,spd:0,shield:0}
   };
 }
@@ -2333,7 +2440,10 @@ function skillScoreForActor(skillId, attacker, defender){
   // 新スキルの得意ステータス補正
   if(["miniMeteor","manaDrain","echoSpell","overflowCalc","divideByZero"].includes(skillId)) score += magic*0.35;
   if(["counterStep","pressurePoint","rageBurst","bladeStorm"].includes(skillId)) score += atk*0.35;
-  if(skillId==="ironRebound") score += cStat(attacker,"def")*0.65;
+  if(skillId==="ironRebound"){
+    score += cStat(attacker,"def")*0.85;
+    if((attacker.speciesKey || attacker.source?.speciesKey)==="onn") score += 55;
+  }
   if(skillId==="coldFlame") score += atk*0.35 + magic*0.35;
   if(["probabilityHack","forcedReroll","debugMode"].includes(skillId)) score += luck*0.45;
   if(["sleepyMist","curseBind","tauntGuard"].includes(skillId)) score += magic*0.25 + luck*0.25;
@@ -2357,6 +2467,16 @@ function skillScoreForActor(skillId, attacker, defender){
   if(["quadraticBurst"].includes(skillId)) score += magic*0.75 + ((attacker.buff.mag||0)>0?45:0);
   if(["chainReaction"].includes(skillId)) score += magic*0.45 + cStat(attacker,"spd")*0.25;
   if(["magicConversion","equationChant","chainFormula"].includes(skillId)) score += 50 + magic*0.25;
+
+  if(["failedCooking","vomitAlchemy","darkHotpot","superVenom"].includes(skillId)) score += magic*0.65 + luck*0.25;
+  if(["areaMove"].includes(skillId)) score += (1 - hp/maxHp) * 120 + magic*0.25;
+  if(["crescendo"].includes(skillId)) score += 70 + cStat(attacker,"spd")*0.22;
+  if(["sonicWave"].includes(skillId)) score += atk*0.30 + magic*0.55 + cStat(attacker,"spd")*0.20;
+  if(["fortissimoRush"].includes(skillId)) score += (1 - hp/maxHp) * 160;
+  if(["riseUp"].includes(skillId)) score += 80 + magic*0.18 + cStat(attacker,"spd")*0.18;
+  if(["sipaGuard"].includes(skillId)) score += (1 - hp/maxHp) * 75 + cStat(attacker,"def")*0.25;
+  if(["sipaDeathblow"].includes(skillId)) score += atk*0.45 + luck*0.35;
+  if(["sipaPressure"].includes(skillId)) score += luck*0.35 + atk*0.25;
 
   return Math.max(1, score);
 }
@@ -2396,6 +2516,11 @@ function startTurnEffects(actor, opponent, events){
     actor.hp=Math.max(0,actor.hp-d); actor.status.venom--;
     pushEvent(events,"status",`${actor.name}は猛毒で${d}ダメージ。`,a,b);
   }
+  if(actor.status.superVenom>0){
+    const d=Math.max(4,Math.round(actor.maxHp*0.16));
+    actor.hp=Math.max(0,actor.hp-d); actor.status.superVenom--;
+    pushEvent(events,"status",`${actor.name}は超猛毒で${d}ダメージ。`,a,b);
+  }
   if(actor.status.regen>0){
     const heal=Math.max(2,Math.round(actor.maxHp*0.12 + cStat(actor,"mag")*0.25));
     const before=actor.hp; actor.hp=Math.min(actor.maxHp,actor.hp+heal); actor.status.regen--;
@@ -2403,7 +2528,7 @@ function startTurnEffects(actor, opponent, events){
   }
 }
 function reduceDurations(actor){
-  for(const k of ["silence","future"]){ if(actor.status[k]>0) actor.status[k]--; }
+  for(const k of ["silence","future","invincible"]){ if(actor.status[k]>0) actor.status[k]--; }
   for(const k of Object.keys(actor.buff)){ if(actor.buff[k]>0) actor.buff[k]--; else if(actor.buff[k]<0) actor.buff[k]++; }
 }
 
@@ -2432,6 +2557,11 @@ function normalAttack(attacker, defender, events, monRef){
   const a = attacker.side==="me" ? attacker : defender;
   const b = attacker.side==="me" ? defender : attacker;
   const action = normalActionDamage(attacker, defender);
+
+  if(defender.status.invincible>0){
+    pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}はエリア移動中で当たらない。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});
+    return;
+  }
 
   if(defender.status.future>0){
     defender.status.future=0;
@@ -2463,7 +2593,11 @@ function useSkill(attacker, defender, skillId, events, monRef){
   const b = attacker.side==="me"?defender:attacker;
   const push=(txt,extra={})=>pushEvent(events,"skill",txt,a,b,{attacker:attacker.side,target:defender.side,skill:skillId,...extra});
 
-  if(defender.status.future>0 && ["blackFlash","combo","reckless","dismantle","magicBullet","magicCannon","magicBlade","magicSword","dismantleArt","skyTree","counterStep","pressurePoint","ironRebound","rageBurst","bladeStorm","coldFlame","miniMeteor","manaDrain","echoSpell","overflowCalc","divideByZero","techniqueStorm","godspeedZero","blackFlashDomain","fortressCannon","pillarJudgement","annihilationShot","oneSlash","infiniteTrigger","gamblerRuin","coolExecution","grandMeteor","arcaneOverdrive","sealCatastrophe","dreamCollapse","quantumBreak","formulaCannon","quadraticBurst","chainReaction"].includes(skillId)){
+  if(defender.status.invincible>0 && SKILL_DEFS[skillId]?.category!=="support"){
+    push(`${attacker.name}の${name}！ しかし${defender.name}はエリア移動中で効果を受けない。`,{dmg:0,dodge:true});
+    return;
+  }
+  if(defender.status.future>0 && ["blackFlash","combo","reckless","dismantle","magicBullet","magicCannon","magicBlade","magicSword","dismantleArt","skyTree","counterStep","pressurePoint","ironRebound","rageBurst","bladeStorm","coldFlame","miniMeteor","manaDrain","echoSpell","overflowCalc","divideByZero","techniqueStorm","godspeedZero","blackFlashDomain","fortressCannon","pillarJudgement","annihilationShot","oneSlash","infiniteTrigger","gamblerRuin","coolExecution","grandMeteor","arcaneOverdrive","sealCatastrophe","dreamCollapse","quantumBreak","formulaCannon","quadraticBurst","chainReaction","vomitAlchemy","darkHotpot","sonicWave","sipaDeathblow"].includes(skillId)){
     defender.status.future=0;
     push(`${attacker.name}の${name}！ しかし${defender.name}は未来予測で回避した。`,{dmg:0,dodge:true}); return;
   }
@@ -2487,6 +2621,11 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="fury"){attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の猛攻！ 攻撃が上がった。`);return;}
   if(skillId==="probabilityHack"){attacker.buff.luck=Math.max(attacker.buff.luck,3);attacker.buff.mag=Math.max(attacker.buff.mag,3);push(`${attacker.name}の確率ハック！ 運と魔法が上がった。`);return;}
   if(skillId==="debugMode"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}はデバッグモードに入った！ 魔法・素早さ・運が上がる。`);return;}
+  if(skillId==="areaMove"){attacker.status.invincible=Math.max(attacker.status.invincible,2);push(`${attacker.name}のエリア移動！ 2ターンの間、攻撃と妨害を受けない。`);return;}
+  if(skillId==="crescendo"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}のMake you unhappy！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
+  if(skillId==="fortissimoRush"){const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.30));push(`${attacker.name}のYOAKE！ HPを${heal}回復した。`,{myHp:a.hp,enemyHp:b.hp});return;}
+  if(skillId==="riseUp"){for(const k of ["atk","def","mag","luck","spd"]){attacker.buff[k]=Math.max(attacker.buff[k]||0,3);}push(`${attacker.name}のRISE UP！ 3ターン、全ステータスが上がった。`);return;}
+  if(skillId==="sipaGuard"){attacker.buff.def=Math.max(attacker.buff.def,4);attacker.buff.shield=Math.max(attacker.buff.shield,3);push(`${attacker.name}のシパガード！ 防御が上がり、受けるダメージを軽減する。`);return;}
   if(skillId==="magicConversion"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の魔導変換！ 魔法と攻撃が上がった。`);return;}
   if(skillId==="equationChant"){attacker.buff.mag=Math.max(attacker.buff.mag,5);push(`${attacker.name}の方程式詠唱！ 魔法が大きく上がった。`);return;}
   if(skillId==="chainFormula"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}の連鎖式！ 魔法と素早さが上がった。`);return;}
@@ -2499,6 +2638,9 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="tauntGuard"){defender.buff.atk=Math.min(defender.buff.atk||0,-3); if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1); push(`${attacker.name}の挑発防御！ ${defender.name}の攻撃を下げ、動きを乱した。`);return;}
   if(skillId==="forcedReroll"){defender.buff.atk=0;defender.buff.def=0;defender.buff.mag=0;defender.buff.luck=0;defender.buff.spd=0;attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}の強制再抽選！ ${defender.name}の強化を消し、自分の運を上げた。`);return;}
   if(skillId==="oniPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}の鬼圧！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
+  if(skillId==="failedCooking"){defender.status.poison=Math.max(defender.status.poison,3);const recoil=Math.max(1,Math.round(attacker.maxHp*0.06));attacker.hp=Math.max(1,attacker.hp-recoil);push(`${attacker.name}の失敗料理！ ${defender.name}は毒状態。反動で${recoil}ダメージ。`,{myHp:a.hp,enemyHp:b.hp});return;}
+  if(skillId==="superVenom"){defender.status.superVenom=Math.max(defender.status.superVenom,5);push(`${attacker.name}の超猛毒！ ${defender.name}は超猛毒状態になった。`);return;}
+  if(skillId==="sipaPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-2);defender.buff.def=Math.min(defender.buff.def||0,-2);if(Math.random()<0.28) defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の煽る！ ${defender.name}の攻撃と防御を下げた。`);return;}
   if(skillId==="poison"){defender.status.poison=Math.max(defender.status.poison,3);push(`${attacker.name}の毒！ ${defender.name}は毒状態になった。`);return;}
   if(skillId==="venom"){defender.status.venom=Math.max(defender.status.venom,3);push(`${attacker.name}の猛毒！ ${defender.name}は猛毒状態になった。`);return;}
   if(skillId==="curseBind"){defender.status.silence=Math.max(defender.status.silence,2);defender.buff.atk=Math.min(defender.buff.atk||0,-2);push(`${attacker.name}の呪縛！ ${defender.name}は沈黙し、攻撃も下がった。`);return;}
@@ -2591,6 +2733,23 @@ function useSkill(attacker, defender, skillId, events, monRef){
   }else if(skillId==="chainReaction"){
     const hits=2 + (Math.random()<0.55?1:0) + (Math.random()<0.25?1:0);
     dmg=0; for(let i=0;i<hits;i++){dmg+=calcDamage(attacker,defender,"magic",0.46,0);}
+    applyDamage(defender,dmg);
+  }else if(skillId==="vomitAlchemy"){
+    dmg=calcDamage(attacker,defender,"magic",1.55,0.05); defender.status.venom=Math.max(defender.status.venom,3); applyDamage(defender,dmg);
+    const recoil=Math.max(1,Math.round(attacker.maxHp*0.10)); attacker.hp=Math.max(1,attacker.hp-recoil);
+    push(`${attacker.name}のゲロ錬成！ ${defender.name}に${dmg}ダメージ。猛毒を付与。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+  }else if(skillId==="darkHotpot"){
+    dmg=calcDamage(attacker,defender,"magic",1.95,0.08); applyDamage(defender,dmg);
+    if(Math.random()<0.5) defender.status.venom=Math.max(defender.status.venom,3); else defender.status.stun=Math.max(defender.status.stun,1);
+  }else if(skillId==="sonicWave"){
+    const hits=2 + (Math.random()<0.65?1:0) + (Math.random()<0.38?1:0) + (Math.random()<0.18?1:0);
+    dmg=0; for(let i=0;i<hits;i++){dmg+=calcHybridDamage(attacker,defender,0.42,0.05);}
+    defender.buff.def=Math.min(defender.buff.def||0,-2); applyDamage(defender,dmg);
+  }else if(skillId==="sipaDeathblow"){
+    dmg=calcDamage(attacker,defender,"physical",1.15,0.10)+Math.round(cStat(attacker,"luck")*0.28);
+    crit=Math.random()<Math.min(0.62,0.18+cStat(attacker,"luck")/115);
+    if(crit)dmg=Math.round(dmg*1.65);
+    if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1);
     applyDamage(defender,dmg);
   }else if(skillId==="magicCannon"){
     dmg=calcDamage(attacker,defender,"magic",1.35,0); applyDamage(defender,dmg);
@@ -2849,7 +3008,7 @@ function handleLevelUp(mon){
   }
 }
 function autoEvolveIfReady(mon){
-  while(mon && mon.stage < 3 && canEvolve(mon)){
+  while(mon && mon.stage < maxStageForSpecies(mon.speciesKey) && canEvolve(mon)){
     const before = mon.formName;
     const result = decideEvolution(mon);
     applyEvolution(mon,result);
@@ -2862,17 +3021,43 @@ function growthBySpecies(k){
   if(k==="gl")return{hp:1,atk:3,def:0,mag:0,luck:1,spd:1};
   if(k==="wacha")return{hp:1,atk:0,def:0,mag:3,luck:1,spd:0};
   if(k==="dentaku")return{hp:0,atk:0,def:1,mag:2,luck:2,spd:1};
+  if(k==="tsumugi")return{hp:0,atk:0,def:0,mag:4,luck:2,spd:0};
+  if(k==="forte")return{hp:1,atk:2,def:0,mag:2,luck:0,spd:3};
+  if(k==="sipa")return{hp:2,atk:3,def:3,mag:0,luck:2,spd:1};
   return{hp:1,atk:1,def:1,mag:1,luck:1,spd:1};
 }
-function canEvolve(mon){if(mon.stage===0)return mon.level>=5;if(mon.stage===1)return mon.level>=12;if(mon.stage===2)return mon.level>=22;return false}
-function nextEvolveText(mon){if(mon.stage===0)return"Lv.5到達で自動成長期進化";if(mon.stage===1)return"Lv.12到達で自動完全体進化";if(mon.stage===2)return"Lv.22到達で自動究極体進化";return"最終進化済み"}
+function maxStageForSpecies(speciesKey){
+  if(speciesKey==="sipa") return 0;
+  if(speciesKey==="tsumugi" || speciesKey==="forte") return 1;
+  return 3;
+}
+function nextEvolutionLevel(mon){
+  if(!mon) return 0;
+  return evolutionLevelFor(mon);
+}
+function canEvolve(mon){
+  const maxStage=maxStageForSpecies(mon.speciesKey);
+  if(mon.stage>=maxStage) return false;
+  return mon.level>=nextEvolutionLevel(mon);
+}
+function nextEvolveText(mon){
+  const maxStage=maxStageForSpecies(mon.speciesKey);
+  if(mon.stage>=maxStage)return"最終進化済み";
+  const lv = nextEvolutionLevel(mon);
+  if(mon.speciesKey==="tsumugi" || mon.speciesKey==="forte")return`Lv.${lv}到達で一段進化`;
+  if(mon.stage===0)return`Lv.${lv}到達で自動成長期進化`;
+  if(mon.stage===1)return`Lv.${lv}到達で自動完全体進化`;
+  if(mon.stage===2)return`Lv.${lv}到達で自動究極体進化`;
+  return"最終進化済み";
+}
 function tryEvolve(){
   const mon=getCurrentMonster();if(!mon)return;
-  if(mon.stage>=3){alert("これ以上は進化できません。");return}
+  if(mon.stage>=maxStageForSpecies(mon.speciesKey)){alert("これ以上は進化できません。");return}
   if(!canEvolve(mon)){alert(`まだ進化できません。${nextEvolveText(mon)}。`);return}
   const result=decideEvolution(mon);applyEvolution(mon,result);saveGame();log(`${mon.nickname}は「${result.formName}」に進化した！`);render();
 }
 function decideEvolution(mon){
+  if(mon.speciesKey==="tsumugi" || mon.speciesKey==="forte") return buildEvolutionForm(mon,"a");
   const scores=calcEvolutionScores(mon), band=getTimeBand();
   if(mon.stage===2 && isRareEvolution(mon,scores,band)) return buildEvolutionForm(mon,"r");
   const aScore=scores.power+scores.balance+(band.key==="day"?4:0)+(mon.speciesKey==="onn"?scores.defense/2:0);
@@ -2922,15 +3107,15 @@ function applyFormBonus(mon){
   if(name.includes("防衛")||name.includes("鉄壁")||name.includes("城塞")||name.includes("不沈")||name.includes("守護")||name.includes("柱")) mon.stats.def+=5;
   if(name.includes("体力")||name.includes("耐久")||name.includes("我慢")||name.includes("リバイバル")) mon.stats.hp+=8;
   if(name.includes("攻")||name.includes("破壊")||name.includes("一撃")||name.includes("拳")||name.includes("解体")||name.includes("怒り")) mon.stats.atk+=5;
-  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")) mon.stats.mag+=5;
-  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")) mon.stats.luck+=5;
-  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")) mon.stats.spd+=5;
+  if(name.includes("魔")||name.includes("わちゃ")||name.includes("演算")||name.includes("京")||name.includes("関数")||name.includes("数式")||name.includes("つむぎ")||name.includes("闇鍋")) mon.stats.mag+=5;
+  if(name.includes("運")||name.includes("確率")||name.includes("乱数")||name.includes("豪運")||name.includes("賭博")||name.includes("黒閃")||name.includes("シパ")) mon.stats.luck+=5;
+  if(name.includes("速")||name.includes("反応")||name.includes("瞬撃")||name.includes("分身")||name.includes("連撃")||name.includes("乱舞")||name.includes("追撃")||name.includes("フォルテ")) mon.stats.spd+=5;
   if(name.includes("超")||name.includes("神速")||name.includes("京")||name.includes("異世界")){mon.stats.hp+=4;mon.stats.atk+=3;mon.stats.def+=3;mon.stats.mag+=3;mon.stats.luck+=3;mon.stats.spd+=3}
   capMonsterStats(mon);
 }
 function getEvolveHint(mon){
   if(!mon)return"まだクリモンがいません。";
-  if(mon.stage>=3)return"最終進化済み。ここから先は育成とバトルで強化しよう。";
+  if(mon.stage>=maxStageForSpecies(mon.speciesKey))return"最終進化済み。ここから先は育成とバトルで強化しよう。";
   const scores=calcEvolutionScores(mon), band=getTimeBand();
   const top=Object.entries(mon.stats).sort((a,b)=>b[1]-a[1])[0];
   let mood=`${nextEvolveText(mon)}。${STAT_LABEL[top[0]]}が目立っている。`;
@@ -2996,7 +3181,7 @@ function renderEgg(){
   }
   const remain=Math.max(0,state.egg.hatchAt-Date.now());
   icon.textContent="🥚";title.textContent=`卵：孵化まで ${formatRemain(remain)}`;
-  desc.textContent="孵化キャラ、性格、個体補正はランダムです。";
+  desc.textContent="孵化キャラ、性格、個体補正はランダムです。低確率でレアキャラが出ます。つむぎ・フォルテはLv.30で一段進化します。";
 }
 function renderMonster(mon){
   const no=document.getElementById("noMonsterHome"), home=document.getElementById("currentMonsterHome");
@@ -3542,7 +3727,7 @@ function renderEvolutionTree(){
   const area=document.getElementById("evolutionTreeArea");
   const select=document.getElementById("treeSpeciesSelect");
   if(!area) return;
-  const key = state.selectedTreeSpecies || "shinya";
+  const key = BASE_SPECIES[state.selectedTreeSpecies] ? state.selectedTreeSpecies : "shinya";
   const renderKey = key + ":" + Object.keys(state.dex||{}).sort().join(",");
   if(select && select.value !== key) select.value = key;
   if(treeRenderKey===renderKey && area.innerHTML) return;
@@ -3587,9 +3772,19 @@ function makeNodeHtml(node){
     </div>
   </div>`;
 }
-function buildSelectedSpeciesTreeHtml(key){
-  const base = BASE_SPECIES[key];
-  const stages = [
+function evolutionTreeStagesFor(key){
+  const paths = Object.keys(EVOLUTION_TREE[key] || {});
+  if(paths.length===0){
+    return [{stage:"レア個体", nodes:[nodeData(key,"base","固定")]}];
+  }
+  const hasDeep = paths.some(p=>p.length>=2);
+  if(!hasDeep){
+    return [
+      {stage:"レア幼年期", nodes:[nodeData(key,"base","幼年期")]},
+      {stage:"一段進化", nodes:paths.sort().map(p=>nodeData(key,p,"一段進化"))}
+    ];
+  }
+  return [
     {stage:"幼年期", nodes:[nodeData(key,"base","幼年期")]},
     {stage:"成長期", nodes:[nodeData(key,"a","A"), nodeData(key,"b","B")]},
     {stage:"完全体", nodes:[
@@ -3603,6 +3798,35 @@ function buildSelectedSpeciesTreeHtml(key){
       nodeData(key,"bba","B-B-A"), nodeData(key,"bbb","B-B-B"), nodeData(key,"bbr","B-B-レア","rare")
     ]}
   ];
+}
+function nodeData(key,path,label,branchKind){
+  const base = BASE_SPECIES[key];
+  const realPath = path === "base" ? "" : path;
+  const formId = path === "base" ? `${key}_base` : `${key}_${path}`;
+  const fixed = formDataFor(key, realPath);
+  const entry = path === "base" ? {formName:base.speciesName, profile:fixed.profile || base.role} : (EVOLUTION_TREE[key]||{})[path];
+  const seen = dexHas(formId);
+  const displayName = seen ? (entry?.formName || fixed.formName || "？？？") : "？？？";
+  const displayProfile = seen ? dexProfileText(formId, displayName, entry?.profile || fixed.profile || "") : "未発見";
+  return {formId, seen, name:displayName, profile:displayProfile, label, branchKind, image:fixed.image, emoji:fixed.emoji};
+}
+function makeNodeHtml(node){
+  const thumb = node.seen ? dexDirectImageHtml(node.image, node.emoji, node.name, "evo-node-thumb") : `<div class="evo-node-thumb"><span class="fallback dex-direct-fallback">？</span></div>`;
+  return `<div class="evo-node ${node.seen ? "seen" : "unseen"} ${node.branchKind === "rare" ? "rare" : ""}">
+    ${thumb}
+    <div class="evo-node-text">
+      <div class="node-name">
+        <span>${node.seen ? "✓" : "□"}</span>
+        <span class="evo-branch-label">${escapeHtml(node.label)}</span>
+        <span>${escapeHtml(node.name)}</span>
+      </div>
+      <div class="node-meta">${escapeHtml(node.profile)}</div>
+    </div>
+  </div>`;
+}
+function buildSelectedSpeciesTreeHtml(key){
+  const base = BASE_SPECIES[key] || BASE_SPECIES.shinya;
+  const stages = evolutionTreeStagesFor(key);
   const allNodes = stages.flatMap(s=>s.nodes);
   const found = allNodes.filter(n=>n.seen).length;
   const total = allNodes.length;
