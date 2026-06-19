@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v59 覚醒ノ儀・成長限界解放版</title>
+  <title>クリモン - 製品版 v60 持ち物・レアエネミー・闘技場連勝版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -996,7 +996,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v59 覚醒ノ儀</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v60 持ち物</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1328,6 +1328,16 @@ body{padding-bottom:86px;}
             体力・攻撃・防御・魔法は成功率40%、運・素早さは35%、特別なスキルは25%、オールステータスは15%です。<br>
             大成功すると、通常成功より大きく伸び、称号を獲得します。特別なスキルは、成功時に各キャラ専用スキル候補から2つ付与されます。<br>
             失敗時は選んだ能力、またはランダム能力が大幅に低下します。Lv.100未満でも、成長限界に到達していれば挑戦できます。
+          </p>
+        </div>
+
+
+        <div class="tips-card">
+          <h3>🎁 持ち物・レアエネミー・闘技場連勝戦</h3>
+          <p>
+            CPU戦では勝利時にランダムでアイテムを入手できます。通常エネミーは低〜中確率、レアエネミーは強力な報酬を狙えます。<br>
+            持ち物はクリモン1体につき1個まで装備できます。N/R/SR/UR/GODのレア度があり、GOD級は戦況を大きく変える代わりにデメリットを持つものもあります。<br>
+            闘技場連勝戦は覚醒済みクリモンのみ参加できます。3/5/10/15/20/30連勝で報酬があり、30連勝初回は王者の王冠、2回目以降はGOD抽選チケットです。通常報酬は1日5個まで受け取れます。
           </p>
         </div>
 
@@ -4826,6 +4836,673 @@ function renderStatTip(key){
 function renderLog(){document.getElementById("logArea").innerHTML=state.log.map(x=>`<div>${escapeHtml(x)}</div>`).join("")}
 function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;if(h>0)return`${h}時間${m}分`;if(m>0)return`${m}分${s}秒`;return`${s}秒`}
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+
+
+/* v60 持ち物・レアエネミー・闘技場連勝戦 */
+const KURIMON_V60_ORIGINALS = {
+  makeEnemy,
+  makeCombatant,
+  cStat,
+  calcDamage,
+  calcHybridDamage,
+  applyDamage,
+  skillUseRate,
+  shouldUseSkill,
+  normalAttack,
+  startTurnEffects,
+  buildBattleEvents,
+  finishBattle,
+  renderMonster,
+  renderBox,
+  renderTravel,
+  rest,
+  play,
+  performAwakening,
+  resetGame
+};
+
+const ITEM_MASTER = {
+  power_bracelet:{rarity:"N",name:"ちからの腕輪",type:"hold",desc:"攻撃 +8%",effects:{atk_percent:8}},
+  guard_charm:{rarity:"N",name:"まもりの護符",type:"hold",desc:"防御 +8%",effects:{def_percent:8}},
+  magic_stone:{rarity:"N",name:"まほうの石",type:"hold",desc:"魔法 +8%",effects:{mag_percent:8}},
+  quick_claw:{rarity:"N",name:"せんせいの爪",type:"hold",desc:"初回行動時だけ素早さ +30%",effects:{first_turn_spd_percent:30}},
+
+  lucky_bell:{rarity:"R",name:"しあわせの鈴",type:"hold",desc:"運 +8%",effects:{luck_percent:8}},
+  wind_wing:{rarity:"R",name:"はやての翼",type:"hold",desc:"素早さ +8%",effects:{spd_percent:8}},
+  life_fruit:{rarity:"R",name:"生命の実",type:"hold",desc:"最大HP +10%",effects:{hp_percent:10}},
+  counter_fang:{rarity:"R",name:"反撃の牙",type:"hold",desc:"攻撃を受けた時、低確率で反撃",effects:{counter_chance:15}},
+  magic_lens:{rarity:"R",name:"魔導レンズ",type:"hold",desc:"魔法スキルの発動率アップ",effects:{magic_skill_rate_up:10}},
+  vaccine:{rarity:"R",name:"万能ワクチン",type:"hold",desc:"毒・猛毒を一度だけ無効",effects:{poison_guard_once:1}},
+  critical_heart:{rarity:"R",name:"会心の心",type:"hold",desc:"クリティカル率アップ",effects:{crit_rate_up:8}},
+  friend_ball:{rarity:"R",name:"友情ボール",type:"tool",desc:"次の遊びの良い結果が出やすくなる",effects:{play_good_rate_up:10}},
+
+  focus_sash:{rarity:"SR",name:"きあいの襷",type:"hold",desc:"HPが0になる攻撃を一度だけHP1で耐える",effects:{survive_once:1}},
+  regen_seed:{rarity:"SR",name:"再生の種",type:"hold",desc:"毎ターンHPを少し回復",effects:{regen_percent:3}},
+  sleep_pillow:{rarity:"SR",name:"ぐっすりまくら",type:"tool",desc:"次の休憩時の成長限界低下率を軽減",effects:{rest_penalty_down:10}},
+  fullmoon_fragment:{rarity:"SR",name:"満月の欠片",type:"awakening_tool",desc:"覚醒ノ儀の大成功率 +1%",effects:{awakening_great_success_up:1}},
+  black_syringe:{rarity:"SR",name:"黒い注射器",type:"awakening_tool",desc:"覚醒ノ儀の成功時効果アップ。ただし失敗時ダウンも増加",effects:{awakening_success_effect_up:10,awakening_fail_penalty_up:10}},
+
+  silence_mask:{rarity:"UR",name:"沈黙の仮面",type:"hold",desc:"相手の魔法スキル発動率を少し下げる",effects:{enemy_magic_skill_rate_down:10}},
+  awakening_ticket:{rarity:"UR",name:"覚醒ノ札",type:"awakening_tool",desc:"覚醒ノ儀の成功率 +5%",effects:{awakening_success_up:5}},
+  moonlight_charm:{rarity:"UR",name:"月光の護符",type:"awakening_tool",desc:"覚醒ノ儀の失敗時ダウン量を少し軽減",effects:{awakening_fail_penalty_down:25}},
+  stabilizer:{rarity:"UR",name:"安定剤",type:"awakening_tool",desc:"覚醒ノ儀の成功率 +10%。ただし大成功は出なくなる",effects:{awakening_success_up:10,no_great_success:1}},
+  cursed_bracelet:{rarity:"UR",name:"呪いの腕輪",type:"hold",desc:"攻撃 +20%、防御 -10%",effects:{atk_percent:20,def_percent:-10}},
+  berserker_fang:{rarity:"UR",name:"狂戦士の牙",type:"hold",desc:"与ダメージアップ、被ダメージアップ",effects:{damage_dealt_up:15,damage_taken_up:15}},
+  mana_berserk_stone:{rarity:"UR",name:"魔導暴走石",type:"hold",desc:"魔法 +20%、低確率で自傷",effects:{mag_percent:20,self_damage_chance:10}},
+
+  forbidden_chart:{rarity:"GOD",name:"禁断のカルテ",type:"awakening_tool",desc:"覚醒ノ儀を一度だけやり直せる",effects:{awakening_retry:1}},
+  kings_crown:{rarity:"GOD",name:"王者の王冠",type:"hold",desc:"全ステータス +8%。闘技場30連勝初回報酬限定",effects:{all_stats_percent:8}},
+  godspeed_raiment:{rarity:"GOD",name:"神速の羽衣",type:"hold",desc:"素早さ +25%、初回行動確定先制。防御 -10%",effects:{spd_percent:25,first_action_guaranteed:1,def_percent:-10}},
+  phoenix_feather:{rarity:"GOD",name:"不死鳥の羽",type:"hold",desc:"戦闘中1回だけHP50%で復活。復活後、攻撃・魔法 -10%",effects:{revive_once_percent:50,atk_mag_down_after_revive:-10}},
+  reversal_magatama:{rarity:"GOD",name:"逆転の勾玉",type:"hold",desc:"HP30%以下で全能力上昇。HP50%以上では効果なし",effects:{low_hp_all_stats_up:20,inactive_above_hp_percent:50}},
+  forbidden_heart:{rarity:"GOD",name:"禁断の心臓",type:"hold",desc:"毎ターンHP回復＋攻撃上昇。ターン経過で防御低下",effects:{regen_and_atk_up_each_turn:1,def_down_each_turn:1}},
+  fate_dice:{rarity:"GOD",name:"運命のサイコロ",type:"hold",desc:"毎ターンランダムで大強化。低確率で自分にデバフ",effects:{random_big_buff_each_turn:1,self_debuff_chance:10}},
+  god_ticket:{rarity:"GOD",name:"GOD抽選チケット",type:"ticket",desc:"GODアイテムをランダムで1個入手するチケット",effects:{random_god_item:1}}
+};
+
+const RARITY_ORDER = {N:1,R:2,SR:3,UR:4,GOD:5};
+const HOLD_ITEM_IDS = Object.keys(ITEM_MASTER).filter(id=>ITEM_MASTER[id].type==="hold");
+const TOOL_ITEM_IDS = Object.keys(ITEM_MASTER).filter(id=>ITEM_MASTER[id].type!=="hold");
+const RANDOM_GOD_POOL = ["forbidden_chart","godspeed_raiment","phoenix_feather","reversal_magatama","forbidden_heart","fate_dice"];
+
+const ENEMY_MASTER = [
+  {id:"enemy_teijiou",name:"定時王",type:"normal",rank:"D",direction:"攻撃・素早さ寄り。連撃型",speciesKey:"gl",level:18,hpBias:0,atkBias:20,defBias:0,magBias:0,luckBias:5,spdBias:20,itemId:"quick_claw",dropTableId:"drop_normal_d",cpReward:45,expReward:35,weight:10,timeBand:"all",emoji:"🕔",image:"images/enemy_teijiou.png"},
+  {id:"enemy_trident",name:"トライデント",type:"normal",rank:"D",direction:"HP・防御が高い",speciesKey:"onn",level:20,hpBias:25,atkBias:0,defBias:25,magBias:0,luckBias:0,spdBias:-5,itemId:"guard_charm",dropTableId:"drop_normal_d",cpReward:45,expReward:35,weight:10,timeBand:"all",emoji:"🔱",image:"images/enemy_trident.png"},
+  {id:"enemy_kotaro",name:"コタロー",type:"normal",rank:"C",direction:"バランス型。序盤〜中盤の基準敵",speciesKey:"shinya",level:25,hpBias:5,atkBias:5,defBias:5,magBias:5,luckBias:5,spdBias:5,itemId:"",dropTableId:"drop_normal_c",cpReward:60,expReward:50,weight:9,timeBand:"all",emoji:"🐕",image:"images/enemy_kotaro.png"},
+  {id:"enemy_riku",name:"リク",type:"normal",rank:"C",direction:"攻撃・会心寄り",speciesKey:"gl",level:28,hpBias:0,atkBias:25,defBias:0,magBias:0,luckBias:15,spdBias:5,itemId:"critical_heart",dropTableId:"drop_normal_c",cpReward:65,expReward:55,weight:8,timeBand:"all",emoji:"⚡",image:"images/enemy_riku.png"},
+  {id:"enemy_oppaiz",name:"おっぱいず",type:"normal",rank:"B",direction:"HP・魔法寄り。回復や補助もあり",speciesKey:"wacha",level:35,hpBias:25,atkBias:0,defBias:5,magBias:25,luckBias:5,spdBias:0,itemId:"regen_seed",dropTableId:"drop_strong_b",cpReward:85,expReward:75,weight:7,timeBand:"all",emoji:"💗",image:"images/enemy_oppaiz.png"},
+  {id:"enemy_erohedgehog",name:"エロハリネズミ",type:"normal",rank:"B",direction:"反撃・状態異常型",speciesKey:"sipa",level:36,hpBias:5,atkBias:10,defBias:15,magBias:5,luckBias:15,spdBias:0,itemId:"counter_fang",dropTableId:"drop_strong_b",cpReward:90,expReward:80,weight:6,timeBand:"all",emoji:"🦔",image:"images/enemy_erohedgehog.png"},
+  {id:"enemy_anyamako",name:"あんやまこ",type:"normal",rank:"B",direction:"魔法・妨害型",speciesKey:"wacha",level:38,hpBias:0,atkBias:0,defBias:5,magBias:30,luckBias:10,spdBias:5,itemId:"magic_lens",dropTableId:"drop_strong_b",cpReward:95,expReward:85,weight:6,timeBand:"night",emoji:"🌙",image:"images/enemy_anyamako.png"},
+  {id:"enemy_saayan",name:"さーやん",type:"normal",rank:"A",direction:"素早さ・運寄り",speciesKey:"forte",level:45,hpBias:0,atkBias:5,defBias:0,magBias:5,luckBias:25,spdBias:25,itemId:"wind_wing",dropTableId:"drop_strong_a",cpReward:120,expReward:100,weight:5,timeBand:"all",emoji:"🪽",image:"images/enemy_saayan.png"},
+  {id:"rare_fullmoon",name:"満月",type:"rare",rank:"A",direction:"覚醒ノ儀系アイテムを落とす",speciesKey:"dentaku",level:55,hpBias:15,atkBias:10,defBias:10,magBias:20,luckBias:25,spdBias:10,itemId:"moonlight_charm",dropTableId:"drop_rare_moon",cpReward:180,expReward:160,weight:1,timeBand:"night",emoji:"🌝",image:"images/enemy_fullmoon.png"},
+  {id:"rare_kazuko",name:"栗場カズコ",type:"rare",rank:"S",direction:"超強敵。GOD戦闘用アイテムを落とす",speciesKey:"shinya",level:75,hpBias:30,atkBias:30,defBias:25,magBias:30,luckBias:25,spdBias:25,itemId:"kings_crown",dropTableId:"drop_rare_kazuko",cpReward:300,expReward:260,weight:1,timeBand:"all",emoji:"👑",image:"images/enemy_kazuko.png"}
+];
+
+const DROP_TABLES = {
+  drop_normal_d:[{rarity:"N",rate:25},{rarity:"R",rate:5}],
+  drop_normal_c:[{rarity:"N",rate:30},{rarity:"R",rate:8}],
+  drop_strong_b:[{rarity:"R",rate:18},{rarity:"SR",rate:6}],
+  drop_strong_a:[{rarity:"R",rate:25},{rarity:"SR",rate:10},{rarity:"UR",rate:1}],
+  drop_rare_moon:[
+    {itemId:"fullmoon_fragment",rate:35},{itemId:"awakening_ticket",rate:20},{itemId:"moonlight_charm",rate:15},{itemId:"stabilizer",rate:8},{itemId:"forbidden_chart",rate:1}
+  ],
+  drop_rare_kazuko:[
+    {rarity:"UR",rate:45},{itemId:"godspeed_raiment",rate:3},{itemId:"phoenix_feather",rate:3},{itemId:"reversal_magatama",rate:3},{itemId:"forbidden_heart",rate:2},{itemId:"fate_dice",rate:2}
+  ]
+};
+
+const ARENA_REWARDS = {
+  3:[{rarity:"R",rate:100}],
+  5:[{rarity:"R",rate:85},{rarity:"SR",rate:15}],
+  10:[{rarity:"SR",rate:100}],
+  15:[{rarity:"UR",rate:50},{itemId:"awakening_ticket",rate:20},{itemId:"moonlight_charm",rate:15},{itemId:"fullmoon_fragment",rate:15}],
+  20:[{rarity:"UR",rate:90},{rarity:"GOD",rate:10}],
+  30:[{itemId:"kings_crown",rate:100}]
+};
+
+function injectV60Styles(){
+  if(document.getElementById("v60ItemStyles")) return;
+  const style=document.createElement("style");
+  style.id="v60ItemStyles";
+  style.textContent=`
+    .item-area,.arena-streak-panel{margin-top:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:16px;}
+    .item-area h3,.arena-streak-panel h3{color:#fff1a1;}
+    .item-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+    .item-row select{font-family:inherit;border:1px solid var(--line);border-radius:12px;padding:9px 10px;color:var(--text);background:#151a28;outline:none;min-width:180px;}
+    .item-bag{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+    .item-chip{display:inline-flex;gap:4px;align-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);border-radius:999px;padding:4px 8px;font-size:11px;}
+    .rarity-N{color:#dfe6ff}.rarity-R{color:#8dffb5}.rarity-SR{color:#ffe38b}.rarity-UR{color:#ff9ad5}.rarity-GOD{color:#fff;font-weight:950;text-shadow:0 0 8px rgba(248,214,109,.8)}
+    .rare-enemy-banner{display:inline-flex;margin-left:6px;padding:2px 6px;border-radius:999px;background:rgba(255,154,213,.18);border:1px solid rgba(255,154,213,.35);color:#ffb8e2;font-size:11px;font-weight:900;}
+  `;
+  document.head.appendChild(style);
+}
+
+function todayKey(){return new Date().toLocaleDateString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit"});}
+function ensureItemSystems(){
+  if(!state.inventory || typeof state.inventory!=="object") state.inventory={};
+  for(const id of Object.keys(ITEM_MASTER)) if(typeof state.inventory[id]!=="number") state.inventory[id]=0;
+  if(!state.itemBoosts || typeof state.itemBoosts!=="object") state.itemBoosts={restPillow:0,friendBall:0};
+  if(typeof state.itemBoosts.restPillow!=="number") state.itemBoosts.restPillow=0;
+  if(typeof state.itemBoosts.friendBall!=="number") state.itemBoosts.friendBall=0;
+  if(!state.arenaStreak || typeof state.arenaStreak!=="object") state.arenaStreak={current:0,best:0,crownClaimed:false,dailyKey:todayKey(),dailyRewards:0};
+  if(state.arenaStreak.dailyKey!==todayKey()){state.arenaStreak.dailyKey=todayKey();state.arenaStreak.dailyRewards=0;}
+  if(typeof state.arenaStreak.current!=="number") state.arenaStreak.current=0;
+  if(typeof state.arenaStreak.best!=="number") state.arenaStreak.best=0;
+  if(typeof state.arenaStreak.crownClaimed!=="boolean") state.arenaStreak.crownClaimed=false;
+  if(typeof state.arenaStreak.dailyRewards!=="number") state.arenaStreak.dailyRewards=0;
+  for(const mon of state.monsters||[]){ if(typeof mon.holdItemId!=="string") mon.holdItemId=""; }
+}
+function itemName(id){return ITEM_MASTER[id]?.name || id || "なし";}
+function itemLabel(id){const it=ITEM_MASTER[id];return it?`[${it.rarity}] ${it.name}`:"なし";}
+function heldItemIdFromSource(source){return source?.holdItemId || source?.itemId || source?.item_id || "";}
+function heldItem(actor){const id=heldItemIdFromSource(actor?.source || actor);return ITEM_MASTER[id] ? {id,...ITEM_MASTER[id]} : null;}
+function hasHeld(actor,id){return heldItem(actor)?.id===id;}
+function ownedCount(id){ensureItemSystems();return state.inventory[id]||0;}
+function equippedCount(id){return (state.monsters||[]).filter(m=>m.holdItemId===id).length;}
+function availableCount(id){return Math.max(0, ownedCount(id)-equippedCount(id));}
+function addItem(id,count=1){ensureItemSystems();if(!ITEM_MASTER[id])return false;state.inventory[id]=(state.inventory[id]||0)+count;return true;}
+function consumeItem(id,count=1){ensureItemSystems();if((state.inventory[id]||0)<count)return false;state.inventory[id]-=count;return true;}
+function randomItemByRarity(rarity){
+  let pool=Object.entries(ITEM_MASTER).filter(([id,it])=>it.rarity===rarity && id!=="kings_crown" && id!=="god_ticket");
+  if(rarity==="GOD") pool=pool.filter(([id])=>id!=="kings_crown");
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)][0];
+}
+function rollDropEntry(entries){
+  const total=entries.reduce((s,e)=>s+(e.rate||0),0);
+  let r=Math.random()*100;
+  for(const e of entries){r-=(e.rate||0);if(r<=0)return e;}
+  return total>=100 ? entries[entries.length-1] : null;
+}
+function rollDropFromTable(tableId){
+  const entries=DROP_TABLES[tableId]||[];
+  if(!entries.length)return null;
+  const entry=rollDropEntry(entries);
+  if(!entry)return null;
+  if(entry.itemId)return entry.itemId;
+  if(entry.rarity)return randomItemByRarity(entry.rarity);
+  return null;
+}
+function equipCurrentItem(){
+  ensureItemSystems();
+  const mon=getCurrentMonster(); if(!mon)return;
+  const select=document.getElementById("holdItemSelect");
+  const id=select?.value || "";
+  if(!id){mon.holdItemId="";saveGame();log(`${mon.nickname}の持ち物を外しました。`);render();return;}
+  if(!ITEM_MASTER[id] || ITEM_MASTER[id].type!=="hold"){alert("装備できないアイテムです。");return;}
+  if(mon.holdItemId!==id && availableCount(id)<=0){alert("その持ち物の空き在庫がありません。ほかのクリモンから外してください。");return;}
+  mon.holdItemId=id;
+  saveGame();log(`${mon.nickname}に「${itemName(id)}」を持たせました。`);render();
+}
+function useInventoryItem(id){
+  ensureItemSystems();
+  const it=ITEM_MASTER[id]; if(!it)return;
+  if((state.inventory[id]||0)<=0){alert("在庫がありません。");return;}
+  if(id==="friend_ball"){
+    consumeItem(id);state.itemBoosts.friendBall=(state.itemBoosts.friendBall||0)+1;saveGame();log("友情ボールを使用。次の遊びで良い結果が出やすくなります。");render();return;
+  }
+  if(id==="sleep_pillow"){
+    consumeItem(id);state.itemBoosts.restPillow=(state.itemBoosts.restPillow||0)+1;saveGame();log("ぐっすりまくらを使用。次の休憩の成長限界低下率が下がります。");render();return;
+  }
+  if(id==="god_ticket"){
+    consumeItem(id);const got=RANDOM_GOD_POOL[Math.floor(Math.random()*RANDOM_GOD_POOL.length)];addItem(got);saveGame();log(`GOD抽選チケットを使用。「${itemName(got)}」を入手！`);render();return;
+  }
+  alert("このアイテムは覚醒ノ儀や装備で使用します。");
+}
+function renderItemBag(limit=18){
+  ensureItemSystems();
+  const items=Object.entries(state.inventory).filter(([id,c])=>c>0).sort((a,b)=>RARITY_ORDER[ITEM_MASTER[b[0]]?.rarity||"N"]-RARITY_ORDER[ITEM_MASTER[a[0]]?.rarity||"N"] || itemName(a[0]).localeCompare(itemName(b[0]),"ja"));
+  if(!items.length)return '<span class="small">所持アイテムなし</span>';
+  return items.slice(0,limit).map(([id,c])=>`<span class="item-chip rarity-${escapeHtml(ITEM_MASTER[id].rarity)}">${escapeHtml(itemLabel(id))} ×${c}</span>`).join("") + (items.length>limit?`<span class="item-chip">他${items.length-limit}種</span>`:"");
+}
+function renderToolButtons(){
+  ensureItemSystems();
+  const usable=["friend_ball","sleep_pillow","god_ticket"].filter(id=>(state.inventory[id]||0)>0);
+  if(!usable.length)return "";
+  return `<div class="item-row">${usable.map(id=>`<button class="ghost" onclick="useInventoryItem('${id}')">${escapeHtml(itemName(id))}を使う</button>`).join("")}</div>`;
+}
+function renderItemPanel(mon){
+  ensureItemSystems();
+  const current=mon?.holdItemId || "";
+  const holdOptions=HOLD_ITEM_IDS.filter(id=>ownedCount(id)>0 || current===id).sort((a,b)=>RARITY_ORDER[ITEM_MASTER[a].rarity]-RARITY_ORDER[ITEM_MASTER[b].rarity] || itemName(a).localeCompare(itemName(b),"ja"));
+  const opts=['<option value="">持ち物なし</option>'].concat(holdOptions.map(id=>`<option value="${escapeHtml(id)}" ${current===id?"selected":""}>${escapeHtml(itemLabel(id))}（空き${availableCount(id)}）</option>`)).join("");
+  const held=current ? `${itemLabel(current)}：${ITEM_MASTER[current]?.desc || ""}` : "なし";
+  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect">${opts}</select><button onclick="equipCurrentItem()">持ち物を変更</button></div>${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
+}
+function renderAwakeningAssistSelector(){
+  ensureItemSystems();
+  const candidates=["awakening_ticket","moonlight_charm","fullmoon_fragment","black_syringe","stabilizer"].filter(id=>(state.inventory[id]||0)>0);
+  if(!candidates.length && (state.inventory.forbidden_chart||0)<=0)return "";
+  const opts=['<option value="">補助アイテムなし</option>'].concat(candidates.map(id=>`<option value="${id}">${escapeHtml(itemLabel(id))} ×${state.inventory[id]}</option>`)).join("");
+  const retry=(state.inventory.forbidden_chart||0)>0 ? `<p class="small">禁断のカルテ所持：${state.inventory.forbidden_chart}個。失敗時に確認のうえ、1回だけやり直し可能。</p>` : "";
+  return `<div class="awakening-result"><b>覚醒ノ儀補助：</b><br><select id="awakeningAssistItemSelect" style="margin-top:6px;font-family:inherit;border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--text);background:#151a28;max-width:100%;">${opts}</select>${retry}</div>`;
+}
+
+function applyPercent(value,pct){return Math.max(1,Math.round(value*(1+pct/100)));}
+function applyItemStatEffects(source, stats){
+  const id=heldItemIdFromSource(source);
+  const it=ITEM_MASTER[id]; if(!it)return stats;
+  const e=it.effects||{};
+  const keys=["hp","atk","def","mag","luck","spd"];
+  for(const key of keys){
+    let pct=0;
+    if(e.all_stats_percent) pct+=e.all_stats_percent;
+    if(e[`${key}_percent`]) pct+=e[`${key}_percent`];
+    if(pct) stats[key]=applyPercent(stats[key]||1,pct);
+  }
+  return stats;
+}
+
+makeCombatant = function(source, side){
+  const stats = source.stats ? {...source.stats} : {hp:source.hp,atk:source.atk,def:source.def,mag:source.mag,luck:source.luck,spd:source.spd};
+  applyItemStatEffects(source, stats);
+  return {
+    source, side,
+    itemId: heldItemIdFromSource(source),
+    itemFlags:{}, turnCount:0,
+    name: source.nickname || source.name || source.formName || "クリモン",
+    emoji: source.emoji || "👾",
+    level: source.level || 1,
+    speciesKey: source.speciesKey || "enemy",
+    formName: source.formName || source.name || "",
+    stats,
+    hp: stats.hp || source.hp || 1,
+    maxHp: stats.hp || source.hp || 1,
+    status:{poison:0,venom:0,superVenom:0,silence:0,stun:0,regen:0,future:0,invincible:0},
+    buff:{atk:0,def:0,mag:0,luck:0,spd:0,shield:0}
+  };
+};
+
+cStat = function(c,key){
+  let base=(c.stats && c.stats[key]) || 0;
+  const add=(c.buff && c.buff[key]) || 0;
+  let val=Math.max(1, base + add);
+  const item=heldItem(c);
+  if(item?.id==="quick_claw" && key==="spd" && (c.turnCount||0)<=1) val=applyPercent(val,30);
+  if(item?.id==="reversal_magatama" && c.maxHp>0 && c.hp/c.maxHp<=0.30) val=applyPercent(val,20);
+  return Math.max(1,val);
+};
+
+calcDamage = function(attacker, defender, kind="physical", power=1, ignoreDef=0){
+  let dmg=KURIMON_V60_ORIGINALS.calcDamage(attacker,defender,kind,power,ignoreDef);
+  const atkItem=heldItem(attacker); const defItem=heldItem(defender);
+  if(atkItem?.effects?.damage_dealt_up) dmg=applyPercent(dmg, atkItem.effects.damage_dealt_up);
+  if(defItem?.effects?.damage_taken_up) dmg=applyPercent(dmg, defItem.effects.damage_taken_up);
+  return Math.max(1,dmg);
+};
+calcHybridDamage = function(attacker, defender, power=1, pierce=0){
+  let dmg=KURIMON_V60_ORIGINALS.calcHybridDamage(attacker,defender,power,pierce);
+  const atkItem=heldItem(attacker); const defItem=heldItem(defender);
+  if(atkItem?.effects?.damage_dealt_up) dmg=applyPercent(dmg, atkItem.effects.damage_dealt_up);
+  if(defItem?.effects?.damage_taken_up) dmg=applyPercent(dmg, defItem.effects.damage_taken_up);
+  return Math.max(1,dmg);
+};
+applyDamage = function(defender,dmg){
+  const item=heldItem(defender);
+  const after=(defender.hp||0)-dmg;
+  if(after<=0 && item?.id==="focus_sash" && !defender.itemFlags.sashUsed){
+    defender.itemFlags.sashUsed=true; defender.hp=1; return;
+  }
+  if(after<=0 && item?.id==="phoenix_feather" && !defender.itemFlags.phoenixUsed){
+    defender.itemFlags.phoenixUsed=true;
+    defender.hp=Math.max(1,Math.round((defender.maxHp||1)*0.5));
+    defender.stats.atk=Math.max(1,Math.round((defender.stats.atk||1)*0.9));
+    defender.stats.mag=Math.max(1,Math.round((defender.stats.mag||1)*0.9));
+    return;
+  }
+  defender.hp=Math.max(0,after);
+};
+
+skillUseRate = function(attacker){
+  let chance=KURIMON_V60_ORIGINALS.skillUseRate(attacker);
+  const item=heldItem(attacker);
+  if(item?.effects?.magic_skill_rate_up) chance += item.effects.magic_skill_rate_up/100;
+  return Math.max(0.05,Math.min(0.95,chance));
+};
+shouldUseSkill = function(attacker, defender){
+  const silence = attacker.status?.silence || 0;
+  const usable = getSkills(attacker).filter(id=>{
+    const cat=SKILL_DEFS[id]?.category;
+    return !(silence>0 && (cat==="magic" || cat==="status"));
+  });
+  if(!usable.length) return null;
+  let chance=skillUseRate(attacker);
+  const defItem=heldItem(defender);
+  if(defItem?.effects?.enemy_magic_skill_rate_down) chance -= defItem.effects.enemy_magic_skill_rate_down/100;
+  if(Math.random()>=Math.max(0.05,Math.min(0.95,chance))) return null;
+  return chooseWeightedSkill(usable, attacker, defender);
+};
+
+normalAttack = function(attacker, defender, events, monRef){
+  const a = attacker.side==="me" ? attacker : defender;
+  const b = attacker.side==="me" ? defender : attacker;
+  const action = normalActionDamage(attacker, defender);
+  if(defender.status.invincible>0){pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}はエリア移動中で当たらない。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});return;}
+  if(defender.status.future>0){defender.status.future=0;pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}は未来予測で回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});return;}
+  const critBonus=(heldItem(attacker)?.effects?.crit_rate_up||0)/100;
+  const critRate=Math.min(0.55,0.05+(cStat(attacker,"luck")/120)+critBonus);
+  const dodgeRate=Math.min(0.24,(cStat(defender,"luck")+cStat(defender,"spd"))/240);
+  if(Math.random()<dodgeRate){pushEvent(events,"attack",`${attacker.name}の${action.label}！ しかし${defender.name}は回避した。`,a,b,{attacker:attacker.side,target:defender.side,dmg:0,dodge:true,magic:action.kind==="magic"});return;}
+  const variance = 0.88 + Math.random()*0.24;
+  let dmg=Math.max(1,Math.round((action.base*0.72 - action.guard + 4) * variance));
+  const isCrit=Math.random()<critRate; if(isCrit) dmg=Math.round(dmg*1.55);
+  const defHpBefore=defender.hp;
+  applyDamage(defender,dmg);
+  if(isCrit && monRef && attacker.side==="me" && monRef.history) monRef.history.crits++;
+  const statNote = action.kind==="magic" ? "魔法依存" : "攻撃依存";
+  pushEvent(events,"attack",`${attacker.name}の${action.label}！ ${defender.name}に${dmg}ダメージ${isCrit?"！ クリティカル！":""}（${statNote}）`,a,b,{attacker:attacker.side,target:defender.side,dmg,crit:isCrit,magic:action.kind==="magic"});
+  if(defender.hp>0 && defHpBefore>defender.hp && heldItem(defender)?.id==="counter_fang" && Math.random()<0.15){
+    const cdmg=Math.max(1,Math.round(cStat(defender,"atk")*0.35));
+    applyDamage(attacker,cdmg);
+    pushEvent(events,"attack",`${defender.name}の反撃の牙！ ${attacker.name}に${cdmg}ダメージ。`,a,b,{attacker:defender.side,target:attacker.side,dmg:cdmg,crit:false});
+  }
+};
+
+startTurnEffects = function(actor, opponent, events){
+  actor.turnCount=(actor.turnCount||0)+1;
+  const a = actor.side==="me" ? actor : opponent;
+  const b = actor.side==="me" ? opponent : actor;
+  const item=heldItem(actor);
+  if(item?.id==="vaccine" && !actor.itemFlags.vaccineUsed && (actor.status.poison>0 || actor.status.venom>0 || actor.status.superVenom>0)){
+    actor.itemFlags.vaccineUsed=true; actor.status.poison=0; actor.status.venom=0; actor.status.superVenom=0;
+    pushEvent(events,"status",`${actor.name}の万能ワクチン！ 毒を一度だけ無効化した。`,a,b);
+  }
+  KURIMON_V60_ORIGINALS.startTurnEffects(actor,opponent,events);
+  if(actor.hp<=0)return;
+  if(item?.id==="regen_seed"){
+    const heal=Math.max(1,Math.round(actor.maxHp*0.03)); const before=actor.hp; actor.hp=Math.min(actor.maxHp,actor.hp+heal);
+    if(actor.hp>before) pushEvent(events,"status",`${actor.name}の再生の種。HPを${actor.hp-before}回復。`,a,b);
+  }
+  if(item?.id==="mana_berserk_stone" && Math.random()<0.10){
+    const d=Math.max(1,Math.round(actor.maxHp*0.04)); actor.hp=Math.max(1,actor.hp-d);
+    pushEvent(events,"status",`${actor.name}の魔導暴走石が暴走。${d}ダメージ。`,a,b);
+  }
+  if(item?.id==="forbidden_heart"){
+    const heal=Math.max(1,Math.round(actor.maxHp*0.04)); const before=actor.hp; actor.hp=Math.min(actor.maxHp,actor.hp+heal);
+    actor.buff.atk=Math.max(actor.buff.atk||0,Math.min(8,(actor.buff.atk||0)+1));
+    actor.buff.def=Math.min(actor.buff.def||0,(actor.buff.def||0)-1);
+    pushEvent(events,"status",`${actor.name}の禁断の心臓。HP${actor.hp-before}回復、攻撃上昇、防御低下。`,a,b);
+  }
+  if(item?.id==="fate_dice"){
+    const keys=["atk","def","mag","luck","spd"]; const k=keys[Math.floor(Math.random()*keys.length)];
+    actor.buff[k]=Math.max(actor.buff[k]||0,4);
+    let msg=`${actor.name}の運命のサイコロ！ ${STAT_LABEL[k]}が大きく上がった。`;
+    if(Math.random()<0.10){const dk=keys[Math.floor(Math.random()*keys.length)]; actor.buff[dk]=Math.min(actor.buff[dk]||0,-3); msg+=` しかし${STAT_LABEL[dk]}が下がった。`;}
+    pushEvent(events,"status",msg,a,b);
+  }
+};
+
+buildBattleEvents = function(mon, enemy){
+  const me=makeCombatant(mon,"me");
+  const foe=makeCombatant(enemy,"enemy");
+  const events=[];
+  for(let t=1;t<=24;t++){
+    pushEvent(events,"turn",`ターン ${t}`,me,foe);
+    startTurnEffects(me,foe,events); if(me.hp<=0||foe.hp<=0)break;
+    startTurnEffects(foe,me,events); if(me.hp<=0||foe.hp<=0)break;
+    let myFirst;
+    if(t===1 && heldItem(me)?.effects?.first_action_guaranteed && !heldItem(foe)?.effects?.first_action_guaranteed) myFirst=true;
+    else if(t===1 && heldItem(foe)?.effects?.first_action_guaranteed && !heldItem(me)?.effects?.first_action_guaranteed) myFirst=false;
+    else {const firstChance=Math.max(0.12,Math.min(0.88,0.5+((cStat(me,"spd")-cStat(foe,"spd"))/140))); myFirst=Math.random()<firstChance;}
+    if(myFirst){takeAction(me,foe,events,mon); if(foe.hp<=0)break; takeAction(foe,me,events,mon);}
+    else{takeAction(foe,me,events,mon); if(me.hp<=0)break; takeAction(me,foe,events,mon);}
+    if(foe.hp>0 && me.hp>0 && cStat(me,"spd")-cStat(foe,"spd")>=8 && Math.random()<0.16){if(mon.history) mon.history.doubleAttacks++;pushEvent(events,"bonus",`${me.name}の素早さが相手を上回る！ 追加行動！`,me,foe);takeAction(me,foe,events,mon);}
+    reduceDurations(me); reduceDurations(foe);
+    if(me.hp<=0||foe.hp<=0)break;
+  }
+  const win=foe.hp<=0 && me.hp>0;
+  pushEvent(events,"result",win?"勝利！":"敗北……",me,foe,{win});
+  return events;
+};
+
+function weightedPick(list){
+  const total=list.reduce((s,x)=>s+(x.weight||1),0); let r=Math.random()*total;
+  for(const x of list){r-=(x.weight||1); if(r<=0)return x;} return list[0];
+}
+function scaleEnemyLevel(template, playerLevel, arenaStreak=0){
+  const base=template.level || playerLevel || 1;
+  if(template.type==="rare") return Math.max(playerLevel+8,base+Math.floor(playerLevel*0.15));
+  const lv=Math.round((base*0.45)+(playerLevel*0.65)+arenaStreak*1.2);
+  return Math.max(3, Math.min(100, lv));
+}
+function enemyStatsFromTemplate(t, playerLevel, arenaStreak=0){
+  const lv=scaleEnemyLevel(t,playerLevel,arenaStreak);
+  const rankBonus={D:0,C:4,B:10,A:18,S:30,GOD:45}[t.rank]||0;
+  const rareBonus=t.type==="rare"?18:0;
+  const streakBonus=Math.max(0,arenaStreak*2);
+  const statBase=5+Math.floor(lv*1.15)+rankBonus+rareBonus+streakBonus;
+  const hpBase=28+lv*4+rankBonus*4+rareBonus*5+streakBonus*3;
+  return {
+    level:lv,
+    hp:Math.max(1,Math.round(hpBase+(t.hpBias||0)+Math.random()*8)),
+    atk:Math.max(1,Math.round(statBase+(t.atkBias||0)+Math.random()*4)),
+    def:Math.max(1,Math.round(statBase+(t.defBias||0)+Math.random()*4)),
+    mag:Math.max(1,Math.round(statBase+(t.magBias||0)+Math.random()*4)),
+    luck:Math.max(1,Math.round(statBase+(t.luckBias||0)+Math.random()*4)),
+    spd:Math.max(1,Math.round(statBase+(t.spdBias||0)+Math.random()*4))
+  };
+}
+function enemyFromTemplate(t, playerLevel, arenaStreak=0){
+  const st=enemyStatsFromTemplate(t,playerLevel,arenaStreak);
+  const awakened=arenaStreak>0 || t.type==="rare";
+  const title=t.type==="rare" ? (t.name==="満月"?"満月":"学園序列1位") : (awakened?"覚醒者":"");
+  return {enemyId:t.id,name:t.name,nickname:t.name,enemyType:t.type,rank:t.rank,direction:t.direction,speciesKey:t.speciesKey,speciesName:BASE_SPECIES[t.speciesKey]?.speciesName||"",formName:t.name,formId:`enemy_${t.id}`,stage:awakened?3:1,emoji:t.emoji||"👾",image:t.image||"",level:st.level,stats:{hp:st.hp,atk:st.atk,def:st.def,mag:st.mag,luck:st.luck,spd:st.spd},hp:st.hp,atk:st.atk,def:st.def,mag:st.mag,luck:st.luck,spd:st.spd,itemId:t.itemId||"",dropTableId:t.dropTableId,cpReward:t.cpReward||0,expReward:t.expReward||0,isRare:t.type==="rare",awakening:{done:awakened,type:"all",result:"success",title,skills:[],effects:[],at:Date.now()}};
+}
+makeEnemy = function(level){
+  const band=getTimeBand().key;
+  let rareChance = band==="midnight" ? 0.10 : band==="night" ? 0.08 : 0.05;
+  const rarePool=ENEMY_MASTER.filter(e=>e.type==="rare" && (e.timeBand==="all" || e.timeBand===band || (e.timeBand==="night" && band==="midnight")));
+  const normalPool=ENEMY_MASTER.filter(e=>e.type==="normal" && (e.timeBand==="all" || e.timeBand===band));
+  const pool=(Math.random()<rareChance && rarePool.length) ? rarePool : normalPool;
+  const t=weightedPick(pool.length?pool:ENEMY_MASTER.filter(e=>e.type==="normal"));
+  return enemyFromTemplate(t, level||1, 0);
+};
+
+finishBattle = function(mon, enemy, win){
+  if(win){
+    mon.history.wins++;
+    const baseExp=enemy.expReward || (20+enemy.level*5), cp=enemy.cpReward || (25+enemy.level*5);
+    const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
+    log(`バトル勝利！ EXP +${exp}、CP +${cp}`);
+    const itemId=rollDropFromTable(enemy.dropTableId || (enemy.isRare?"drop_rare_moon":"drop_normal_d"));
+    if(itemId){addItem(itemId);log(`${enemy.isRare?"レアエネミー":"CPU戦"}報酬：「${itemName(itemId)}」を入手！`);}
+  }else{
+    mon.history.losses++;
+    const baseExp=8, cp=10;
+    const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
+    log(`バトル敗北。EXP +${exp}、CP +${cp}`);
+  }
+  saveGame();
+};
+
+rest = function(){
+  ensureItemSystems();
+  const mon=getCurrentMonster();if(!mon)return;
+  const before=state.ap;
+  state.ap=state.maxAp;
+  mon.history.rest++;
+  mon.condition=improveCondition(mon.condition);
+  let rate=getRestPenaltyRate(mon);
+  let boostMsg="";
+  if(state.itemBoosts.restPillow>0){state.itemBoosts.restPillow--;rate=Math.max(0,rate-0.10);boostMsg=" ぐっすりまくらの効果で低下率が下がった。";}
+  let penaltyMsg="";
+  if(Math.random()<rate){const stat=reduceRandomStatCap(mon);penaltyMsg=stat?` ただし休みすぎで${STAT_LABEL[stat]}の成長上限が -1。`:" ただし、現在ステータスが上限に届いているため成長上限は下がらなかった。";}
+  else penaltyMsg=" 成長上限は下がらなかった。";
+  log(`${mon.nickname}は休憩した。AP ${before} → ${state.ap}、コンディション回復。${boostMsg}${penaltyMsg}`);
+  saveGame();render();
+};
+play = function(){
+  ensureItemSystems();
+  const mon=getCurrentMonster();if(!mon)return;if(!spendAp(1))return;
+  mon.history.play++;
+  const keys=Object.keys(STAT_LABEL);
+  const s1=keys[Math.floor(Math.random()*keys.length)], s2=keys[Math.floor(Math.random()*keys.length)];
+  const cond=CONDITIONS[mon.condition]||CONDITIONS.normal;
+  let roll=Math.random()*100;
+  if(mon.personality==="気まぐれ")roll+=3;
+  if(mon.personality==="沼")roll+=5;
+  if(mon.trait==="遊びの振れ幅アップ")roll+=3;
+  if(state.itemBoosts.friendBall>0){state.itemBoosts.friendBall--;roll+=12;}
+  roll-=cond.playRisk*8;
+  let msg="";
+  if(roll>=98){const g=addStat(mon,"luck",10);mon.rareScore+=8;mon.history.miraclePlay=true;msg=`奇跡の遊び！ 運 +${g}。レア進化の気配が強まった。`;}
+  else if(roll>=82){const g1=addStat(mon,s1,8), g2=addStat(mon,s2,6);msg=`遊び大成功！ ${STAT_LABEL[s1]} +${g1}、${STAT_LABEL[s2]} +${g2}`;}
+  else if(roll>=55){const g=addStat(mon,s1,5);msg=`遊び成功。${STAT_LABEL[s1]} +${g}`;}
+  else if(roll>=25){const g=addStat(mon,s1,2);msg=`普通に遊んだ。${STAT_LABEL[s1]} +${g}`;}
+  else if(roll>=8){const g=addStat(mon,s1,-3);msg=`遊び失敗。${STAT_LABEL[s1]} ${g}`;}
+  else{const g1=addStat(mon,s1,-5), g2=addStat(mon,s2,-5);mon.rareScore+=1;msg=`遊び大失敗…… ${STAT_LABEL[s1]} ${g1}、${STAT_LABEL[s2]} ${g2}。ただし妙な経験を得た。`;}
+  addExp(mon,5);worsenCondition(mon);capMonsterStats(mon);saveGame();log(msg);render();
+};
+
+performAwakening = function(type){
+  ensureItemSystems();
+  const mon=getCurrentMonster(); if(!mon)return;
+  ensureAwakeningRecord(mon);
+  const baseOpt=AWAKENING_OPTIONS[type]; if(!baseOpt){alert("覚醒ノ儀の項目が不正です。");return;}
+  if(mon.awakening.done){alert("このクリモンはすでに覚醒ノ儀を終えています。");return;}
+  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達すると挑戦できます。\n"+awakeningUnlockText(mon));return;}
+  const assistId=document.getElementById("awakeningAssistItemSelect")?.value || "";
+  if(assistId && (state.inventory[assistId]||0)<=0){alert("補助アイテムの在庫がありません。");return;}
+  const opt={...baseOpt,target:[...(baseOpt.target||[])]};
+  let assistText="";
+  if(assistId){
+    const it=ITEM_MASTER[assistId]; const e=it.effects||{};
+    if(e.awakening_success_up) opt.successRate=Math.min(0.95,opt.successRate+e.awakening_success_up/100);
+    if(e.awakening_great_success_up){opt.greatRate=Math.min(0.50,opt.greatRate+e.awakening_great_success_up/100);opt.successRate=Math.min(0.95,opt.successRate+e.awakening_great_success_up/100);}
+    if(e.no_great_success) opt.greatRate=0;
+    if(e.awakening_success_effect_up){opt.successPct+=e.awakening_success_effect_up/100;opt.greatPct+=e.awakening_success_effect_up/100;}
+    if(e.awakening_fail_penalty_up) opt.failPct+=e.awakening_fail_penalty_up/100;
+    if(e.awakening_fail_penalty_down) opt.failPct=Math.max(0.01,opt.failPct*(1-e.awakening_fail_penalty_down/100));
+    assistText=`\n使用アイテム：${it.name}`;
+  }
+  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？\n\n解放条件：全ステータス成長限界到達\n成功率：${formatPercentRate(opt.successRate)}\n大成功率：${formatPercentRate(opt.greatRate)}\n成功時：${baseOpt.successText}\n失敗時：${baseOpt.failText}${assistText}\n\n失敗すると能力が大幅に下がります。`;
+  if(!confirm(msg))return;
+  if(assistId) consumeItem(assistId);
+  const rollOnce=()=>{const roll=Math.random(); if(roll<opt.greatRate)return"great"; if(roll<opt.successRate)return"success"; return"fail";};
+  let result=rollOnce();
+  if(result==="fail" && (state.inventory.forbidden_chart||0)>0 && confirm("覚醒ノ儀に失敗しました。禁断のカルテを1個使って、この結果をやり直しますか？")){
+    consumeItem("forbidden_chart"); result=rollOnce();
+  }
+  const effects=[]; let gainedSkills=[]; let title="";
+  if(result==="great"){
+    title=getAwakeningTitle(type, mon);
+    if(type==="special"){gainedSkills=pickAwakeningSkills(mon,2);mon.awakening.skills.push(...gainedSkills);effects.push(`専用スキル「${gainedSkills.map(skillLabel).join("」「")}」を習得`);} 
+    else{for(const stat of opt.target){const delta=applyAwakeningStatPercent(mon,stat,opt.greatPct);effects.push(`${STAT_LABEL[stat]} ${delta>=0?"+":""}${delta}`);}}
+  }else if(result==="success"){
+    if(type==="special"){gainedSkills=pickAwakeningSkills(mon,2);mon.awakening.skills.push(...gainedSkills);effects.push(`専用スキル「${gainedSkills.map(skillLabel).join("」「")}」を習得`);} 
+    else{for(const stat of opt.target){const delta=applyAwakeningStatPercent(mon,stat,opt.successPct);effects.push(`${STAT_LABEL[stat]} ${delta>=0?"+":""}${delta}`);}}
+  }else{
+    const targets=type==="special"?shuffleCopy(Object.keys(STAT_LABEL)).slice(0,2):opt.target;
+    for(const stat of targets){const delta=applyAwakeningStatPercent(mon,stat,-opt.failPct);effects.push(`${STAT_LABEL[stat]} ${delta}`);}
+  }
+  mon.awakening.done=true; mon.awakening.type=type; mon.awakening.result=result; mon.awakening.title=title; mon.awakening.effects=effects; mon.awakening.at=Date.now(); mon.awakening.skills=[...new Set(mon.awakening.skills)];
+  capMonsterStats(mon); saveGame();
+  if(result==="great") log(`覚醒ノ儀・${baseOpt.label}が大成功！ ${mon.nickname}は称号「${title}」を獲得。${effects.join("、")}`);
+  else if(result==="success") log(`覚醒ノ儀・${baseOpt.label}が成功！ ${effects.join("、")}`);
+  else log(`覚醒ノ儀・${baseOpt.label}が失敗…… ${effects.join("、")}`);
+  render();
+};
+
+function injectItemArea(){
+  const skillArea=document.getElementById("skillsArea"); if(!skillArea)return null;
+  let area=document.getElementById("itemArea");
+  if(!area){area=document.createElement("div");area.id="itemArea";area.className="item-area";skillArea.insertAdjacentElement("afterend",area);} return area;
+}
+renderMonster = function(mon){
+  injectV60Styles(); ensureItemSystems();
+  KURIMON_V60_ORIGINALS.renderMonster(mon);
+  if(!mon)return;
+  const itemArea=injectItemArea(); if(itemArea)itemArea.innerHTML=renderItemPanel(mon);
+  const awakeningArea=document.getElementById("awakeningArea");
+  if(awakeningArea && canPerformAwakening(mon) && !mon.awakening.done && !document.getElementById("awakeningAssistItemSelect")){
+    const resultBox=awakeningArea.querySelector(".awakening-result");
+    if(resultBox) resultBox.insertAdjacentHTML("afterend", renderAwakeningAssistSelector());
+  }
+};
+renderBox = function(){
+  ensureItemSystems();
+  boxRenderKey="";
+  KURIMON_V60_ORIGINALS.renderBox();
+  const area=document.getElementById("boxArea");
+  if(!area)return;
+  const cards=[...area.querySelectorAll(".mini")];
+  cards.forEach((card,idx)=>{
+    const mon=(state.monsters||[])[idx];
+    if(mon && !card.querySelector(".v60-held-item")){
+      const line=document.createElement("span");line.className="v60-held-item";line.innerHTML=`持ち物：${escapeHtml(mon.holdItemId?itemName(mon.holdItemId):"なし")}<br>`;
+      const br=card.querySelector(".box-skill-wrap");
+      if(br) card.insertBefore(line,br);
+    }
+  });
+};
+
+function ensureArenaPanel(){
+  const tab=document.getElementById("tab-travel"); if(!tab)return;
+  if(document.getElementById("arenaStreakPanel"))return;
+  tab.querySelector(".travel-layout")?.insertAdjacentHTML("beforeend",`<div class="travel-panel arena-streak-panel" id="arenaStreakPanel"><h3>🌝 覚醒済み闘技場連勝戦</h3><p class="small">参加できるのは覚醒済みクリモンのみ。相手も覚醒済み。負けると連勝数はリセットされます。</p><div id="arenaStreakStatus" class="hint"></div><div class="row"><button onclick="startArenaStreakBattle()">連勝戦に挑む</button><button class="ghost" onclick="resetArenaStreakConfirm()">連勝リセット</button></div><div id="arenaRewardPreview" class="small" style="margin-top:8px;"></div></div>`);
+}
+function renderArenaStreakPanel(){
+  ensureItemSystems(); ensureArenaPanel();
+  const s=state.arenaStreak;
+  const status=document.getElementById("arenaStreakStatus");
+  if(status) status.textContent=`現在 ${s.current}連勝 / 最高 ${s.best}連勝 / 今日の報酬 ${s.dailyRewards}/5 / 王者の王冠 ${s.crownClaimed?"獲得済み":"未獲得"}`;
+  const preview=document.getElementById("arenaRewardPreview");
+  if(preview) preview.innerHTML=`報酬：3連勝 R、5連勝 R以上、10連勝 SR、15連勝 UR/覚醒系、20連勝 UR以上、30連勝 初回「王者の王冠」・2回目以降「GOD抽選チケット」`;
+}
+renderTravel = function(){
+  injectV60Styles(); ensureItemSystems(); ensureArenaPanel();
+  KURIMON_V60_ORIGINALS.renderTravel();
+  renderArenaStreakPanel();
+};
+function resetArenaStreakConfirm(){
+  ensureItemSystems();
+  if(!confirm("闘技場連勝数をリセットしますか？"))return;
+  state.arenaStreak.current=0; saveGame(); renderArenaStreakPanel(); log("闘技場連勝数をリセットしました。")
+}
+function makeArenaEnemy(streak, mon){
+  const templates=ENEMY_MASTER.filter(e=>e.type==="normal" || e.type==="rare");
+  const t=templates[Math.min(templates.length-1, Math.floor((streak-1)/3))] || ENEMY_MASTER[0];
+  const enemy=enemyFromTemplate(t, Math.max(mon.level||1,35), streak);
+  enemy.name=`覚醒${enemy.name}`;
+  enemy.nickname=enemy.name;
+  enemy.isArena=true;
+  enemy.awakening={done:true,type:"all",result:"success",title:"覚醒者",skills:[],effects:[],at:Date.now()};
+  enemy.dropTableId="";
+  return enemy;
+}
+function rollArenaReward(streak){
+  if(streak===30){
+    if(!state.arenaStreak.crownClaimed){state.arenaStreak.crownClaimed=true;return "kings_crown";}
+    return "god_ticket";
+  }
+  const entries=ARENA_REWARDS[streak]; if(!entries)return null;
+  if(state.arenaStreak.dailyRewards>=5)return null;
+  const entry=rollDropEntry(entries); if(!entry)return null;
+  let itemId=entry.itemId || (entry.rarity?randomItemByRarity(entry.rarity):null);
+  if(itemId) state.arenaStreak.dailyRewards++;
+  return itemId;
+}
+async function startArenaStreakBattle(){
+  ensureItemSystems();
+  if(travelBattleBusy)return;
+  const mon=getCurrentMonster();
+  if(!mon){alert("連勝戦に挑むクリモンがいません。 ");return;}
+  if(!mon.awakening?.done){alert("闘技場連勝戦は覚醒済みクリモンのみ参加できます。");return;}
+  travelBattleBusy=true; setTravelBattleButtonsDisabled(true);
+  try{
+    const next=state.arenaStreak.current+1;
+    const myCopy=JSON.parse(JSON.stringify(mon)); repairMonsterRecord(myCopy);
+    const enemy=makeArenaEnemy(next, mon);
+    const events=buildBattleEvents(myCopy, enemy);
+    const win=await runAnimatedTravelBattle(myCopy, enemy, events);
+    const resultArea=document.getElementById("travelBattleResult");
+    if(win){
+      state.arenaStreak.current=next; state.arenaStreak.best=Math.max(state.arenaStreak.best,next);
+      let title=`${mon.nickname}の勝利！ ${state.arenaStreak.current}連勝！`;
+      const reward=rollArenaReward(state.arenaStreak.current);
+      if(reward){addItem(reward);title+=` 報酬「${itemName(reward)}」を入手！`;}
+      else if(ARENA_REWARDS[state.arenaStreak.current] && state.arenaStreak.dailyRewards>=5){title+=" 今日の通常報酬上限に達しています。";}
+      if(resultArea){resultArea.textContent=title;resultArea.classList.remove("hidden");}
+      setTravelBattleMessage(title); log(`闘技場連勝戦：${title}`);
+    }else{
+      const before=state.arenaStreak.current; state.arenaStreak.current=0;
+      const title=`連勝ストップ…… ${before}連勝で終了。`;
+      if(resultArea){resultArea.textContent=title;resultArea.classList.remove("hidden");}
+      setTravelBattleMessage(title); log(`闘技場連勝戦：${title}`);
+    }
+    saveGame(); renderArenaStreakPanel();
+  }finally{travelBattleBusy=false;setTravelBattleButtonsDisabled(false);render();}
+}
+
+resetGame = function(){
+  KURIMON_V60_ORIGINALS.resetGame();
+  ensureItemSystems();
+  saveGame();
+};
+
+ensureItemSystems();
+injectV60Styles();
+
 setInterval(render,1000);
 render();
 </script>
