@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v37 図鑑全開放版</title>
+  <title>クリモン - 基礎版 v39 図鑑全開放・安全版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -724,7 +724,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v37 図鑑全開放版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v39 図鑑全開放・安全版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1595,6 +1595,11 @@ function unlockAllDex(){
   }
 }
 
+
+function listDexImagePathsForDebug(){
+  return Object.values(state.dex||{}).map(x=>({formId:x.formId, name:x.formName, image:x.image}));
+}
+
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
   if(!source) return "";
@@ -1700,7 +1705,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 37;
+  state.schemaVersion = 39;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
