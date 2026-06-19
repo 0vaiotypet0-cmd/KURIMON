@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v57 覚醒ノ儀版</title>
+  <title>クリモン - 製品版 v59 覚醒ノ儀・成長限界解放版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -886,6 +886,19 @@ body{padding-bottom:86px;}
 }
 .awakening-area h3{color:#fff1a1;display:flex;align-items:center;gap:6px;}
 .awakening-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;}
+
+.awakening-limit-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.awakening-limit-list span{
+  padding:4px 7px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+}
 .awakening-option{
   border:1px solid var(--line);
   background:rgba(0,0,0,.22);
@@ -983,7 +996,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v57 覚醒ノ儀</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v59 覚醒ノ儀</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1304,17 +1317,17 @@ body{padding-bottom:86px;}
           <p>
             レベル上限は<b>100</b>です。Lv.100到達後はEXPが増えません。<br>
             ステータス上限は、種族・進化形態・個体差によって変わります。<br>
-            例：ONN系は体力・防御が高く、GL系は攻撃、わちゃ系は魔法、電卓系は運が伸びやすいです。<br>休憩ペナルティで個体ごとの成長上限が少し下がることがあります。
+            例：ONN系は体力・防御が高く、GL系は攻撃、わちゃ系は魔法、電卓系は運が伸びやすいです。<br>休憩ペナルティで個体ごとの成長上限が少し下がることがあります。<br>全ステータスが現在の成長限界に到達すると、Lv.100未満でも覚醒ノ儀に挑戦できます。
           </p>
         </div>
 
         <div class="tips-card">
-          <h3>覚醒ノ儀</h3>
+          <h3>🌝 覚醒ノ儀</h3>
           <p>
-            Lv.100到達後に1体につき1回だけ挑戦できる危険な最終強化です。<br>
+            体力・攻撃・防御・魔法・運・素早さの<b>全ステータスが成長限界に到達</b>すると、1体につき1回だけ挑戦できます。<br>
             体力・攻撃・防御・魔法は成功率40%、運・素早さは35%、特別なスキルは25%、オールステータスは15%です。<br>
             大成功すると、通常成功より大きく伸び、称号を獲得します。特別なスキルは、成功時に各キャラ専用スキル候補から2つ付与されます。<br>
-            失敗時は選んだ能力、またはランダム能力が大幅に低下します。
+            失敗時は選んだ能力、またはランダム能力が大幅に低下します。Lv.100未満でも、成長限界に到達していれば挑戦できます。
           </p>
         </div>
 
@@ -2400,6 +2413,35 @@ function capMonsterStats(mon){
   if(mon.hpCurrent < 1) mon.hpCurrent = mon.stats.hp;
   return caps;
 }
+function getGrowthLimitStatus(mon){
+  const caps = getStatCaps(mon);
+  const rows = Object.keys(STAT_LABEL).map(key=>({
+    key,
+    label: STAT_LABEL[key],
+    value: mon.stats?.[key] || 0,
+    cap: caps[key] || 1,
+    capped: (mon.stats?.[key] || 0) >= (caps[key] || 1)
+  }));
+  return {
+    caps,
+    rows,
+    cappedCount: rows.filter(r=>r.capped).length,
+    total: rows.length,
+    allCapped: rows.every(r=>r.capped)
+  };
+}
+function canPerformAwakening(mon){
+  if(!mon) return false;
+  ensureAwakeningRecord(mon);
+  if(mon.awakening.done) return false;
+  return getGrowthLimitStatus(mon).allCapped;
+}
+function awakeningUnlockText(mon){
+  const status=getGrowthLimitStatus(mon);
+  if(status.allCapped) return `全ステータス成長限界到達 ${status.cappedCount}/${status.total}`;
+  const remaining=status.rows.filter(r=>!r.capped).map(r=>`${r.label}${r.value}/${r.cap}`).join("、");
+  return `成長限界到達 ${status.cappedCount}/${status.total} / 未到達：${remaining}`;
+}
 
 function getRestPenaltyRate(mon){
   const p=PERSONALITIES[mon.personality]||PERSONALITIES["ふつう"];
@@ -2533,9 +2575,16 @@ function performAwakening(type){
   ensureAwakeningRecord(mon);
   const opt=AWAKENING_OPTIONS[type];
   if(!opt){alert("覚醒ノ儀の項目が不正です。");return;}
-  if(mon.level < MAX_LEVEL){alert("覚醒ノ儀はLv.100到達後に挑戦できます。");return;}
   if(mon.awakening.done){alert("このクリモンはすでに覚醒ノ儀を終えています。");return;}
-  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？\n\n成功率：${formatPercentRate(opt.successRate)}\n成功時：${opt.successText}\n失敗時：${opt.failText}\n\n失敗すると能力が大幅に下がります。`;
+  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達すると挑戦できます。\n" + awakeningUnlockText(mon));return;}
+  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？
+
+解放条件：全ステータス成長限界到達
+成功率：${formatPercentRate(opt.successRate)}
+成功時：${opt.successText}
+失敗時：${opt.failText}
+
+失敗すると能力が大幅に下がります。`;
   if(!confirm(msg)) return;
 
   let result="fail";
@@ -2598,20 +2647,26 @@ function renderAwakeningPanel(mon){
   if(!mon) return "";
   ensureAwakeningRecord(mon);
   const titleHtml = mon.awakening.title ? `<span class="awakening-title-badge">称号：${escapeHtml(mon.awakening.title)}</span>` : `<span class="small">称号：なし</span>`;
-  if(mon.level < MAX_LEVEL){
-    return `<h3>🌘 覚醒ノ儀</h3><p>Lv.100到達後に1回だけ挑戦できる危険な最終強化です。成功で大幅強化、大成功で称号獲得、失敗で能力が大幅低下します。</p><div class="awakening-result"><b>解放条件：</b>Lv.100到達 / 現在 Lv.${escapeHtml(mon.level)}</div>`;
-  }
   if(mon.awakening.done){
     const opt=AWAKENING_OPTIONS[mon.awakening.type] || {};
     const resultClass=mon.awakening.result==="great"?"awakening-great":mon.awakening.result==="success"?"awakening-success":"awakening-risk";
     const skills=(mon.awakening.skills||[]).map(skillLabel).join(" / ") || "なし";
-    return `<h3>🌘 覚醒ノ儀</h3>${titleHtml}<div class="awakening-result"><b>結果：</b><span class="${resultClass}">${escapeHtml(opt.label || mon.awakening.type)} ${escapeHtml(awakeningResultLabel(mon.awakening.result))}</span><br><b>効果：</b>${escapeHtml((mon.awakening.effects||[]).join("、") || "なし")}<br><b>覚醒スキル：</b>${escapeHtml(skills)}</div>`;
+    return `<h3>🌝 覚醒ノ儀</h3>${titleHtml}<div class="awakening-result"><b>結果：</b><span class="${resultClass}">${escapeHtml(opt.label || mon.awakening.type)} ${escapeHtml(awakeningResultLabel(mon.awakening.result))}</span><br><b>効果：</b>${escapeHtml((mon.awakening.effects||[]).join("、") || "なし")}<br><b>覚醒スキル：</b>${escapeHtml(skills)}</div>`;
+  }
+  const status=getGrowthLimitStatus(mon);
+  if(!status.allCapped){
+    const progressRows=status.rows.map(r=>{
+      const cls=r.capped ? "awakening-success" : "awakening-risk";
+      const mark=r.capped ? "到達" : "未到達";
+      return `<span class="small ${cls}">${escapeHtml(r.label)} ${escapeHtml(r.value)}/${escapeHtml(r.cap)} ${mark}</span>`;
+    }).join("");
+    return `<h3>🌝 覚醒ノ儀</h3><p>全ステータスが成長限界に到達すると、1回だけ挑戦できる危険な最終強化です。成功で大幅強化、大成功で称号獲得、失敗で能力が大幅低下します。</p><div class="awakening-result"><b>解放条件：</b>全ステータス成長限界到達<br><b>現在：</b>${escapeHtml(status.cappedCount)}/${escapeHtml(status.total)} 到達</div><div class="awakening-limit-list">${progressRows}</div>`;
   }
   const rows=AWAKENING_ORDER.map(key=>{
     const opt=AWAKENING_OPTIONS[key];
     return `<div class="awakening-option"><strong>${escapeHtml(opt.label)}</strong><span class="small">成功率：${formatPercentRate(opt.successRate)} / 大成功：${formatPercentRate(opt.greatRate)}</span><span class="small awakening-success">成功：${escapeHtml(opt.successText)}</span><span class="small awakening-risk">失敗：${escapeHtml(opt.failText)}</span><button class="magic" onclick="performAwakening('${escapeHtml(key)}')">この力で挑む</button></div>`;
   }).join("");
-  return `<h3>🌘 覚醒ノ儀</h3><p>Lv.100到達者だけが挑める最終強化。1体につき1回のみ。大成功すると称号を獲得します。</p><div class="awakening-options">${rows}</div>`;
+  return `<h3>🌝 覚醒ノ儀</h3><p>全ステータス成長限界到達者だけが挑める最終強化。1体につき1回のみ。大成功すると称号を獲得します。</p><div class="awakening-result"><b>解放条件：</b>全ステータス成長限界到達済み</div><div class="awakening-options">${rows}</div>`;
 }
 
 function makeEnemy(level){
@@ -3698,7 +3753,8 @@ function renderMonster(mon){
   const caps=getStatCaps(mon);
   document.getElementById("statsArea").innerHTML=Object.entries(STAT_LABEL).map(([key,label])=>{
     const val=mon.stats[key], cap=caps[key], pct=Math.min(100,Math.round((val/cap)*100));
-    return `<div class="stat"><div class="stat-head"><span>${label}</span><b>${val}/${cap}</b></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
+    const capped = val >= cap ? ' <span class="awakening-success">成長限界</span>' : "";
+    return `<div class="stat"><div class="stat-head"><span>${label}${capped}</span><b>${val}/${cap}</b></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
   }).join("");
 }
 function renderRaise(mon){
