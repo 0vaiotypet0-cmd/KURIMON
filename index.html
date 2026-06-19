@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v67 覚醒補助・闘技場画像修正版</title>
+  <title>クリモン - v68</title>
   <style>
     :root{
       --bg:#10131c;
@@ -933,6 +933,17 @@ body{padding-bottom:86px;}
   margin:2px 3px 2px 0;
 }
 
+/* v68 ホーム卵ビジュアル非表示・持ち物ボタン/TIPS調整 */
+#eggIcon{display:none!important;}
+.hold-button-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px;}
+.hold-button-grid button{width:100%;text-align:left;font-size:12px;line-height:1.35;}
+.hold-button-grid button.equipped{outline:2px solid rgba(248,214,109,.65);background:rgba(248,214,109,.22);color:var(--text);}
+.enemy-catalog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:8px;}
+.enemy-catalog-card{border:1px solid var(--line);background:rgba(0,0,0,.18);border-radius:14px;padding:10px;font-size:12px;line-height:1.55;}
+.enemy-catalog-card strong{display:block;color:#fff1a1;font-size:13px;margin-bottom:3px;}
+.enemy-catalog-card span{display:block;color:var(--muted);}
+.enemy-catalog-card.rare{border-color:rgba(255,154,213,.38);background:rgba(255,154,213,.07);}
+
 </style>
 
 <style>
@@ -996,7 +1007,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v67 覚醒補助・闘技場画像修正版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v68 持ち物・TIPS・レア進化調整版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1373,9 +1384,9 @@ body{padding-bottom:86px;}
           <p>
             朝：5:00〜10:59　補正なし<br>
             昼：11:00〜16:59　A分岐に少し寄りやすい<br>
-            夕方：17:00〜19:59　通常分岐への補正なし。レア進化に少し有利<br>
+            夕方：17:00〜19:59　通常分岐への補正なし。レア進化にわずかに有利<br>
             夜：20:00〜23:59　B分岐に少し寄りやすい<br>
-            深夜：0:00〜4:59　レア進化にかなり有利
+            深夜：0:00〜4:59　レア進化に少し有利。ただし十分な特殊経験が必要
           </p>
         </div>
       </div>
@@ -2248,9 +2259,9 @@ function getTimeBand(date=new Date()){
   const h=date.getHours();
   if(h>=5&&h<=10)return{key:"morning",label:"朝",desc:"体力・回復系"};
   if(h>=11&&h<=16)return{key:"day",label:"昼",desc:"攻撃・通常進化"};
-  if(h>=17&&h<=19)return{key:"evening",label:"夕方",desc:"通常分岐補正なし・レア進化少し有利"};
+  if(h>=17&&h<=19)return{key:"evening",label:"夕方",desc:"通常分岐補正なし・レア進化わずかに有利"};
   if(h>=20&&h<=23)return{key:"night",label:"夜",desc:"魔法・ミーム系"};
-  return{key:"midnight",label:"深夜",desc:"闇・レア・沼系"};
+  return{key:"midnight",label:"深夜",desc:"闇・レア・沼系。ただしレア進化は高条件"};
 }
 function recoverApByTime(){
   const now=Date.now(), interval=10*60*1000;
@@ -3630,10 +3641,16 @@ function calcEvolutionScores(mon){
   };
 }
 function isRareEvolution(mon,scores,band){
-  let threshold=38;
-  if(band.key==="midnight")threshold-=6;
-  if(band.key==="evening")threshold-=3;
-  return scores.special+Math.floor(mon.stats.luck/2)>=threshold;
+  // v68: レア進化をかなり絞る。
+  // 運だけで押し切れないようにし、遊び・会心・追加行動などの特殊経験も要求する。
+  let threshold=88;
+  let rareScoreNeed=12;
+  if(band.key==="midnight"){ threshold-=10; rareScoreNeed-=2; }
+  if(band.key==="evening"){ threshold-=4; }
+  if(mon.personality==="沼"){ threshold-=4; rareScoreNeed-=2; }
+  const luckBonus=Math.floor((mon.stats.luck||0)/5);
+  const specialScore=(scores.special||0)+luckBonus;
+  return (mon.rareScore||0)>=rareScoreNeed && specialScore>=threshold;
 }
 function buildEvolutionForm(mon,branch){
   const currentPath = normalizeEvolutionPath(mon.branchPath);
@@ -3674,9 +3691,9 @@ function getEvolveHint(mon){
   const scores=calcEvolutionScores(mon), band=getTimeBand();
   const top=Object.entries(mon.stats).sort((a,b)=>b[1]-a[1])[0];
   let mood=`${nextEvolveText(mon)}。${STAT_LABEL[top[0]]}が目立っている。`;
-  if(scores.special>20)mood+=" レアな気配も少しある。";
-  if(band.key==="evening")mood+=" 夕方の空気でレア進化に少し近づいている。";
-  if(band.key==="midnight")mood+=" 深夜の気配でレア進化に近づいている。";
+  if(scores.special>35)mood+=" レアな気配がわずかにある。";
+  if(band.key==="evening")mood+=" 夕方の空気でレア進化にわずかに近づいている。";
+  if(band.key==="midnight")mood+=" 深夜の気配はあるが、レア進化には高い特殊経験が必要。";
   return mood;
 }
 
@@ -4782,10 +4799,10 @@ const STAT_TIPS = {
   },
   luck: {
     name:"運",
-    summary:"クリティカル・回避・レア進化・遊びの成功に関わるステータス。",
+    summary:"クリティカル・回避・遊びの成功に関わるステータス。レア進化では補助的に影響します。",
     battle:["クリティカル率が上がる。", "回避率にも影響する。"],
     training:["運トレーニングで上昇。", "性格『豪運』『沼』だと伸ばしやすい。", "遊びの結果にも関係する。"],
-    evolution:["レア進化判定に大きく影響する。"]
+    evolution:["レア進化判定に補助的に影響する。ただし運だけではレア進化しにくく、特殊経験も必要。"]
   },
   spd: {
     name:"素早さ",
@@ -4840,7 +4857,7 @@ function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
 
-/* v67 覚醒補助・闘技場画像修正 */
+/* v68 覚醒補助・闘技場画像修正継承 */
 const KURIMON_V60_ORIGINALS = {
   makeEnemy,
   makeCombatant,
@@ -5052,9 +5069,20 @@ function renderItemPanel(mon){
   ensureItemSystems();
   const current=mon?.holdItemId || "";
   const holdOptions=HOLD_ITEM_IDS.filter(id=>ownedCount(id)>0 || current===id).sort((a,b)=>RARITY_ORDER[ITEM_MASTER[a].rarity]-RARITY_ORDER[ITEM_MASTER[b].rarity] || itemName(a).localeCompare(itemName(b),"ja"));
-  const opts=['<option value="">持ち物なし</option>'].concat(holdOptions.map(id=>`<option value="${escapeHtml(id)}" ${current===id?"selected":""}>${escapeHtml(itemLabel(id))}（空き${availableCount(id)}）</option>`)).join("");
   const held=current ? `${itemLabel(current)}：${ITEM_MASTER[current]?.desc || ""}` : "なし";
-  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect" onchange="equipCurrentItem(this.value)">${opts}</select><button onclick="equipCurrentItem()">持ち物を変更</button></div><p class="small">選択した時点で装備が反映されます。1秒ごとの画面更新で選択が戻る問題を修正済みです。</p>${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
+  const buttons = holdOptions.length
+    ? `<div class="hold-button-grid">${holdOptions.map(id=>{
+        const it=ITEM_MASTER[id];
+        const isCurrent=current===id;
+        const count=ownedCount(id);
+        const free=availableCount(id);
+        const disabled=(!isCurrent && free<=0) ? "disabled" : "";
+        const label=isCurrent ? "装備中" : "持たせる";
+        return `<button class="ghost ${isCurrent?"equipped":""}" ${disabled} onclick="equipCurrentItem('${escapeHtml(id)}')"><b>${escapeHtml(itemLabel(id))}</b><br><span class="small">${escapeHtml(label)} / 所持${count}・空き${free}</span><br><span class="small">${escapeHtml(it.desc||"")}</span></button>`;
+      }).join("")}</div>`
+    : `<p class="small">装備できる持ち物を所持していません。</p>`;
+  const removeBtn=current ? `<button class="ghost" onclick="equipCurrentItem('')">持ち物を外す</button>` : "";
+  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。スマホで安定するよう、プルダウンではなく直接ボタンで付け替えます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row">${removeBtn}</div>${buttons}${renderToolButtons()}<h3 style="margin-top:12px;">所持アイテム</h3><div class="item-bag">${renderItemBag()}</div>`;
 }
 function renderAwakeningAssistSelector(){
   ensureItemSystems();
@@ -5505,8 +5533,8 @@ function renderV61Catalog(){
     const items=Object.entries(ITEM_MASTER).filter(([id,it])=>it.rarity===r).map(([id,it])=>`<li><b>[${escapeHtml(r)}] ${escapeHtml(it.name)}</b>：${escapeHtml(it.desc)}</li>`).join("");
     return items?`<h3>${escapeHtml(r)}アイテム</h3><ul class="tip-list">${items}</ul>`:"";
   }).join("");
-  const enemyRows=ENEMY_MASTER.map(e=>`<tr><td>${escapeHtml(e.type==="rare"?"レア":"通常")}</td><td>${escapeHtml(e.name)}</td><td>${escapeHtml(e.rank)}</td><td>${escapeHtml(e.direction)}</td><td>${escapeHtml(e.dropTableId||"")}</td></tr>`).join("");
-  area.innerHTML=`<h3>🎁 アイテム・エネミー確認リスト</h3><p>v62で追加済みのアイテムとCPUエネミー一覧です。所持していないアイテムもここで確認できます。</p>${itemGroups}<h3>CPUエネミー一覧</h3><div style="overflow-x:auto;"><table class="tips-table"><thead><tr><th>種別</th><th>敵名</th><th>ランク</th><th>方向性</th><th>報酬テーブル</th></tr></thead><tbody>${enemyRows}</tbody></table></div>`;
+  const enemyRows=ENEMY_MASTER.map(e=>`<div class="enemy-catalog-card ${e.type==="rare"?"rare":""}"><strong>${escapeHtml(e.type==="rare"?"レア":"通常")}：${escapeHtml(e.name)} <span class="small">Rank ${escapeHtml(e.rank)}</span></strong><span>方向性：${escapeHtml(e.direction)}</span><span>報酬：${escapeHtml(e.dropTableId||"")}</span></div>`).join("");
+  area.innerHTML=`<h3>🎁 アイテム・エネミー確認リスト</h3><p>v68で追加済みのアイテムとCPUエネミー一覧です。所持していないアイテムもここで確認できます。</p>${itemGroups}<h3>CPUエネミー一覧</h3><div class="enemy-catalog-grid">${enemyRows}</div>`;
 }
 const KURIMON_V61_ORIGINAL_RENDER_TIPS = renderTips;
 renderTips = function(){
