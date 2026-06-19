@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v40 図鑑画像表示修正版</title>
+  <title>クリモン - 基礎版 v41 図鑑全開放・画像確実表示版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -703,13 +703,6 @@
       z-index:2;
       filter:drop-shadow(0 8px 10px rgba(0,0,0,.25));
     }
-    .dex-thumb img.dex-img-force{
-      display:block!important;
-      opacity:1!important;
-      visibility:visible!important;
-      max-width:100%;
-      max-height:100%;
-    }
     .dex-thumb .fallback{
       font-size:28px;
       line-height:1;
@@ -727,11 +720,104 @@
     }
 
 </style>
+
+<style>
+/* v41 図鑑画像の確実表示用。図鑑だけに効かせる */
+.dex-thumb{
+  width:72px!important;
+  height:72px!important;
+  min-width:72px!important;
+  border-radius:16px!important;
+  background-color:rgba(0,0,0,.26)!important;
+  background-size:contain!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+  position:relative!important;
+}
+.dex-card{
+  grid-template-columns:76px 1fr!important;
+  min-height:94px!important;
+}
+.dex-thumb img.dex-direct-img{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  z-index:3!important;
+  filter:drop-shadow(0 8px 10px rgba(0,0,0,.25))!important;
+}
+.dex-thumb .fallback.dex-direct-fallback{
+  display:none;
+  z-index:2!important;
+  font-size:34px!important;
+  line-height:1!important;
+}
+.evo-node{
+  display:grid!important;
+  grid-template-columns:50px 1fr!important;
+  gap:8px!important;
+  align-items:center!important;
+}
+.evo-node-thumb{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  border-radius:13px!important;
+  border:1px solid var(--line)!important;
+  background-color:rgba(0,0,0,.22)!important;
+  background-size:contain!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  position:relative!important;
+  overflow:hidden!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.evo-node-thumb img.dex-direct-img{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  z-index:3!important;
+}
+.evo-node-thumb .fallback.dex-direct-fallback{
+  display:none;
+  font-size:24px!important;
+  z-index:2!important;
+}
+.evo-node-text{min-width:0!important;}
+.dex-debug-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:11px;
+}
+.dex-debug-table th,.dex-debug-table td{
+  border-bottom:1px solid rgba(255,255,255,.12);
+  padding:3px 4px;
+  text-align:left;
+  word-break:break-all;
+}
+</style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v40 図鑑画像表示修正版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v41 図鑑全開放・画像確実表示版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -935,6 +1021,11 @@
     <div id="tab-dex" class="hidden">
       <h2>図鑑</h2>
       <p>図鑑にはニックネームではなく、種族名・進化形態名として登録されます。進化ツリーは系統を選んで確認できます。</p>
+      <div class="row" style="margin:8px 0 12px;">
+        <button class="ghost" onclick="forceRedrawDexImages()">図鑑画像を再描画</button>
+        <button class="ghost" onclick="runDexImageDebug()">画像診断</button>
+      </div>
+      <div id="dexImageDebugArea" class="hint hidden"></div>
       <div class="collection" id="collectionArea"></div>
       <h2 style="margin-top:16px;">進化ツリー</h2>
       <div class="dex-tree-toolbar">
@@ -1602,11 +1693,6 @@ function unlockAllDex(){
   }
 }
 
-
-function listDexImagePathsForDebug(){
-  return Object.values(state.dex||{}).map(x=>({formId:x.formId, name:x.formName, image:x.image}));
-}
-
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
   if(!source) return "";
@@ -1712,7 +1798,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 40;
+  state.schemaVersion = 41;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3286,16 +3372,44 @@ function stageName(stage){
 
 
 
-function safeAttr(v){return escapeHtml(String(v ?? "")).replace(/"/g,"&quot;");}
-function dexImageHtml(src, emoji, alt){
+function safeAttr(v){return escapeHtml(String(v ?? "")).replaceAll('"',"&quot;");}
+function cssUrl(v){
+  return String(v ?? "").replaceAll("\\","\\\\").replaceAll('"','\\"').replaceAll("'","\\'");
+}
+function dexDirectImageHtml(src, emoji, alt, thumbClass="dex-thumb"){
   const safeEmoji = escapeHtml(emoji || "❔");
   const safeAlt = safeAttr(alt || "クリモン");
   const safeSrc = safeAttr(src || "");
+  const bg = src ? ` style="background-image:url('${cssUrl(src)}')"` : "";
   if(!src){
-    return `<span class="fallback">${safeEmoji}</span>`;
+    return `<div class="${thumbClass}"><span class="fallback dex-direct-fallback" style="display:block">${safeEmoji}</span></div>`;
   }
-  // 図鑑サムネ専用：onloadで隠さず、画像を最初から表示する。失敗時だけ絵文字へ戻す。
-  return `<img class="dex-img-force" src="${safeSrc}" alt="${safeAlt}" title="${safeAlt}\\n${safeSrc}" loading="eager" decoding="async" onerror="this.outerHTML='<span class=&quot;fallback&quot;>${safeEmoji}</span>'">`;
+  return `<div class="${thumbClass}"${bg}>
+    <img class="dex-direct-img" src="${safeSrc}" alt="${safeAlt}" title="${safeAlt}\\n${safeSrc}" loading="eager" decoding="sync" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+    <span class="fallback dex-direct-fallback">${safeEmoji}</span>
+  </div>`;
+}
+function forceRedrawDexImages(){
+  dexRenderKey = "";
+  treeRenderKey = "";
+  repairDexCollection();
+  unlockAllDex();
+  renderDex();
+  renderEvolutionTree();
+  saveGame();
+}
+function runDexImageDebug(){
+  forceRedrawDexImages();
+  const area = document.getElementById("dexImageDebugArea");
+  if(!area) return;
+  const imgs = [...document.querySelectorAll("#collectionArea img.dex-direct-img")];
+  const rows = imgs.slice(0,30).map(img=>{
+    const ok = img.complete && img.naturalWidth > 0;
+    return `<tr><td>${ok ? "OK" : "NG"}</td><td>${img.naturalWidth}x${img.naturalHeight}</td><td>${escapeHtml(img.getAttribute("src")||"")}</td></tr>`;
+  }).join("");
+  area.classList.remove("hidden");
+  area.innerHTML = `<b>図鑑画像診断</b><br>画像タグ：${imgs.length}件 / OK：${imgs.filter(img=>img.complete && img.naturalWidth>0).length}件
+    <table class="dex-debug-table"><tr><th>状態</th><th>サイズ</th><th>パス</th></tr>${rows}</table>`;
 }
 
 function dexInfoFromItem(item){
@@ -3305,7 +3419,7 @@ function dexInfoFromItem(item){
 function dexThumbHtml(item){
   const info = dexInfoFromItem(item);
   const name = item.formName || item.speciesName || item.formId || "クリモン";
-  return `<div class="dex-thumb">${dexImageHtml(info.image, info.emoji, name)}</div>`;
+  return dexDirectImageHtml(info.image, info.emoji, name, "dex-thumb");
 }
 
 function renderDex(){
@@ -3359,21 +3473,27 @@ function dexHas(formId){
 }
 function nodeData(key,path,label,branchKind){
   const base = BASE_SPECIES[key];
+  const realPath = path === "base" ? "" : path;
   const formId = path === "base" ? `${key}_base` : `${key}_${path}`;
-  const entry = path === "base" ? {formName:base.speciesName, profile:base.role} : (EVOLUTION_TREE[key]||{})[path];
+  const fixed = formDataFor(key, realPath);
+  const entry = path === "base" ? {formName:base.speciesName, profile:fixed.profile || base.role} : (EVOLUTION_TREE[key]||{})[path];
   const seen = dexHas(formId);
-  const displayName = seen ? (entry?.formName || "？？？") : "？？？";
-  const displayProfile = seen ? (entry?.profile || "") : "未発見";
-  return {formId, seen, name:displayName, profile:displayProfile, label, branchKind};
+  const displayName = seen ? (entry?.formName || fixed.formName || "？？？") : "？？？";
+  const displayProfile = seen ? dexProfileText(formId, displayName, entry?.profile || fixed.profile || "") : "未発見";
+  return {formId, seen, name:displayName, profile:displayProfile, label, branchKind, image:fixed.image, emoji:fixed.emoji};
 }
 function makeNodeHtml(node){
+  const thumb = node.seen ? dexDirectImageHtml(node.image, node.emoji, node.name, "evo-node-thumb") : `<div class="evo-node-thumb"><span class="fallback dex-direct-fallback" style="display:block">？</span></div>`;
   return `<div class="evo-node ${node.seen ? "seen" : "unseen"} ${node.branchKind === "rare" ? "rare" : ""}">
-    <div class="node-name">
-      <span>${node.seen ? "✓" : "□"}</span>
-      <span class="evo-branch-label">${escapeHtml(node.label)}</span>
-      <span>${escapeHtml(node.name)}</span>
+    ${thumb}
+    <div class="evo-node-text">
+      <div class="node-name">
+        <span>${node.seen ? "✓" : "□"}</span>
+        <span class="evo-branch-label">${escapeHtml(node.label)}</span>
+        <span>${escapeHtml(node.name)}</span>
+      </div>
+      <div class="node-meta">${escapeHtml(node.profile)}</div>
     </div>
-    <div class="node-meta">${escapeHtml(node.profile)}</div>
   </div>`;
 }
 function buildSelectedSpeciesTreeHtml(key){
