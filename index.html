@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v55 旅闘技場β版</title>
+  <title>クリモン - 製品版 v56 闘技場アニメーション版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -866,6 +866,14 @@ body{padding-bottom:86px;}
 }
 .travel-log div{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 
+
+.travel-battle-stage{
+  margin-top:10px;
+}
+.travel-battle-stage .battle-stage{
+  min-height:280px;
+}
+
 </style>
 
 <style>
@@ -929,7 +937,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v55 旅闘技場β</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v56 闘技場アニメ</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1097,7 +1105,40 @@ body{padding-bottom:86px;}
         </div>
 
         <div class="travel-panel">
-          <h3>闘技場バトルログ</h3>
+          <h3>闘技場バトル</h3>
+          <div class="travel-battle-stage">
+            <div class="battle-stage">
+              <div class="battle-flash" id="travelBattleFlash"></div>
+              <div class="battle-center">VS</div>
+              <div class="fighters">
+                <div class="fighter me-side">
+                  <div class="fighter-top">
+                    <div>
+                      <div class="fighter-name" id="tbfMyName">---</div>
+                      <div class="fighter-species" id="tbfMySpecies">---</div>
+                    </div>
+                    <div class="small" id="tbfMyHpText">HP --/--</div>
+                  </div>
+                  <div class="hpbar"><span id="tbfMyHpBar"></span></div>
+                  <div class="fighter-body" id="tbfMyBody">🐣</div>
+                  <div class="damage" id="travelMyDamage"></div>
+                </div>
+                <div class="fighter enemy-side">
+                  <div class="fighter-top">
+                    <div>
+                      <div class="fighter-name" id="tbfEnemyName">---</div>
+                      <div class="fighter-species" id="tbfEnemySpecies">闘技場</div>
+                    </div>
+                    <div class="small" id="tbfEnemyHpText">HP --/--</div>
+                  </div>
+                  <div class="hpbar"><span id="tbfEnemyHpBar"></span></div>
+                  <div class="fighter-body" id="tbfEnemyBody">👾</div>
+                  <div class="damage" id="travelEnemyDamage"></div>
+                </div>
+              </div>
+            </div>
+            <div class="battle-message" id="travelBattleMessage">友達のクリモンを選ぶと、ここで闘技場バトルが始まります。</div>
+          </div>
           <div id="travelBattleResult" class="result-banner hidden"></div>
           <div id="travelBattleLog" class="travel-log"></div>
         </div>
@@ -1922,9 +1963,10 @@ function repairDexCollection(){
 function actorImage(actor){
   const source = actor && actor.source ? actor.source : actor;
   if(!source) return "";
+  if(source.image) return source.image;
   const key = source.speciesKey || speciesKeyFromName(source.speciesName) || "";
   if(key) return imagePath(key, source.branchPath || "");
-  return source.image || "";
+  return "";
 }
 function actorEmoji(actor){
   const source = actor && actor.source ? actor.source : actor;
@@ -2043,7 +2085,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 55;
+  state.schemaVersion = 56;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3518,6 +3560,126 @@ function getMockPair(){
   };
 }
 
+
+let travelBattleBusy=false;
+let currentTravelBattleHp=null;
+
+function setTravelBattleMessage(text){
+  const el=document.getElementById("travelBattleMessage");
+  if(el) el.textContent=text;
+}
+function travelFlash(strong=false){
+  const f=document.getElementById("travelBattleFlash");
+  if(!f) return;
+  f.classList.add("on");
+  setTimeout(()=>f.classList.remove("on"), strong?180:110);
+}
+function updateTravelBattleStage(mon, enemy, myHp, enemyHp){
+  if(!mon || !enemy) return;
+  const myMax=mon.stats?.hp || mon.hp || 1;
+  const enemyMax=enemy.stats?.hp || enemy.hp || 1;
+  const myName=document.getElementById("tbfMyName");
+  const mySpecies=document.getElementById("tbfMySpecies");
+  const enemyName=document.getElementById("tbfEnemyName");
+  const enemySpecies=document.getElementById("tbfEnemySpecies");
+  if(myName) myName.textContent=mon.nickname || mon.formName || "自分";
+  if(mySpecies) mySpecies.textContent=`${mon.formName || ""} / ${mon.speciesName || ""}`;
+  if(enemyName) enemyName.textContent=`${enemy.nickname || enemy.name || enemy.formName || "相手"} Lv.${enemy.level || 1}`;
+  if(enemySpecies) enemySpecies.textContent=`${enemy.formName || ""} / ${enemy.speciesName || "闘技場"}`;
+  setBattleBody(document.getElementById("tbfMyBody"), mon);
+  setBattleBody(document.getElementById("tbfEnemyBody"), enemy);
+  document.getElementById("tbfMyHpText").textContent=`HP ${Math.max(0,myHp)}/${myMax}`;
+  document.getElementById("tbfEnemyHpText").textContent=`HP ${Math.max(0,enemyHp)}/${enemyMax}`;
+  document.getElementById("tbfMyHpBar").style.width=`${Math.max(0,Math.round(myHp/myMax*100))}%`;
+  document.getElementById("tbfEnemyHpBar").style.width=`${Math.max(0,Math.round(enemyHp/enemyMax*100))}%`;
+}
+async function playTravelAttackAnimation(ev){
+  const attacker=document.getElementById(ev.attacker==="me"?"tbfMyBody":"tbfEnemyBody");
+  const target=document.getElementById(ev.target==="me"?"tbfMyBody":"tbfEnemyBody");
+  const dmgEl=document.getElementById(ev.target==="me"?"travelMyDamage":"travelEnemyDamage");
+  if(!attacker || !target || !dmgEl) return;
+  attacker.classList.add("attack");
+  await speedWait(160);
+  attacker.classList.remove("attack");
+  if(ev.dodge){
+    dmgEl.textContent="MISS";
+    dmgEl.className="damage show";
+    travelFlash();
+    await speedWait(260);
+    dmgEl.className="damage";
+    return;
+  }
+  const dmg=typeof ev.dmg==="number" ? ev.dmg : 0;
+  target.classList.add(ev.crit?"crit":"hit");
+  dmgEl.textContent=(ev.crit?"CRIT ":"-")+dmg;
+  dmgEl.className="damage show"+(ev.crit?" critText":"");
+  travelFlash(ev.crit);
+  await speedWait(330);
+  target.classList.remove("hit","crit");
+  dmgEl.className="damage";
+}
+function setTravelBattleButtonsDisabled(disabled){
+  document.querySelectorAll("#friendTravelersArea button").forEach(btn=>btn.disabled=!!disabled);
+}
+async function runAnimatedTravelBattle(mon, enemy, events){
+  const logArea=document.getElementById("travelBattleLog");
+  const resultArea=document.getElementById("travelBattleResult");
+  if(logArea) logArea.innerHTML="";
+  if(resultArea) resultArea.classList.add("hidden");
+  currentTravelBattleHp = { my: mon.stats.hp, enemy: enemy.hp };
+  updateTravelBattleStage(mon, enemy, currentTravelBattleHp.my, currentTravelBattleHp.enemy);
+  setTravelBattleMessage("闘技場バトル開始！");
+  await speedWait(350);
+  let finalWin=false;
+
+  for(const ev of events){
+    if(ev.type==="turn"){
+      setTravelBattleMessage(ev.text);
+      await speedWait(230);
+      continue;
+    }
+    if(ev.type==="bonus"){
+      setTravelBattleMessage(ev.text);
+      if(logArea) logArea.prepend(logNode(ev.text));
+      travelFlash();
+      await speedWait(500);
+      continue;
+    }
+    if(ev.type==="attack" || ev.type==="skill" || ev.type==="status"){
+      if(ev.type==="status" || (ev.type==="skill" && typeof ev.dmg!=="number" && !ev.dodge)){
+        const mhp=typeof ev.myHp==="number"?ev.myHp:currentTravelBattleHp.my;
+        const ehp=typeof ev.enemyHp==="number"?ev.enemyHp:currentTravelBattleHp.enemy;
+        currentTravelBattleHp = { my: mhp, enemy: ehp };
+        updateTravelBattleStage(mon, enemy, mhp, ehp);
+        setTravelBattleMessage(ev.text);
+        if(logArea) logArea.prepend(logNode(ev.text));
+        await speedWait(410);
+        continue;
+      }
+      await playTravelAttackAnimation(ev);
+      const mhp=typeof ev.myHp==="number"?ev.myHp:currentTravelBattleHp.my;
+      const ehp=typeof ev.enemyHp==="number"?ev.enemyHp:currentTravelBattleHp.enemy;
+      currentTravelBattleHp = { my: mhp, enemy: ehp };
+      updateTravelBattleStage(mon, enemy, mhp, ehp);
+      setTravelBattleMessage(ev.text);
+      if(logArea) logArea.prepend(logNode(ev.text));
+      await speedWait(ev.crit?650:500);
+      continue;
+    }
+    if(ev.type==="result"){
+      finalWin=ev.win;
+      currentTravelBattleHp = { my: ev.myHp, enemy: ev.enemyHp };
+      updateTravelBattleStage(mon, enemy, ev.myHp, ev.enemyHp);
+      setTravelBattleMessage(ev.text);
+      if(resultArea){
+        resultArea.textContent=ev.text;
+        resultArea.classList.remove("hidden");
+      }
+    }
+  }
+  return finalWin;
+}
+
 function travelConfigReady(){
   return !!(state.travel && state.travel.firebaseUrl && state.travel.playerId);
 }
@@ -3587,6 +3749,8 @@ function travelEnemyFromSnapshot(t){
     speciesKey: t.speciesKey || "enemy",
     speciesName: t.speciesName || "",
     formName: t.formName || "",
+    formId: t.formId || "",
+    branchPath: t.branchPath || "",
     stage: t.stage || 0,
     emoji: t.emoji || "👾",
     image: t.image || imagePath(t.speciesKey,t.branchPath||""),
@@ -3704,28 +3868,35 @@ function renderTravel(){
     hydrateDexImages(friendArea);
   }
 }
-function battleTravelMonster(ownerId, travelId){
+async function battleTravelMonster(ownerId, travelId){
+  if(travelBattleBusy) return;
   const mon=getCurrentMonster();
   if(!mon){alert("バトルする自分のクリモンがいません。");return}
   const target=(state.travel?.friendTravelers||[]).find(t=>String(t.ownerId)===String(ownerId) && String(t.travelId)===String(travelId));
   if(!target){alert("相手の闘技場クリモンが見つかりません。闘技場を更新してください。");return}
-  const myCopy=JSON.parse(JSON.stringify(mon));
-  const enemy=travelEnemyFromSnapshot(target);
-  const events=buildBattleEvents(myCopy, enemy);
-  const result=events.find(e=>e.type==="result");
-  const logArea=document.getElementById("travelBattleLog");
-  const resultArea=document.getElementById("travelBattleResult");
-  const title=result?.win ? `${mon.nickname}の勝利！` : `${target.nickname || target.formName}の勝利……`;
-  if(resultArea){
-    resultArea.textContent=title;
-    resultArea.classList.remove("hidden");
+
+  travelBattleBusy=true;
+  setTravelBattleButtonsDisabled(true);
+
+  try{
+    const myCopy=JSON.parse(JSON.stringify(mon));
+    repairMonsterRecord(myCopy);
+    const enemy=travelEnemyFromSnapshot(target);
+    const events=buildBattleEvents(myCopy, enemy);
+    const win=await runAnimatedTravelBattle(myCopy, enemy, events);
+    const title=win ? `${mon.nickname}の勝利！` : `${target.nickname || target.formName}の勝利……`;
+    const resultArea=document.getElementById("travelBattleResult");
+    if(resultArea){
+      resultArea.textContent=title;
+      resultArea.classList.remove("hidden");
+    }
+    setTravelBattleMessage(title);
+    log(`闘技場バトル：${title}`);
+    saveGame();
+  }finally{
+    travelBattleBusy=false;
+    setTravelBattleButtonsDisabled(false);
   }
-  if(logArea){
-    const lines=events.filter(e=>e.type!=="turn").slice(-80).map(e=>`<div>${escapeHtml(e.text)}</div>`).reverse().join("");
-    logArea.innerHTML=`<div><b>${escapeHtml(mon.nickname)} vs ${escapeHtml(target.nickname || target.formName || "闘技場クリモン")}</b></div>${lines}`;
-  }
-  log(`闘技場バトル：${title}`);
-  saveGame();
 }
 
 function simulateMockBattle(fighterA, fighterB){
