@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v60 持ち物・レアエネミー・闘技場連勝版</title>
+  <title>クリモン - 製品版 v61 CPU整理・アイテム確認版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -2680,16 +2680,10 @@ function renderAwakeningPanel(mon){
 }
 
 function makeEnemy(level){
-  const enemies=[
-    {name:"野良クリモン",emoji:"👾",image:"images/enemy_wild.png"},
-    {name:"ミームスライム",emoji:"🫠",image:"images/enemy_slime.png"},
-    {name:"定時ゴブリン",emoji:"🕔",image:"images/enemy_goblin.png"},
-    {name:"沼バード",emoji:"🐦‍⬛",image:"images/enemy_bird.png"},
-    {name:"社畜ワーム",emoji:"🪱",image:"images/enemy_worm.png"}
-  ];
-  const pick=enemies[Math.floor(Math.random()*enemies.length)];
-  const base=24+level*3;
-  return {name:pick.name, emoji:pick.emoji, image:pick.image, level, hp:base+Math.floor(Math.random()*8), atk:5+level+Math.floor(Math.random()*4), def:4+level+Math.floor(Math.random()*4), mag:4+level+Math.floor(Math.random()*4), luck:4+level+Math.floor(Math.random()*4), spd:4+level+Math.floor(Math.random()*4)};
+  // v61: 旧CPU定義は削除。実際のCPUは後段のENEMY_MASTERから生成する。
+  if(typeof makeEnemyFromMaster === "function") return makeEnemyFromMaster(level);
+  const fallbackLevel = level || 1;
+  return {name:"コタロー", emoji:"🐕", image:"images/enemy_kotaro.png", level:fallbackLevel, hp:40+fallbackLevel*3, atk:8+fallbackLevel, def:8+fallbackLevel, mag:8+fallbackLevel, luck:8+fallbackLevel, spd:8+fallbackLevel};
 }
 function prepareBattlePreview(){
   const mon=getCurrentMonster(); if(!mon || battleBusy)return;
@@ -4838,7 +4832,7 @@ function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
 
-/* v60 持ち物・レアエネミー・闘技場連勝戦 */
+/* v61 持ち物・レアエネミー・闘技場連勝戦 */
 const KURIMON_V60_ORIGINALS = {
   makeEnemy,
   makeCombatant,
@@ -4927,7 +4921,7 @@ const DROP_TABLES = {
     {itemId:"fullmoon_fragment",rate:35},{itemId:"awakening_ticket",rate:20},{itemId:"moonlight_charm",rate:15},{itemId:"stabilizer",rate:8},{itemId:"forbidden_chart",rate:1}
   ],
   drop_rare_kazuko:[
-    {rarity:"UR",rate:45},{itemId:"godspeed_raiment",rate:3},{itemId:"phoenix_feather",rate:3},{itemId:"reversal_magatama",rate:3},{itemId:"forbidden_heart",rate:2},{itemId:"fate_dice",rate:2}
+    {rarity:"UR",rate:45},{itemId:"godspeed_raiment",rate:3},{itemId:"phoenix_feather",rate:3},{itemId:"reversal_magatama",rate:3},{itemId:"forbidden_heart",rate:2}
   ]
 };
 
@@ -5268,7 +5262,7 @@ function enemyFromTemplate(t, playerLevel, arenaStreak=0){
   const title=t.type==="rare" ? (t.name==="満月"?"満月":"学園序列1位") : (awakened?"覚醒者":"");
   return {enemyId:t.id,name:t.name,nickname:t.name,enemyType:t.type,rank:t.rank,direction:t.direction,speciesKey:t.speciesKey,speciesName:BASE_SPECIES[t.speciesKey]?.speciesName||"",formName:t.name,formId:`enemy_${t.id}`,stage:awakened?3:1,emoji:t.emoji||"👾",image:t.image||"",level:st.level,stats:{hp:st.hp,atk:st.atk,def:st.def,mag:st.mag,luck:st.luck,spd:st.spd},hp:st.hp,atk:st.atk,def:st.def,mag:st.mag,luck:st.luck,spd:st.spd,itemId:t.itemId||"",dropTableId:t.dropTableId,cpReward:t.cpReward||0,expReward:t.expReward||0,isRare:t.type==="rare",awakening:{done:awakened,type:"all",result:"success",title,skills:[],effects:[],at:Date.now()}};
 }
-makeEnemy = function(level){
+function makeEnemyFromMaster(level){
   const band=getTimeBand().key;
   let rareChance = band==="midnight" ? 0.10 : band==="night" ? 0.08 : 0.05;
   const rarePool=ENEMY_MASTER.filter(e=>e.type==="rare" && (e.timeBand==="all" || e.timeBand===band || (e.timeBand==="night" && band==="midnight")));
@@ -5276,7 +5270,8 @@ makeEnemy = function(level){
   const pool=(Math.random()<rareChance && rarePool.length) ? rarePool : normalPool;
   const t=weightedPick(pool.length?pool:ENEMY_MASTER.filter(e=>e.type==="normal"));
   return enemyFromTemplate(t, level||1, 0);
-};
+}
+makeEnemy = makeEnemyFromMaster;
 
 finishBattle = function(mon, enemy, win){
   if(win){
@@ -5434,6 +5429,29 @@ renderTravel = function(){
   KURIMON_V60_ORIGINALS.renderTravel();
   renderArenaStreakPanel();
 };
+function renderV61Catalog(){
+  const grid=document.querySelector("#tab-tips .tips-grid"); if(!grid)return;
+  let area=document.getElementById("v61CatalogArea");
+  if(!area){
+    area=document.createElement("div");
+    area.id="v61CatalogArea";
+    area.className="tips-card";
+    grid.appendChild(area);
+  }
+  const rarityOrder=["N","R","SR","UR","GOD"];
+  const itemGroups=rarityOrder.map(r=>{
+    const items=Object.entries(ITEM_MASTER).filter(([id,it])=>it.rarity===r).map(([id,it])=>`<li><b>[${escapeHtml(r)}] ${escapeHtml(it.name)}</b>：${escapeHtml(it.desc)}</li>`).join("");
+    return items?`<h3>${escapeHtml(r)}アイテム</h3><ul class="tip-list">${items}</ul>`:"";
+  }).join("");
+  const enemyRows=ENEMY_MASTER.map(e=>`<tr><td>${escapeHtml(e.type==="rare"?"レア":"通常")}</td><td>${escapeHtml(e.name)}</td><td>${escapeHtml(e.rank)}</td><td>${escapeHtml(e.direction)}</td><td>${escapeHtml(e.dropTableId||"")}</td></tr>`).join("");
+  area.innerHTML=`<h3>🎁 アイテム・エネミー確認リスト</h3><p>v61で追加済みのアイテムとCPUエネミー一覧です。所持していないアイテムもここで確認できます。</p>${itemGroups}<h3>CPUエネミー一覧</h3><div style="overflow-x:auto;"><table class="tips-table"><thead><tr><th>種別</th><th>敵名</th><th>ランク</th><th>方向性</th><th>報酬テーブル</th></tr></thead><tbody>${enemyRows}</tbody></table></div>`;
+}
+const KURIMON_V61_ORIGINAL_RENDER_TIPS = renderTips;
+renderTips = function(){
+  KURIMON_V61_ORIGINAL_RENDER_TIPS();
+  renderV61Catalog();
+};
+
 function resetArenaStreakConfirm(){
   ensureItemSystems();
   if(!confirm("闘技場連勝数をリセットしますか？"))return;
