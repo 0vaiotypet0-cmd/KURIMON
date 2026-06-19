@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v62 CPU整理・バトル修正版</title>
+  <title>クリモン - 製品版 v63 CPU固定版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -996,7 +996,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v62 CPU整理・持ち物</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v64 持ち物装備修正版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1114,7 +1114,6 @@ body{padding-bottom:86px;}
         <div class="battle-message" id="battleMessage">CPU戦を開始しよう。</div>
         <div class="battle-controls row">
           <button id="battleStartBtn" onclick="startAnimatedBattle()">CPU戦開始</button>
-          <button class="ghost" onclick="prepareBattlePreview()">相手変更</button>
         </div>
         <div class="speed-select">
           <span class="small">バトル速度</span>
@@ -2686,12 +2685,21 @@ function makeEnemy(level){
 }
 function prepareBattlePreview(){
   const mon=getCurrentMonster(); if(!mon || battleBusy)return;
-  currentEnemy=makeEnemy(mon.level);
-  currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
-  document.getElementById("battleResult").classList.add("hidden");
-  document.getElementById("battleLog").innerHTML="";
+  // v63: CPUの手動変更は禁止。未設定時だけ自動で相手を決定する。
+  if(!currentEnemy){
+    currentEnemy=makeEnemy(mon.level);
+    currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+    document.getElementById("battleResult").classList.add("hidden");
+    document.getElementById("battleLog").innerHTML="";
+    updateBattleStage(mon, currentEnemy, currentBattleHp.my, currentBattleHp.enemy);
+    setBattleMessage(`対戦相手は ${currentEnemy.name} Lv.${currentEnemy.level}。`);
+    return;
+  }
+  if(!currentBattleHp){
+    currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
+  }
   updateBattleStage(mon, currentEnemy, currentBattleHp.my, currentBattleHp.enemy);
-  setBattleMessage(`対戦相手は ${currentEnemy.name} Lv.${currentEnemy.level}。`);
+  setBattleMessage(`対戦相手は ${currentEnemy.name} Lv.${currentEnemy.level}。CPUは手動変更できません。`);
 }
 function setBattleMessage(text){document.getElementById("battleMessage").textContent=text}
 function updateBattleStage(mon, enemy, myHp, enemyHp){
@@ -3456,6 +3464,7 @@ async function startAnimatedBattle(){
     }
   }
   finishBattle(mon, enemy, finalWin);
+  // 次戦のCPUは自動で決定。プレイヤーによる相手変更は不可。
   currentEnemy=makeEnemy(mon.level);
   currentBattleHp = { my: mon.stats.hp, enemy: currentEnemy.hp };
   document.getElementById("battleStartBtn").disabled=false;
@@ -4825,7 +4834,7 @@ function formatRemain(ms){const sec=Math.ceil(ms/1000),h=Math.floor(sec/3600),m=
 function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
 
-/* v62 持ち物・レアエネミー・闘技場連勝戦 */
+/* v64 持ち物・レアエネミー・闘技場連勝戦 */
 const KURIMON_V60_ORIGINALS = {
   makeEnemy,
   makeCombatant,
@@ -4990,14 +4999,19 @@ function rollDropFromTable(tableId){
   if(entry.rarity)return randomItemByRarity(entry.rarity);
   return null;
 }
-function equipCurrentItem(){
+function equipCurrentItem(selectedId){
   ensureItemSystems();
   const mon=getCurrentMonster(); if(!mon)return;
   const select=document.getElementById("holdItemSelect");
-  const id=select?.value || "";
-  if(!id){mon.holdItemId="";saveGame();log(`${mon.nickname}の持ち物を外しました。`);render();return;}
+  const id = selectedId !== undefined ? String(selectedId || "") : (select?.value || "");
+  if(select && select.value !== id) select.value = id;
+  if(!id){
+    if(!mon.holdItemId) return;
+    mon.holdItemId="";saveGame();log(`${mon.nickname}の持ち物を外しました。`);render();return;
+  }
   if(!ITEM_MASTER[id] || ITEM_MASTER[id].type!=="hold"){alert("装備できないアイテムです。");return;}
   if(mon.holdItemId!==id && availableCount(id)<=0){alert("その持ち物の空き在庫がありません。ほかのクリモンから外してください。");return;}
+  if(mon.holdItemId===id) return;
   mon.holdItemId=id;
   saveGame();log(`${mon.nickname}に「${itemName(id)}」を持たせました。`);render();
 }
@@ -5034,7 +5048,7 @@ function renderItemPanel(mon){
   const holdOptions=HOLD_ITEM_IDS.filter(id=>ownedCount(id)>0 || current===id).sort((a,b)=>RARITY_ORDER[ITEM_MASTER[a].rarity]-RARITY_ORDER[ITEM_MASTER[b].rarity] || itemName(a).localeCompare(itemName(b),"ja"));
   const opts=['<option value="">持ち物なし</option>'].concat(holdOptions.map(id=>`<option value="${escapeHtml(id)}" ${current===id?"selected":""}>${escapeHtml(itemLabel(id))}（空き${availableCount(id)}）</option>`)).join("");
   const held=current ? `${itemLabel(current)}：${ITEM_MASTER[current]?.desc || ""}` : "なし";
-  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect">${opts}</select><button onclick="equipCurrentItem()">持ち物を変更</button></div>${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
+  return `<h3>🎁 持ち物・アイテム</h3><p class="small">持ち物は1体につき1個まで。CPU戦やレアエネミー、闘技場連勝戦で入手できます。</p><div class="awakening-result"><b>現在の持ち物：</b>${escapeHtml(held)}</div><div class="item-row"><select id="holdItemSelect" onchange="equipCurrentItem(this.value)">${opts}</select><button onclick="equipCurrentItem()">持ち物を変更</button></div><p class="small">選択した時点で装備が反映されます。1秒ごとの画面更新で選択が戻る問題を修正済みです。</p>${renderToolButtons()}<div class="item-bag">${renderItemBag()}</div>`;
 }
 function renderAwakeningAssistSelector(){
   ensureItemSystems();
