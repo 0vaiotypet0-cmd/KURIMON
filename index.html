@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 基礎版 v39 図鑑全開放・安全版</title>
+  <title>クリモン - 基礎版 v40 図鑑画像表示修正版</title>
   <style>
     :root{
       --bg:#10131c;
@@ -703,6 +703,13 @@
       z-index:2;
       filter:drop-shadow(0 8px 10px rgba(0,0,0,.25));
     }
+    .dex-thumb img.dex-img-force{
+      display:block!important;
+      opacity:1!important;
+      visibility:visible!important;
+      max-width:100%;
+      max-height:100%;
+    }
     .dex-thumb .fallback{
       font-size:28px;
       line-height:1;
@@ -724,7 +731,7 @@
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">基礎版 v39 図鑑全開放・安全版</span></div>
+    <div class="logo">🥚 クリモン <span class="small">基礎版 v40 図鑑画像表示修正版</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1705,7 +1712,7 @@ function initGame(){
   };
 }
 function migrateState(){
-  state.schemaVersion = 39;
+  state.schemaVersion = 40;
   // 旧版データが混ざった時の保険
   if(!state.dex && state.collection) state.dex = state.collection;
   if(!state.dex) state.dex = {};
@@ -3278,6 +3285,19 @@ function stageName(stage){
 }
 
 
+
+function safeAttr(v){return escapeHtml(String(v ?? "")).replace(/"/g,"&quot;");}
+function dexImageHtml(src, emoji, alt){
+  const safeEmoji = escapeHtml(emoji || "❔");
+  const safeAlt = safeAttr(alt || "クリモン");
+  const safeSrc = safeAttr(src || "");
+  if(!src){
+    return `<span class="fallback">${safeEmoji}</span>`;
+  }
+  // 図鑑サムネ専用：onloadで隠さず、画像を最初から表示する。失敗時だけ絵文字へ戻す。
+  return `<img class="dex-img-force" src="${safeSrc}" alt="${safeAlt}" title="${safeAlt}\\n${safeSrc}" loading="eager" decoding="async" onerror="this.outerHTML='<span class=&quot;fallback&quot;>${safeEmoji}</span>'">`;
+}
+
 function dexInfoFromItem(item){
   const fixed = repairDexItem(item?.formId || "", item || {});
   return {speciesKey:fixed.speciesKey, branchPath:fixed.branchPath, emoji:fixed.emoji, image:fixed.image};
@@ -3285,7 +3305,7 @@ function dexInfoFromItem(item){
 function dexThumbHtml(item){
   const info = dexInfoFromItem(item);
   const name = item.formName || item.speciesName || item.formId || "クリモン";
-  return `<div class="dex-thumb">${imageWithFallbackHtml(info.image, info.emoji, name, "fallback")}</div>`;
+  return `<div class="dex-thumb">${dexImageHtml(info.image, info.emoji, name)}</div>`;
 }
 
 function renderDex(){
@@ -3293,7 +3313,7 @@ function renderDex(){
   if(!area) return;
   repairDexCollection();
   const items=Object.values(state.dex||{}).sort((a,b)=>String(a.formId||"").localeCompare(String(b.formId||"")));
-  const key=items.map(x=>`${x.formId}:${x.formName}:${dexProfileText(x.formId,x.formName,x.profile||x.role||"")}`).join("|");
+  const key=items.map(x=>`${x.formId}:${x.formName}:${x.image}:${dexProfileText(x.formId,x.formName,x.profile||x.role||"")}`).join("|");
   if(dexRenderKey===key && area.innerHTML) return;
   dexRenderKey=key;
   if(items.length===0){area.innerHTML=`<div class="hint">まだ図鑑登録がありません。</div>`;return}
