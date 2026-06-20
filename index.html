@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v87</title>
+  <title>クリモン - 製品版 v88</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1102,7 +1102,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v87</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v88</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1126,8 +1126,9 @@ body{padding-bottom:108px;}
         <div class="egg" id="eggIcon">🥚</div>
         <h3 id="eggTitle">卵なし</h3>
         <p id="eggDesc">卵を入手すると、時間経過でランダムな初期クリモンが孵化します。</p>
-        <div class="row">
-          <button onclick="buyEgg()">卵を入手 50CP</button>
+        <div class="row egg-action-row">
+          <button class="egg-action-btn" onclick="buyEgg()">卵を入手<br><span class="small">50CP</span></button>
+          <button class="egg-action-btn ghost" onclick="v87UseIncubator()">孵化装置<br><span class="small">即孵化 1000CP</span></button>
         </div>
         <p class="small">初回起動時、最初の卵はクールタイムなしで即孵化します。</p>
       </div>
@@ -6145,7 +6146,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 87;
+const KURIMON_APP_VERSION = 83;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -6528,8 +6529,7 @@ if ("serviceWorker" in navigator) {
       const s=v83TalentScore(mon,k), g=v83Grade(s);
       return `<span class="v83-chip ${g.startsWith('S')?'hot':''}">${escapeHtml(STAT_LABEL[k])}:${g}</span>`;
     }).join('');
-    const rare = Math.min(5, Math.max(1, Math.round(((mon.rareScore||0)+Math.max(0,mon.history?.crits||0)/10+Math.max(0,mon.history?.doubleAttacks||0)/10)/3)+1));
-    return `<div class="v83-talents ${compact?'compact':''}"><b>個体値</b>${chips}<span class="v83-chip">レア気質:${'★'.repeat(rare)}${'☆'.repeat(5-rare)}</span></div>`;
+    return `<div class="v83-talents ${compact?'compact':''}"><b>個体値</b>${chips}</div>`;
   }
   function v83ConditionDesc(mon){
     const c=CONDITIONS[mon?.condition||'normal']||CONDITIONS.normal;
@@ -7118,107 +7118,102 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 
+
 <script>
+// v87: 闇鍋結果ポップアップ / 孵化装置
 (function(){
-  const V87_VIBRATE_FLAG = '__kurimonV87Vibrated';
-  function canVibrate(){
-    return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
-  }
-  window.kurimonVibrate = function(pattern){
-    try{
-      if(canVibrate()) navigator.vibrate(pattern || [120]);
-    }catch(e){}
-  };
-  window.kurimonRareEventVibrate = function(type){
-    const patterns = {
-      fullmoon:[90,45,90,45,160],
-      kazuko:[140,55,140,55,220],
-      god:[220,80,220],
-      rareEvolution:[80,40,80,40,80,40,220]
-    };
-    window.kurimonVibrate(patterns[type] || [120]);
-  };
-  function isFullmoonEnemy(enemy){
-    return !!enemy && (enemy.enemyId === 'rare_fullmoon' || enemy.id === 'rare_fullmoon' || enemy.name === '満月');
-  }
-  function isKazukoEnemy(enemy){
-    return !!enemy && (enemy.enemyId === 'rare_kazuko' || enemy.id === 'rare_kazuko' || enemy.name === '栗場カズコ');
-  }
-  function markOnce(obj, key){
-    if(!obj) return false;
-    const k = V87_VIBRATE_FLAG + '_' + key;
-    if(obj[k]) return false;
-    try{ Object.defineProperty(obj,k,{value:true,enumerable:false,configurable:true}); }catch(e){ obj[k]=true; }
-    return true;
-  }
-  function vibrateRareEnemy(enemy){
-    if(isFullmoonEnemy(enemy) && markOnce(enemy,'fullmoon')){
-      setTimeout(()=>window.kurimonRareEventVibrate('fullmoon'), 60);
-    }else if(isKazukoEnemy(enemy) && markOnce(enemy,'kazuko')){
-      setTimeout(()=>window.kurimonRareEventVibrate('kazuko'), 60);
+  const V87_VERSION = 87;
+  function v87EnsureIncubator(){
+    if(typeof ITEM_MASTER === 'object' && !ITEM_MASTER.incubator){
+      ITEM_MASTER.incubator = {rarity:'SR', name:'孵化装置', type:'tool', desc:'卵をすぐに孵化させる装置。ホームの卵から使用できる。', effects:{instant_hatch:1}};
     }
+    if(Array.isArray(window.CP_EXCHANGE_ITEMS || CP_EXCHANGE_ITEMS)){
+      const list = window.CP_EXCHANGE_ITEMS || CP_EXCHANGE_ITEMS;
+      if(!list.some(x=>x.id==='incubator')) list.push({id:'incubator', cost:1000});
+    }
+    if(state && state.inventory && typeof state.inventory.incubator !== 'number') state.inventory.incubator = 0;
   }
+  window.v87EnsureIncubator = v87EnsureIncubator;
 
-  // カズコ・満月が出現した瞬間に振動。通常抽選・ボス挑戦チケットの両方に対応。
-  if(typeof enemyFromTemplate === 'function'){
-    const v87OriginalEnemyFromTemplate = enemyFromTemplate;
-    enemyFromTemplate = function(){
-      const enemy = v87OriginalEnemyFromTemplate.apply(this, arguments);
-      vibrateRareEnemy(enemy);
-      return enemy;
-    };
+  function v87Popup(title, bodyHtml){
+    let old=document.getElementById('v87-popup'); if(old) old.remove();
+    const wrap=document.createElement('div');
+    wrap.id='v87-popup';
+    wrap.className='v87-popup-backdrop';
+    wrap.innerHTML=`<div class="v87-popup-card"><h3>${title}</h3><div class="v87-popup-body">${bodyHtml}</div><button onclick="document.getElementById('v87-popup')?.remove()">OK</button></div>`;
+    document.body.appendChild(wrap);
   }
-  if(typeof makeEnemy === 'function'){
-    const v87OriginalMakeEnemy = makeEnemy;
-    makeEnemy = function(){
-      const enemy = v87OriginalMakeEnemy.apply(this, arguments);
-      vibrateRareEnemy(enemy);
-      return enemy;
-    };
-  }
+  window.v87Popup=v87Popup;
 
-  // モンスター撃破報酬でGODアイテムをドロップした時に振動。
-  if(typeof addItem === 'function'){
-    const v87OriginalAddItem = addItem;
-    addItem = function(id, count){
-      const ret = v87OriginalAddItem.apply(this, arguments);
-      try{
-        const it = ITEM_MASTER && ITEM_MASTER[id];
-        if(window.__kurimonV87MonsterDropContext && it && it.rarity === 'GOD'){
-          setTimeout(()=>window.kurimonRareEventVibrate('god'), 80);
-        }
-      }catch(e){}
-      return ret;
-    };
-  }
-  if(typeof finishBattle === 'function'){
-    const v87OriginalFinishBattle = finishBattle;
-    finishBattle = function(mon, enemy, win){
-      if(win && enemy){
-        window.__kurimonV87MonsterDropContext = enemy;
-        try{ return v87OriginalFinishBattle.apply(this, arguments); }
-        finally{ window.__kurimonV87MonsterDropContext = null; }
-      }
-      return v87OriginalFinishBattle.apply(this, arguments);
-    };
-  }
+  window.v87UseIncubator=function(){
+    v87EnsureIncubator();
+    if(!state.egg){ alert('孵化待ちの卵がありません。先に卵を入手してください。'); return; }
+    const owned=(state.inventory&&state.inventory.incubator)||0;
+    if(owned>0){
+      if(!confirm('孵化装置を1個使って、この卵をすぐに孵化させますか？')) return;
+      consumeItem('incubator',1);
+      state.egg.hatchAt=Date.now();
+      log('孵化装置を使用。卵がすぐに孵化します。');
+      checkHatch(); saveGame(); render(); return;
+    }
+    if((state.cp||0)<1000){ alert('CPが足りません。孵化装置は1000CPです。'); return; }
+    if(!confirm('孵化装置を1000CPで交換して、この卵をすぐに孵化させますか？')) return;
+    state.cp-=1000;
+    state.egg.hatchAt=Date.now();
+    log('孵化装置を1000CPで交換して使用。卵がすぐに孵化します。');
+    checkHatch(); saveGame(); render();
+  };
 
-  // レア進化した時に振動。自動進化・手動進化の両方に対応。
-  if(typeof applyEvolution === 'function'){
-    const v87OriginalApplyEvolution = applyEvolution;
-    applyEvolution = function(mon, result){
-      const isRare = !!(result && (
-        String(result.branchPath || '').endsWith('r') ||
-        String(result.formId || '').includes('_r') ||
-        String(result.formName || '').includes('レア')
-      ));
-      const ret = v87OriginalApplyEvolution.apply(this, arguments);
-      if(isRare){ setTimeout(()=>window.kurimonRareEventVibrate('rareEvolution'), 80); }
-      return ret;
+  // 闇鍋ガチャ結果をポップアップ表示に変更
+  window.v83YanabeGacha=function(){
+    if(typeof v83Ensure==='function') v83Ensure();
+    v87EnsureIncubator();
+    if(state.cp<5000){ alert('CPが足りません。闇鍋ガチャは5000CPです。'); return; }
+    if(!confirm('闇鍋ガチャを5000CPで引きますか？\nN〜URアイテム、ボス挑戦チケット、低確率でGODチケットの欠片が出ます。')) return;
+    state.cp-=5000;
+    const roll=v83RandomBy([
+      {kind:'rarity',rarity:'N',rate:27},{kind:'rarity',rarity:'R',rate:29},{kind:'rarity',rarity:'SR',rate:22},{kind:'rarity',rarity:'UR',rate:10},
+      {kind:'item',itemId:'fullmoon_invite',rate:4},{kind:'item',itemId:'kazuko_challenge',rate:3},{kind:'item',itemId:'incubator',rate:2},{kind:'item',itemId:'god_ticket_shard',rate:3}
+    ]);
+    const id = roll.kind==='rarity' ? randomItemByRarity(roll.rarity) : roll.itemId;
+    if(id){
+      addItem(id);
+      const it=ITEM_MASTER[id]||{};
+      const rarity=it.rarity||'';
+      log(`闇鍋ガチャ結果：「${itemName(id)}」を入手！`);
+      v87Popup('🎰 闇鍋ガチャ結果', `<div class="v87-gacha-result rarity-${rarity}"><div class="v87-rarity">${rarity}</div><div class="v87-item-name">${itemName(id)}</div><p class="small">${escapeHtml(it.desc||'')}</p></div>`);
+    }
+    if(state.records) state.records.gachaCount++;
+    if(typeof v83DailyAdd==='function') v83DailyAdd('gacha');
+    if(typeof v83CheckAchievements==='function') v83CheckAchievements();
+    saveGame(); render();
+  };
+
+
+  const oldRender=window.render;
+  if(typeof oldRender==='function'){
+    window.render=function(){
+      v87EnsureIncubator();
+      oldRender.apply(this, arguments);
     };
   }
+  v87EnsureIncubator();
 })();
 </script>
+<style>
+.egg-action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;}
+.egg-action-btn{min-height:54px;line-height:1.25;}
+.v87-popup-backdrop{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(5px);}
+.v87-popup-card{width:min(420px,92vw);border:1px solid rgba(255,255,255,.22);border-radius:22px;background:linear-gradient(180deg,rgba(34,37,48,.98),rgba(17,19,28,.98));box-shadow:0 18px 60px rgba(0,0,0,.45);padding:18px;text-align:center;}
+.v87-popup-card h3{margin:0 0 12px;font-size:20px;}
+.v87-popup-card button{margin-top:12px;width:100%;}
+.v87-gacha-result{border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:14px;background:rgba(255,255,255,.06);}
+.v87-rarity{font-weight:900;letter-spacing:.08em;color:#f8d66d;margin-bottom:4px;}
+.v87-item-name{font-size:22px;font-weight:900;margin-bottom:6px;}
+@media(max-width:520px){.egg-action-row{gap:7px}.egg-action-btn{font-size:13px;padding:9px 6px}.v87-popup-card{padding:15px;border-radius:19px}.v87-item-name{font-size:20px}}
+</style>
 
 </body>
 </html>
+
+<!-- v88: レア気質の表示を非表示（内部判定は維持） -->
