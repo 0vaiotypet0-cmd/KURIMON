@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v81</title>
+  <title>クリモン - 製品版 v82</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1056,7 +1056,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v81</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v82</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6078,7 +6078,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 81;
+const KURIMON_APP_VERSION = 82;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -6258,8 +6258,111 @@ async function checkKurimonLatestVersion(){
 })();
 </script>
 
+
+
 <script>
-// v81 PWA: Service Worker登録 + 起動時の最新版確認
+// v82: ボックスお気に入り★ + 逃がすロック
+function isKurimonFavorite(mon){
+  return !!(mon && (mon.favorite || mon.isFavorite));
+}
+function setKurimonFavorite(mon, value){
+  if(!mon) return;
+  mon.favorite = !!value;
+  if("isFavorite" in mon) delete mon.isFavorite;
+}
+function toggleMonsterFavorite(id){
+  const mon=(state.monsters||[]).find(m=>m.id===id);
+  if(!mon) return;
+  const next=!isKurimonFavorite(mon);
+  setKurimonFavorite(mon,next);
+  boxRenderKey="";
+  saveGame();
+  log(`${mon.nickname||mon.formName||"クリモン"}を${next?"お気に入り登録":"お気に入り解除"}しました。`);
+  render();
+}
+function sortBoxMonstersForDisplay(mons){
+  return [...(mons||[])].sort((a,b)=>{
+    const fa=isKurimonFavorite(a)?1:0;
+    const fb=isKurimonFavorite(b)?1:0;
+    if(fa!==fb) return fb-fa;
+    const ca=a.id===state.currentId?1:0;
+    const cb=b.id===state.currentId?1:0;
+    if(ca!==cb) return cb-ca;
+    const sa=Number(a.stage||0), sb=Number(b.stage||0);
+    if(sa!==sb) return sb-sa;
+    const la=Number(a.level||0), lb=Number(b.level||0);
+    if(la!==lb) return lb-la;
+    return String(a.nickname||a.formName||a.id).localeCompare(String(b.nickname||b.formName||b.id),"ja");
+  });
+}
+
+(function injectV82BoxFavoriteStyles(){
+  if(document.getElementById("kurimon-v82-favorite-style")) return;
+  const style=document.createElement("style");
+  style.id="kurimon-v82-favorite-style";
+  style.textContent=`
+    .favorite-btn{margin-right:6px;min-width:44px;padding:9px 10px!important;font-size:16px!important;}
+    .favorite-btn.on{background:rgba(248,214,109,.22)!important;border-color:rgba(248,214,109,.75)!important;color:#ffe58a!important;}
+    .favorite-badge{display:inline-flex;align-items:center;gap:3px;margin-left:5px;padding:2px 7px;border-radius:999px;background:rgba(248,214,109,.16);border:1px solid rgba(248,214,109,.45);color:#ffe58a;font-size:11px;font-weight:800;vertical-align:middle;}
+    .release-btn.locked{border-color:rgba(160,160,160,.35)!important;color:#d8d8d8!important;background:rgba(255,255,255,.05)!important;}
+    .box-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;}
+    .box-actions .grow{flex:1 1 105px;}
+  `;
+  document.head.appendChild(style);
+})();
+
+const KURIMON_V82_ORIGINAL_RELEASE_MONSTER = releaseMonster;
+releaseMonster = function(id){
+  const mon=(state.monsters||[]).find(m=>m.id===id);
+  if(mon && isKurimonFavorite(mon)){
+    alert("お気に入り★のクリモンは逃がせません。\n逃がす場合は先に★を外してください。");
+    return;
+  }
+  return KURIMON_V82_ORIGINAL_RELEASE_MONSTER(id);
+};
+
+renderBox = function(){
+  injectV78Styles();
+  ensureItemSystems();
+  const area=document.getElementById("boxArea");
+  const mons=state.monsters||[];
+  const key=JSON.stringify(mons.map(m=>[m.id,m.nickname,m.formName,m.level,m.personality,m.condition,m.stats,m.awakening,m.holdItemId,!!m.favorite,getSkills(m).join(",")]))+":"+state.currentId+":"+state.cp;
+  if(boxRenderKey===key && area.innerHTML) return;
+  boxRenderKey=key;
+  if(mons.length===0){area.innerHTML=`<div class="hint">まだクリモンがいません。</div>`;return;}
+  const displayMons=sortBoxMonstersForDisplay(mons);
+  area.innerHTML=displayMons.map(mon=>{
+    const fav=isKurimonFavorite(mon);
+    const favBadge=fav?`<span class="favorite-badge">★ ロック中</span>`:"";
+    const releaseLabel=fav?"★ロック中":"逃がす（+"+releaseCpReward(mon)+"CP）";
+    const releaseDisabled=fav?"disabled":"";
+    const releaseClass=fav?"ghost release-btn locked":"ghost release-btn";
+    return `
+    <div class="mini ${mon.id===state.currentId?"active":""} ${fav?"favorite-card":""}">
+      <strong>${escapeHtml(mon.nickname)} ${favBadge}</strong>
+      <span>種族：${escapeHtml(mon.speciesName)}</span><br>
+      <span>形態：${escapeHtml(mon.formName)}</span><br>
+      <span>${mon.level>=MAX_LEVEL?"Lv.MAX":"Lv."+mon.level} / ${escapeHtml(mon.personality)} / ${escapeHtml(CONDITIONS[mon.condition]?.label||"")}</span><br>
+      <span>${escapeHtml(mon.awakening?.title ? "称号："+mon.awakening.title : "覚醒ノ儀："+awakeningSummary(mon))}</span><br>
+      <span>持ち物：${escapeHtml(mon.holdItemId?itemName(mon.holdItemId):"なし")}</span><br>
+      <span>体${mon.stats.hp} 攻${mon.stats.atk} 防${mon.stats.def}</span><br>
+      <span>魔${mon.stats.mag} 運${mon.stats.luck} 速${mon.stats.spd}</span>
+      <div class="box-skill-wrap">
+        <b class="small">使えるスキル・魔法</b>
+        ${renderSkillChips(mon)}
+      </div>
+      <div class="box-actions">
+        <button class="ghost favorite-btn ${fav?"on":""}" onclick="toggleMonsterFavorite('${mon.id}')">${fav?"★":"☆"}</button>
+        <button class="ghost grow" onclick="selectMonster('${mon.id}')">${mon.id===state.currentId?"育成中":"育成する"}</button>
+        <button class="${releaseClass} grow" ${releaseDisabled} onclick="releaseMonster('${mon.id}')">${releaseLabel}</button>
+      </div>
+    </div>`;
+  }).join("");
+};
+</script>
+
+<script>
+// v82 PWA: Service Worker登録 + 起動時の最新版確認
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
