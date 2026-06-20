@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v74</title>
+  <title>クリモン - 製品版 v76</title>
   <style>
     :root{
       --bg:#10131c;
@@ -721,7 +721,7 @@
 
 
 /* v50 製品版UI */
-body{padding-bottom:86px;}
+body{padding-bottom:108px;}
 .top-tips-btn{
   border:1px solid var(--line);
   background:rgba(255,255,255,.08);
@@ -732,19 +732,26 @@ body{padding-bottom:86px;}
   font-size:12px;
   white-space:nowrap;
 }
+.top-tips-btn.active{
+  background:var(--accent);
+  color:#151515;
+  border-color:rgba(248,214,109,.75);
+}
 .tabs{display:none!important;}
 .bottom-tabs{
   position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
+  left:10px;
+  right:10px;
+  bottom:12px;
   z-index:1000;
   display:flex;
   justify-content:center;
   gap:6px;
-  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  padding:8px 8px calc(8px + env(safe-area-inset-bottom));
   background:rgba(16,19,28,.94);
-  border-top:1px solid var(--line);
+  border:1px solid var(--line);
+  border-radius:20px;
+  box-shadow:0 12px 30px rgba(0,0,0,.35);
   backdrop-filter:blur(14px);
 }
 .bottom-tabs button{
@@ -767,9 +774,10 @@ body{padding-bottom:86px;}
   border-color:rgba(248,214,109,.75);
 }
 @media(max-width:540px){
-  body{padding-bottom:92px;}
-  .bottom-tabs{gap:4px;padding-left:6px;padding-right:6px;}
+  body{padding-bottom:116px;}
+  .bottom-tabs{left:8px;right:8px;bottom:10px;gap:4px;padding-left:6px;padding-right:6px;}
   .bottom-tabs button{font-size:10px;padding:8px 2px;}
+  .top-tips-btn{padding:7px 9px;font-size:12px;}
 }
 .dex-card{
   cursor:pointer;
@@ -1048,12 +1056,13 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v74</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v76</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
       <span class="pill">時刻 <b id="timeBandText">--</b></span>
       <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
+      <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">⚙️ 設定</button>
     </div>
   </div>
 </header>
@@ -1437,6 +1446,15 @@ body{padding-bottom:86px;}
       <h2>設定</h2>
       <div class="product-settings">
         <div class="save-transfer-panel">
+          <h3>最新版に更新</h3>
+          <p>ホーム画面に追加し直さずに、アプリ本体のキャッシュを削除して最新版を読み込みます。</p>
+          <div class="row">
+            <button class="magic" onclick="forceKurimonUpdate()">最新版に更新</button>
+          </div>
+          <p id="appUpdateStatus" class="small save-transfer-status"></p>
+        </div>
+
+        <div class="save-transfer-panel">
           <h3>セーブデータ引き継ぎ</h3>
           <p>旧端末で「書き出し」を押してコードをコピーし、新端末で貼り付けて「読み込み」を押してください。</p>
           <div class="row">
@@ -1514,7 +1532,6 @@ body{padding-bottom:86px;}
   <button data-tab-btn="mock" onclick="showTab('mock')">🧪<br>模擬戦</button>
   <button data-tab-btn="box" onclick="showTab('box')">📦<br>ボックス</button>
   <button data-tab-btn="dex" onclick="showTab('dex')">📖<br>図鑑</button>
-  <button data-tab-btn="settings" onclick="showTab('settings')">⚙️<br>設定</button>
 </div>
 
 
@@ -5850,6 +5867,44 @@ injectV60Styles();
 
 setInterval(render,1000);
 render();
+</script>
+
+
+<script>
+// v75: ホーム画面に追加し直さず最新版へ更新する
+async function forceKurimonUpdate(){
+  const status = document.getElementById("appUpdateStatus");
+  const setStatus = (msg) => { if(status) status.textContent = msg; };
+  if(!confirm("最新版を読み込みます。セーブデータは残ります。よろしいですか？")) return;
+  try{
+    setStatus("更新準備中です……");
+
+    if("serviceWorker" in navigator){
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(async reg => {
+        try{ await reg.update(); }catch(e){}
+      }));
+    }
+
+    if("caches" in window){
+      const keys = await caches.keys();
+      await Promise.all(keys
+        .filter(key => key.startsWith("kurimon-"))
+        .map(key => caches.delete(key))
+      );
+    }
+
+    setStatus("最新版を再読み込みします……");
+    const url = new URL(window.location.href);
+    url.searchParams.set("v", "75");
+    url.searchParams.set("reload", String(Date.now()));
+    window.location.replace(url.toString());
+  }catch(err){
+    console.warn("Kurimon update failed", err);
+    setStatus("自動更新に失敗しました。通常の再読み込みを試します。 ");
+    setTimeout(() => window.location.reload(), 500);
+  }
+}
 </script>
 
 <script>
