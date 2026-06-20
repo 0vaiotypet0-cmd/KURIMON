@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v85</title>
+  <title>クリモン - 製品版 v87</title>
   <style>
     :root{
       --bg:#10131c;
@@ -991,6 +991,42 @@ body{padding-bottom:108px;}
   .top-tips-btn{padding:4px 6px!important;font-size:10px!important;min-height:26px!important;}
 }
 
+/* v86: 上段メニューを全幅ボタンからコンパクトチップ型へ */
+.topbar{align-items:center;}
+.top-status{gap:6px;flex:0 0 auto;}
+.top-nav-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;min-width:0;}
+.top-nav-actions .top-tips-btn{
+  width:auto!important;
+  flex:0 0 auto;
+  min-width:0!important;
+  min-height:24px!important;
+  padding:4px 8px!important;
+  border-radius:999px!important;
+  font-size:10.5px!important;
+  line-height:1.1!important;
+}
+@media(max-width:900px){
+  header{padding:10px 14px 8px;}
+  .topbar{gap:7px!important;}
+  .top-status,.top-nav-actions{width:100%;justify-content:flex-start;}
+}
+@media(max-width:540px){
+  header{padding:9px 14px 8px;}
+  .logo{font-size:20px;}
+  .top-status{gap:5px;}
+  .pill{padding:6px 9px;font-size:12px;}
+  .top-nav-actions{gap:5px;}
+  .top-nav-actions .top-tips-btn{
+    width:auto!important;
+    padding:4px 7px!important;
+    font-size:10px!important;
+    min-height:23px!important;
+  }
+}
+@media(max-width:380px){
+  .top-nav-actions .top-tips-btn{padding:4px 6px!important;font-size:9.5px!important;}
+}
+
 </style>
 
 <style>
@@ -1066,16 +1102,18 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v85</span></div>
-    <div class="row">
+    <div class="logo">🥚 クリモン <span class="small">製品版 v87</span></div>
+    <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
       <span class="pill">時刻 <b id="timeBandText">--</b></span>
+    </div>
+    <div class="top-nav-actions">
       <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
       <button class="top-tips-btn" data-tab-btn="records" onclick="showTab('records')">記録</button>
       <button class="top-tips-btn" data-tab-btn="achievements" onclick="showTab('achievements')">称号</button>
       <button class="top-tips-btn" data-tab-btn="shop" onclick="showTab('shop')">交換所/ガチャ</button>
-      <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">⚙️ 設定</button>
+      <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">設定</button>
     </div>
   </div>
 </header>
@@ -6107,7 +6145,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 83;
+const KURIMON_APP_VERSION = 87;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -7077,6 +7115,108 @@ if ("serviceWorker" in navigator) {
   }
   v84InjectStyle(); v84Ensure();
   try{ render(); }catch(e){ console.warn('v84 initial render skipped',e); }
+})();
+</script>
+
+<script>
+(function(){
+  const V87_VIBRATE_FLAG = '__kurimonV87Vibrated';
+  function canVibrate(){
+    return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  }
+  window.kurimonVibrate = function(pattern){
+    try{
+      if(canVibrate()) navigator.vibrate(pattern || [120]);
+    }catch(e){}
+  };
+  window.kurimonRareEventVibrate = function(type){
+    const patterns = {
+      fullmoon:[90,45,90,45,160],
+      kazuko:[140,55,140,55,220],
+      god:[220,80,220],
+      rareEvolution:[80,40,80,40,80,40,220]
+    };
+    window.kurimonVibrate(patterns[type] || [120]);
+  };
+  function isFullmoonEnemy(enemy){
+    return !!enemy && (enemy.enemyId === 'rare_fullmoon' || enemy.id === 'rare_fullmoon' || enemy.name === '満月');
+  }
+  function isKazukoEnemy(enemy){
+    return !!enemy && (enemy.enemyId === 'rare_kazuko' || enemy.id === 'rare_kazuko' || enemy.name === '栗場カズコ');
+  }
+  function markOnce(obj, key){
+    if(!obj) return false;
+    const k = V87_VIBRATE_FLAG + '_' + key;
+    if(obj[k]) return false;
+    try{ Object.defineProperty(obj,k,{value:true,enumerable:false,configurable:true}); }catch(e){ obj[k]=true; }
+    return true;
+  }
+  function vibrateRareEnemy(enemy){
+    if(isFullmoonEnemy(enemy) && markOnce(enemy,'fullmoon')){
+      setTimeout(()=>window.kurimonRareEventVibrate('fullmoon'), 60);
+    }else if(isKazukoEnemy(enemy) && markOnce(enemy,'kazuko')){
+      setTimeout(()=>window.kurimonRareEventVibrate('kazuko'), 60);
+    }
+  }
+
+  // カズコ・満月が出現した瞬間に振動。通常抽選・ボス挑戦チケットの両方に対応。
+  if(typeof enemyFromTemplate === 'function'){
+    const v87OriginalEnemyFromTemplate = enemyFromTemplate;
+    enemyFromTemplate = function(){
+      const enemy = v87OriginalEnemyFromTemplate.apply(this, arguments);
+      vibrateRareEnemy(enemy);
+      return enemy;
+    };
+  }
+  if(typeof makeEnemy === 'function'){
+    const v87OriginalMakeEnemy = makeEnemy;
+    makeEnemy = function(){
+      const enemy = v87OriginalMakeEnemy.apply(this, arguments);
+      vibrateRareEnemy(enemy);
+      return enemy;
+    };
+  }
+
+  // モンスター撃破報酬でGODアイテムをドロップした時に振動。
+  if(typeof addItem === 'function'){
+    const v87OriginalAddItem = addItem;
+    addItem = function(id, count){
+      const ret = v87OriginalAddItem.apply(this, arguments);
+      try{
+        const it = ITEM_MASTER && ITEM_MASTER[id];
+        if(window.__kurimonV87MonsterDropContext && it && it.rarity === 'GOD'){
+          setTimeout(()=>window.kurimonRareEventVibrate('god'), 80);
+        }
+      }catch(e){}
+      return ret;
+    };
+  }
+  if(typeof finishBattle === 'function'){
+    const v87OriginalFinishBattle = finishBattle;
+    finishBattle = function(mon, enemy, win){
+      if(win && enemy){
+        window.__kurimonV87MonsterDropContext = enemy;
+        try{ return v87OriginalFinishBattle.apply(this, arguments); }
+        finally{ window.__kurimonV87MonsterDropContext = null; }
+      }
+      return v87OriginalFinishBattle.apply(this, arguments);
+    };
+  }
+
+  // レア進化した時に振動。自動進化・手動進化の両方に対応。
+  if(typeof applyEvolution === 'function'){
+    const v87OriginalApplyEvolution = applyEvolution;
+    applyEvolution = function(mon, result){
+      const isRare = !!(result && (
+        String(result.branchPath || '').endsWith('r') ||
+        String(result.formId || '').includes('_r') ||
+        String(result.formName || '').includes('レア')
+      ));
+      const ret = v87OriginalApplyEvolution.apply(this, arguments);
+      if(isRare){ setTimeout(()=>window.kurimonRareEventVibrate('rareEvolution'), 80); }
+      return ret;
+    };
+  }
 })();
 </script>
 
