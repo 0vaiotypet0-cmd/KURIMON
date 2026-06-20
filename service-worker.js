@@ -1,44 +1,26 @@
-const CACHE_NAME = "kurimon-pwa-v71";
-
-const CORE_ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
-];
-
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    )).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) return;
-
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          if (response.ok) cache.put(event.request, copy);
-        });
-        return response;
-      }).catch(() => caches.match("./index.html"));
-    })
-  );
-});
+{
+  "name": "クリモン",
+  "short_name": "クリモン",
+  "description": "育成・進化・バトルが楽しめるクリモン育成ゲーム",
+  "start_url": "./?v=74",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10131c",
+  "theme_color": "#f8d66d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "./"
+}
