@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v90</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <title>クリモン - 製品版 v91</title>
   <style>
     :root{
       --bg:#10131c;
@@ -459,7 +459,7 @@
     .speed-select{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
     .speed-select button.active{outline:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 3px rgba(248,214,109,.18)}
 
-    /* v90: バトル/育成のスマホUI圧縮 */
+    /* v91: 連打ズーム抑制 */
     #battleResult{display:none!important;}
     .speed-select{
       display:flex;
@@ -1072,6 +1072,24 @@ body{padding-bottom:108px;}
   .top-nav-actions .top-tips-btn{padding:4px 6px!important;font-size:9.5px!important;}
 }
 
+
+    /* v91: iPhoneの連打ズーム対策 */
+    html, body {
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+    }
+    button, .btn, .tabbtn, .mini-btn, .chip-btn, [role="button"] {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: rgba(255,255,255,0.12);
+    }
+    input, textarea, select {
+      font-size: 16px;
+      touch-action: auto;
+    }
+
 </style>
 
 <style>
@@ -1147,7 +1165,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v90</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v91</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -7352,10 +7370,29 @@ if ("serviceWorker" in navigator) {
 </script>
 
 
+
+<script>
+// v91: iPhone Safari/PWAでボタン連打時に画面が拡大するのを抑制
+(function(){
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    const now = Date.now();
+    if(now - lastTouchEnd <= 350){
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive:false });
+
+  document.addEventListener('gesturestart', function(e){
+    e.preventDefault();
+  }, { passive:false });
+})();
+</script>
+
 </body>
 </html>
 
 <!-- v88: レア気質の表示を非表示（内部判定は維持） -->
 
 <!-- v89: 孵化装置をアイテムから廃止し、1000CP即孵化ボタンに変更 -->
-<!-- v90: バトル自キャラLv表示、速度ボタン小型横並び、勝利バナー非表示、育成ボタン圧縮 -->
+<!-- v91: iPhone連打時のダブルタップズーム抑制 -->
