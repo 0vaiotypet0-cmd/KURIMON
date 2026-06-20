@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v69</title>
+  <title>クリモン - 製品版 v71</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1003,11 +1003,22 @@ body{padding-bottom:86px;}
 .evo-node-thumb .dex-direct-fallback{font-size:24px!important;}
 .evo-node-text{min-width:0!important;}
 </style>
+
+  <!-- v70 PWA対応 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#f8d66d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="クリモン">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v69</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v71</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -2160,15 +2171,50 @@ function setBattleBody(el, actor){
   const emoji = actorEmoji(actor);
   const source = actor && actor.source ? actor.source : actor;
   const name = source?.nickname || source?.formName || source?.name || "クリモン";
+  const candidates = imageCandidatePaths(src || "");
+  const key = `${candidates.join("|")}|${emoji || ""}|${name || ""}`;
 
-  if(el.dataset.src === (src || "") && el.dataset.emoji === (emoji || "") && el.dataset.name === name){
+  if(el.dataset.bodyKey === key && el.querySelector("img, span.fighter-fallback")){
     return;
   }
 
-  el.dataset.src = src || "";
-  el.dataset.emoji = emoji || "";
-  el.dataset.name = name;
-  el.innerHTML = imageWithFallbackHtml(src, emoji, name, "fighter-fallback");
+  el.dataset.bodyKey = key;
+  el.innerHTML = "";
+
+  const fallback = document.createElement("span");
+  fallback.className = "fighter-fallback";
+  fallback.textContent = emoji || "❔";
+  el.appendChild(fallback);
+
+  if(!candidates.length){
+    fallback.style.display = "block";
+    return;
+  }
+
+  const img = document.createElement("img");
+  img.alt = name || "クリモン";
+  img.style.display = "none";
+  el.appendChild(img);
+
+  const tryLoad = (index=0) => {
+    const candidate = candidates[index];
+    img.onload = () => {
+      img.style.display = "block";
+      fallback.style.display = "none";
+      img.dataset.loadStatus = index === 0 ? "ok" : "fallback";
+    };
+    img.onerror = () => {
+      if(index + 1 < candidates.length){
+        tryLoad(index + 1);
+      }else{
+        img.style.display = "none";
+        fallback.style.display = "block";
+        img.dataset.loadStatus = "error";
+      }
+    };
+    img.src = absoluteImageUrl(candidate);
+  };
+  tryLoad(0);
 }
 
 function battlePortraitHtml(actor){
@@ -2497,15 +2543,25 @@ function addStat(mon, stat, amount){
   if(stat==="hp") mon.hpCurrent = Math.min(mon.stats.hp, Math.max(mon.hpCurrent || mon.stats.hp, mon.stats.hp));
   return after - before;
 }
+function expBonusPercent(mon){
+  try{
+    const id = mon?.holdItemId || "";
+    return id ? (ITEM_MASTER[id]?.effects?.exp_percent || 0) : 0;
+  }catch(e){
+    return 0;
+  }
+}
 function addExp(mon, amount){
   if(mon.level >= MAX_LEVEL){
     mon.level = MAX_LEVEL;
     mon.exp = 0;
     return 0;
   }
-  mon.exp += amount;
+  const bonus = expBonusPercent(mon);
+  const finalAmount = Math.max(0, Math.round((amount || 0) * (1 + bonus / 100)));
+  mon.exp += finalAmount;
   handleLevelUp(mon);
-  return amount;
+  return finalAmount;
 }
 function expText(mon){
   return mon.level >= MAX_LEVEL ? "MAX" : `${mon.exp}/${expToNext(mon.level)}`;
@@ -2531,7 +2587,14 @@ function renameCurrent(){
 }
 function spendAp(amount=1){recoverApByTime();if(state.ap<amount){alert("APが足りません。");return false}state.ap-=amount;saveGame();return true}
 function train(stat){
-  const mon=getCurrentMonster();if(!mon)return;if(!spendAp(1))return;
+  const mon=getCurrentMonster();if(!mon)return;
+  const caps = getStatCaps(mon);
+  if((mon.stats[stat] || 0) >= (caps[stat] || 0)){
+    log(`${mon.nickname}の${STAT_LABEL[stat]}は成長限界に達しているため、APを消費しませんでした。`);
+    render();
+    return;
+  }
+  if(!spendAp(1))return;
   const condition=CONDITIONS[mon.condition]||CONDITIONS.normal;
   const pGrow=(PERSONALITIES[mon.personality]||PERSONALITIES["ふつう"]).grow||{};
   let gain=3+condition.trainBonus+(pGrow[stat]||0);
@@ -3539,13 +3602,15 @@ function finishBattle(mon, enemy, win){
   if(win){
     mon.history.wins++;
     const baseExp=20+enemy.level*5, cp=25+enemy.level*5;
+    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
-    log(`バトル勝利！ EXP +${exp}、CP +${cp}`);
+    log(`バトル勝利！ EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
   }else{
     mon.history.losses++;
     const baseExp=8, cp=10;
+    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
-    log(`バトル敗北。EXP +${exp}、CP +${cp}`);
+    log(`バトル敗北。EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
   }
   saveGame();
 }
@@ -4897,6 +4962,7 @@ const ITEM_MASTER = {
 
   focus_sash:{rarity:"SR",name:"きあいの襷",type:"hold",desc:"HPが0になる攻撃を一度だけHP1で耐える",effects:{survive_once:1}},
   regen_seed:{rarity:"SR",name:"再生の種",type:"hold",desc:"毎ターンHPを少し回復",effects:{regen_percent:3}},
+  exp_charm:{rarity:"SR",name:"経験のお守り",type:"hold",desc:"獲得EXP +30%",effects:{exp_percent:30}},
   sleep_pillow:{rarity:"SR",name:"ぐっすりまくら",type:"tool",desc:"次の休憩時の成長限界低下率を軽減",effects:{rest_penalty_down:10}},
   fullmoon_fragment:{rarity:"SR",name:"満月の欠片",type:"awakening_tool",desc:"覚醒ノ儀の大成功率 +1%",effects:{awakening_great_success_up:1}},
   black_syringe:{rarity:"SR",name:"黒い注射器",type:"awakening_tool",desc:"覚醒ノ儀の成功時効果アップ。ただし失敗時ダウンも増加",effects:{awakening_success_effect_up:10,awakening_fail_penalty_up:10}},
@@ -5346,15 +5412,17 @@ finishBattle = function(mon, enemy, win){
   if(win){
     mon.history.wins++;
     const baseExp=enemy.expReward || (20+enemy.level*5), cp=enemy.cpReward || (25+enemy.level*5);
+    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
-    log(`バトル勝利！ EXP +${exp}、CP +${cp}`);
+    log(`バトル勝利！ EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
     const itemId=rollDropFromTable(enemy.dropTableId || (enemy.isRare?"drop_rare_moon":"drop_normal_d"));
     if(itemId){addItem(itemId);log(`${enemy.isRare?"レアエネミー":"CPU戦"}報酬：「${itemName(itemId)}」を入手！`);}
   }else{
     mon.history.losses++;
     const baseExp=8, cp=10;
+    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
-    log(`バトル敗北。EXP +${exp}、CP +${cp}`);
+    log(`バトル敗北。EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
   }
   saveGame();
 };
@@ -5613,6 +5681,17 @@ injectV60Styles();
 
 setInterval(render,1000);
 render();
+</script>
+
+<script>
+// v71 PWA: Service Worker登録
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("Kurimon PWA Service Worker registered"))
+      .catch(err => console.warn("Kurimon PWA Service Worker registration failed", err));
+  });
+}
 </script>
 </body>
 </html>

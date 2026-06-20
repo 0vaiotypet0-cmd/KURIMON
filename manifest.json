@@ -1,0 +1,25 @@
+{
+  "name": "クリモン",
+  "short_name": "クリモン",
+  "description": "育成・進化・バトルが楽しめるクリモン育成ゲーム",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10131c",
+  "theme_color": "#f8d66d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
