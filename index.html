@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v88</title>
+  <title>クリモン - 製品版 v89</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1102,7 +1102,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v88</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v89</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1128,7 +1128,7 @@ body{padding-bottom:108px;}
         <p id="eggDesc">卵を入手すると、時間経過でランダムな初期クリモンが孵化します。</p>
         <div class="row egg-action-row">
           <button class="egg-action-btn" onclick="buyEgg()">卵を入手<br><span class="small">50CP</span></button>
-          <button class="egg-action-btn ghost" onclick="v87UseIncubator()">孵化装置<br><span class="small">即孵化 1000CP</span></button>
+          <button class="egg-action-btn ghost" onclick="v87UseIncubator()">即孵化<br><span class="small">1000CP</span></button>
         </div>
         <p class="small">初回起動時、最初の卵はクールタイムなしで即孵化します。</p>
       </div>
@@ -7120,7 +7120,7 @@ if ("serviceWorker" in navigator) {
 
 
 <script>
-// v87: 闇鍋結果ポップアップ / 孵化装置
+// v87: レア気質説明 / 闇鍋結果ポップアップ / 孵化装置
 (function(){
   const V87_VERSION = 87;
   function v87EnsureIncubator(){
@@ -7189,6 +7189,13 @@ if ("serviceWorker" in navigator) {
     saveGame(); render();
   };
 
+  // レア気質の説明をTIPSに補足できるようにする
+  const oldV83TalentsHtml = window.v83TalentsHtml;
+  if(typeof oldV83TalentsHtml === 'function'){
+    window.v83TalentsHtml = function(mon, compact=false){
+      return oldV83TalentsHtml(mon, compact).replace('レア気質:', '<span title="レア進化しやすさの目安です">レア気質:</span>');
+    };
+  }
 
   const oldRender=window.render;
   if(typeof oldRender==='function'){
@@ -7213,7 +7220,96 @@ if ("serviceWorker" in navigator) {
 @media(max-width:520px){.egg-action-row{gap:7px}.egg-action-btn{font-size:13px;padding:9px 6px}.v87-popup-card{padding:15px;border-radius:19px}.v87-item-name{font-size:20px}}
 </style>
 
+
+<script>
+// v89: 孵化装置をアイテム扱いから廃止。1000CP支払いで即孵化に変更。
+(function(){
+  const V89_VERSION = 89;
+
+  function v89RemoveIncubatorItem(){
+    try{
+      if(typeof ITEM_MASTER === 'object' && ITEM_MASTER.incubator) delete ITEM_MASTER.incubator;
+      if(Array.isArray(window.CP_EXCHANGE_ITEMS || CP_EXCHANGE_ITEMS)){
+        const list = window.CP_EXCHANGE_ITEMS || CP_EXCHANGE_ITEMS;
+        for(let i=list.length-1;i>=0;i--) if(list[i] && list[i].id === 'incubator') list.splice(i,1);
+      }
+      if(state && state.inventory){
+        const n = Number(state.inventory.incubator || 0);
+        if(n>0 && !state._v89IncubatorMigrated){
+          state.cp = (state.cp||0) + n*1000;
+          log(`旧孵化装置 ${n}個を ${n*1000}CP に変換しました。`);
+        }
+        delete state.inventory.incubator;
+        state._v89IncubatorMigrated = true;
+      }
+    }catch(e){ console.warn('v89RemoveIncubatorItem', e); }
+  }
+  window.v87EnsureIncubator = v89RemoveIncubatorItem;
+  window.v89RemoveIncubatorItem = v89RemoveIncubatorItem;
+
+  window.v87UseIncubator = function(){
+    v89RemoveIncubatorItem();
+    if(!state.egg){ alert('孵化待ちの卵がありません。先に卵を入手してください。'); return; }
+    if((state.cp||0) < 1000){ alert('CPが足りません。即孵化には1000CP必要です。'); return; }
+    if(!confirm('1000CPを支払って、この卵をすぐに孵化させますか？')) return;
+    state.cp -= 1000;
+    state.egg.hatchAt = Date.now();
+    log('1000CPを支払い、卵をすぐに孵化させました。');
+    checkHatch();
+    saveGame();
+    render();
+  };
+
+  // 闇鍋ガチャから孵化装置を削除。削除分はSR枠へ寄せる。
+  window.v83YanabeGacha = function(){
+    if(typeof v83Ensure === 'function') v83Ensure();
+    v89RemoveIncubatorItem();
+    if(state.cp < 5000){ alert('CPが足りません。闇鍋ガチャは5000CPです。'); return; }
+    if(!confirm('闇鍋ガチャを5000CPで引きますか？\nN〜URアイテム、ボス挑戦チケット、低確率でGODチケットの欠片が出ます。')) return;
+    state.cp -= 5000;
+    const roll = v83RandomBy([
+      {kind:'rarity', rarity:'N', rate:27},
+      {kind:'rarity', rarity:'R', rate:29},
+      {kind:'rarity', rarity:'SR', rate:24},
+      {kind:'rarity', rarity:'UR', rate:10},
+      {kind:'item', itemId:'fullmoon_invite', rate:4},
+      {kind:'item', itemId:'kazuko_challenge', rate:3},
+      {kind:'item', itemId:'god_ticket_shard', rate:3}
+    ]);
+    const id = roll.kind === 'rarity' ? randomItemByRarity(roll.rarity) : roll.itemId;
+    if(id){
+      addItem(id);
+      const it = ITEM_MASTER[id] || {};
+      const rarity = it.rarity || '';
+      log(`闇鍋ガチャ結果：「${itemName(id)}」を入手！`);
+      if(typeof v87Popup === 'function'){
+        v87Popup('🎰 闇鍋ガチャ結果', `<div class="v87-gacha-result rarity-${rarity}"><div class="v87-rarity">${rarity}</div><div class="v87-item-name">${itemName(id)}</div><p class="small">${escapeHtml(it.desc||'')}</p></div>`);
+      }else{
+        alert(`闇鍋ガチャ結果：${itemName(id)}`);
+      }
+    }
+    if(state.records) state.records.gachaCount++;
+    if(typeof v83DailyAdd === 'function') v83DailyAdd('gacha');
+    if(typeof v83CheckAchievements === 'function') v83CheckAchievements();
+    saveGame();
+    render();
+  };
+
+  const oldRenderV89 = window.render;
+  if(typeof oldRenderV89 === 'function'){
+    window.render = function(){
+      v89RemoveIncubatorItem();
+      oldRenderV89.apply(this, arguments);
+    };
+  }
+  v89RemoveIncubatorItem();
+})();
+</script>
+
+
 </body>
 </html>
 
 <!-- v88: レア気質の表示を非表示（内部判定は維持） -->
+
+<!-- v89: 孵化装置をアイテムから廃止し、1000CP即孵化ボタンに変更 -->
