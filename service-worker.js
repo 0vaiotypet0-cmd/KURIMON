@@ -1,7 +1,8 @@
-const CACHE_NAME = "kurimon-pwa-v74";
-const RUNTIME_CACHE = "kurimon-runtime-v73";
+const CACHE_NAME = "kurimon-pwa-v77";
+const RUNTIME_CACHE = "kurimon-runtime-v77";
 
 const CORE_ASSETS = [
+  "./icons/icon-32.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -48,7 +49,7 @@ self.addEventListener("fetch", event => {
   }
 
   // service-worker.js / manifest.json はキャッシュしない。
-  if (url.pathname.endsWith("/service-worker.js") || url.pathname.endsWith("/manifest.json")) {
+  if (url.pathname.endsWith("/service-worker.js") || url.pathname.endsWith("/manifest.json") || url.pathname.endsWith("/version.json")) {
     event.respondWith(fetch(event.request, { cache: "no-store" }));
     return;
   }

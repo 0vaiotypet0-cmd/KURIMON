@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v76</title>
+  <title>クリモン - 製品版 v77</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1056,7 +1056,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v76</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v77</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1447,7 +1447,7 @@ body{padding-bottom:108px;}
       <div class="product-settings">
         <div class="save-transfer-panel">
           <h3>最新版に更新</h3>
-          <p>ホーム画面に追加し直さずに、アプリ本体のキャッシュを削除して最新版を読み込みます。</p>
+          <p>新しいバージョンがある時は起動時に確認します。手動でもアプリ本体のキャッシュを削除して最新版を読み込めます。</p>
           <div class="row">
             <button class="magic" onclick="forceKurimonUpdate()">最新版に更新</button>
           </div>
@@ -5871,13 +5871,29 @@ render();
 
 
 <script>
-// v75: ホーム画面に追加し直さず最新版へ更新する
-async function forceKurimonUpdate(){
+// v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
+const KURIMON_APP_VERSION = 77;
+let kurimonVersionCheckDone = false;
+
+function getKurimonNoCacheUrl(path){
+  const url = new URL(path, window.location.href);
+  url.searchParams.set("ts", String(Date.now()));
+  return url.toString();
+}
+
+function setKurimonUpdateStatus(msg){
   const status = document.getElementById("appUpdateStatus");
-  const setStatus = (msg) => { if(status) status.textContent = msg; };
-  if(!confirm("最新版を読み込みます。セーブデータは残ります。よろしいですか？")) return;
+  if(status) status.textContent = msg || "";
+}
+
+async function forceKurimonUpdate(options = {}){
+  const targetVersion = Number(options.targetVersion || KURIMON_APP_VERSION || 0);
+  const skipConfirm = !!options.skipConfirm;
+  const message = options.message || "最新版を読み込みます。セーブデータは残ります。よろしいですか？";
+  if(!skipConfirm && !confirm(message)) return;
+
   try{
-    setStatus("更新準備中です……");
+    setKurimonUpdateStatus("更新準備中です……");
 
     if("serviceWorker" in navigator){
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -5894,30 +5910,63 @@ async function forceKurimonUpdate(){
       );
     }
 
-    setStatus("最新版を再読み込みします……");
+    setKurimonUpdateStatus("最新版を再読み込みします……");
     const url = new URL(window.location.href);
-    url.searchParams.set("v", "75");
+    if(targetVersion) url.searchParams.set("v", String(targetVersion));
     url.searchParams.set("reload", String(Date.now()));
     window.location.replace(url.toString());
   }catch(err){
     console.warn("Kurimon update failed", err);
-    setStatus("自動更新に失敗しました。通常の再読み込みを試します。 ");
+    setKurimonUpdateStatus("自動更新に失敗しました。通常の再読み込みを試します。 ");
     setTimeout(() => window.location.reload(), 500);
+  }
+}
+
+async function checkKurimonLatestVersion(){
+  if(kurimonVersionCheckDone) return;
+  kurimonVersionCheckDone = true;
+
+  try{
+    const res = await fetch(getKurimonNoCacheUrl("./version.json"), { cache:"no-store" });
+    if(!res.ok) return;
+    const data = await res.json();
+    const latestVersion = Number(data.version || 0);
+    if(!latestVersion || latestVersion <= KURIMON_APP_VERSION) return;
+
+    const message = data.message || "新しいバージョンがあります。\n最新版に更新しますか？";
+    const ok = confirm(message);
+    if(ok){
+      await forceKurimonUpdate({
+        targetVersion: latestVersion,
+        skipConfirm: true,
+        message
+      });
+    }else{
+      setKurimonUpdateStatus(`新しいバージョン v${latestVersion} があります。設定から更新できます。`);
+    }
+  }catch(err){
+    console.log("Kurimon version check skipped", err);
   }
 }
 </script>
 
 <script>
-// v72 PWA: Service Worker登録
+// v77 PWA: Service Worker登録 + 起動時の最新版確認
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
       .then(registration => {
         console.log("Kurimon PWA Service Worker registered");
         registration.update();
+        setTimeout(checkKurimonLatestVersion, 1200);
       })
-      .catch(err => console.warn("Kurimon PWA Service Worker registration failed", err));
+      .catch(err => {
+        console.warn("Kurimon PWA Service Worker registration failed", err);
+        setTimeout(checkKurimonLatestVersion, 1200);
+      });
   });
+}else{
+  window.addEventListener("load", () => setTimeout(checkKurimonLatestVersion, 1200));
 }
 </script>
 </body>
