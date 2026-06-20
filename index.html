@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v71</title>
+  <title>クリモン - 製品版 v72</title>
   <style>
     :root{
       --bg:#10131c;
@@ -944,6 +944,35 @@ body{padding-bottom:86px;}
 .enemy-catalog-card span{display:block;color:var(--muted);}
 .enemy-catalog-card.rare{border-color:rgba(255,154,213,.38);background:rgba(255,154,213,.07);}
 
+
+
+/* v72 セーブデータ引き継ぎ */
+.save-transfer-panel{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:16px;
+  padding:12px;
+  display:grid;
+  gap:8px;
+}
+.save-transfer-textarea{
+  width:100%;
+  min-height:150px;
+  resize:vertical;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px 12px;
+  color:var(--text);
+  background:rgba(0,0,0,.24);
+  outline:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:12px;
+  line-height:1.45;
+}
+.save-transfer-status{
+  min-height:18px;
+  color:#fff1a1;
+}
 </style>
 
 <style>
@@ -1018,7 +1047,7 @@ body{padding-bottom:86px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v71</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v72</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1406,10 +1435,30 @@ body{padding-bottom:86px;}
     <div id="tab-settings" class="hidden">
       <h2>設定</h2>
       <div class="product-settings">
-        <p>セーブデータの初期化ができます。元には戻せないので注意してください。</p>
-        <div class="row">
-          <button class="danger" onclick="resetGame()">セーブデータ初期化</button>
+        <div class="save-transfer-panel">
+          <h3>セーブデータ引き継ぎ</h3>
+          <p>旧端末で「書き出し」を押してコードをコピーし、新端末で貼り付けて「読み込み」を押してください。</p>
+          <div class="row">
+            <button onclick="exportSaveData()">セーブを書き出し</button>
+            <button class="secondary" onclick="copySaveTransferText()">コピー</button>
+            <button class="ghost" onclick="downloadSaveData()">ファイル保存</button>
+          </div>
+          <textarea id="saveTransferText" class="save-transfer-textarea" placeholder="ここに書き出しコードが表示されます。新端末ではここに貼り付けて読み込みます。"></textarea>
+          <div class="row">
+            <button class="ok" onclick="importSaveData()">貼り付けたセーブを読み込み</button>
+            <button class="ghost" onclick="clearSaveTransferText()">入力欄クリア</button>
+          </div>
+          <p id="saveTransferStatus" class="small save-transfer-status"></p>
         </div>
+
+        <div class="save-transfer-panel">
+          <h3>セーブデータ初期化</h3>
+          <p>セーブデータの初期化ができます。元には戻せないので注意してください。</p>
+          <div class="row">
+            <button class="danger" onclick="resetGame()">セーブデータ初期化</button>
+          </div>
+        </div>
+
         <div class="hint">
           画像は <code>images</code> フォルダ内、またはHTMLと同じ階層に配置すると表示されます。画像がない場合は絵文字で代替表示します。
         </div>
@@ -3602,9 +3651,8 @@ function finishBattle(mon, enemy, win){
   if(win){
     mon.history.wins++;
     const baseExp=20+enemy.level*5, cp=25+enemy.level*5;
-    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
-    log(`バトル勝利！ EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
+    log(`バトル勝利！ EXP +${exp}、CP +${cp}`);
   }else{
     mon.history.losses++;
     const baseExp=8, cp=10;
@@ -5420,9 +5468,8 @@ finishBattle = function(mon, enemy, win){
   }else{
     mon.history.losses++;
     const baseExp=8, cp=10;
-    const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
-    log(`バトル敗北。EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
+    log(`バトル敗北。EXP +${exp}、CP +${cp}`);
   }
   saveGame();
 };
@@ -5670,6 +5717,127 @@ async function startArenaStreakBattle(){
   }finally{travelBattleBusy=false;setTravelBattleButtonsDisabled(false);render();}
 }
 
+
+// v72 セーブデータ引き継ぎ
+const SAVE_TRANSFER_VERSION = "v72";
+
+function getSaveTransferTextarea(){
+  return document.getElementById("saveTransferText");
+}
+function setSaveTransferStatus(text){
+  const el = document.getElementById("saveTransferStatus");
+  if(el) el.textContent = text || "";
+}
+function encodeSaveTransferPayload(payload){
+  const json = JSON.stringify(payload);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  return encoded.replace(/(.{80})/g, "$1\n").trim();
+}
+function decodeSaveTransferPayload(text){
+  const raw = String(text || "").trim();
+  if(!raw) throw new Error("引き継ぎコードが空です。 ");
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    // JSONではない場合はBase64コードとして読む
+  }
+  try{
+    const cleaned = raw.replace(/\s/g, "");
+    return JSON.parse(decodeURIComponent(escape(atob(cleaned))));
+  }catch(e){
+    throw new Error("引き継ぎコードを読み込めませんでした。コード全文をコピーしているか確認してください。 ");
+  }
+}
+function makeSaveTransferPayload(){
+  ensureItemSystems();
+  saveGame();
+  return {
+    app:"kurimon",
+    version:SAVE_TRANSFER_VERSION,
+    storageKey:STORAGE_KEY,
+    exportedAt:new Date().toISOString(),
+    data:state
+  };
+}
+function exportSaveData(){
+  try{
+    const area = getSaveTransferTextarea();
+    if(!area) return;
+    const payload = makeSaveTransferPayload();
+    area.value = encodeSaveTransferPayload(payload);
+    area.focus();
+    area.select();
+    setSaveTransferStatus("セーブデータを書き出しました。コピーして新端末へ貼り付けてください。 ");
+  }catch(e){
+    setSaveTransferStatus("書き出しに失敗しました: " + (e?.message || e));
+  }
+}
+async function copySaveTransferText(){
+  try{
+    const area = getSaveTransferTextarea();
+    if(!area) return;
+    if(!area.value.trim()) exportSaveData();
+    const text = area.value;
+    area.focus();
+    area.select();
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      document.execCommand("copy");
+    }
+    setSaveTransferStatus("コピーしました。新端末の設定画面で貼り付けて読み込んでください。 ");
+  }catch(e){
+    setSaveTransferStatus("コピーに失敗しました。入力欄を長押しして手動コピーしてください。 ");
+  }
+}
+function downloadSaveData(){
+  try{
+    const payload = makeSaveTransferPayload();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    a.href = url;
+    a.download = `kurimon-save-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    setSaveTransferStatus("セーブファイルを保存しました。 ");
+  }catch(e){
+    setSaveTransferStatus("ファイル保存に失敗しました: " + (e?.message || e));
+  }
+}
+function clearSaveTransferText(){
+  const area = getSaveTransferTextarea();
+  if(area) area.value = "";
+  setSaveTransferStatus("入力欄をクリアしました。 ");
+}
+function importSaveData(){
+  try{
+    const area = getSaveTransferTextarea();
+    if(!area) return;
+    const payload = decodeSaveTransferPayload(area.value);
+    const imported = payload && payload.data ? payload.data : payload;
+    if(!imported || !Array.isArray(imported.monsters) || typeof imported.cp !== "number"){
+      throw new Error("クリモンのセーブデータ形式ではありません。 ");
+    }
+    const count = imported.monsters.length;
+    if(!confirm(`現在のセーブデータを上書きして、${count}体分のセーブを読み込みますか？`)) return;
+    state = imported;
+    migrateState();
+    ensureItemSystems();
+    saveGame();
+    showTab("home");
+    log("セーブデータを読み込みました。 ");
+    setSaveTransferStatus("読み込み完了。ホームに戻りました。 ");
+    render();
+  }catch(e){
+    setSaveTransferStatus("読み込みに失敗しました: " + (e?.message || e));
+  }
+}
+
 resetGame = function(){
   KURIMON_V60_ORIGINALS.resetGame();
   ensureItemSystems();
@@ -5684,7 +5852,7 @@ render();
 </script>
 
 <script>
-// v71 PWA: Service Worker登録
+// v72 PWA: Service Worker登録
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js")
