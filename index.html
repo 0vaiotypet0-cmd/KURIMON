@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v77</title>
+  <title>クリモン - 製品版 v81</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1056,7 +1056,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v77</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v81</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1380,7 +1380,7 @@ body{padding-bottom:108px;}
           <p>
             レベル上限は<b>100</b>です。Lv.100到達後はEXPが増えません。<br>
             ステータス上限は、種族・進化形態・個体差によって変わります。<br>
-            例：ONN系は体力・防御が高く、GL系は攻撃、わちゃ系は魔法、電卓系は運が伸びやすいです。<br>休憩ペナルティで個体ごとの成長上限が少し下がることがあります。<br>全ステータスが現在の成長限界に到達すると、Lv.100未満でも覚醒ノ儀に挑戦できます。
+            例：ONN系は体力・防御が高く、GL系は攻撃、わちゃ系は魔法、電卓系は運が伸びやすいです。<br>休憩ペナルティで個体ごとの成長上限が少し下がることがあります。<br>覚醒ノ儀は、究極体かつ全ステータスが現在の成長限界に到達した場合のみ挑戦できます。
           </p>
         </div>
 
@@ -2732,10 +2732,10 @@ function performAwakening(type){
   const opt=AWAKENING_OPTIONS[type];
   if(!opt){alert("覚醒ノ儀の項目が不正です。");return;}
   if(mon.awakening.done){alert("このクリモンはすでに覚醒ノ儀を終えています。");return;}
-  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達すると挑戦できます。\n" + awakeningUnlockText(mon));return;}
+  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達した究極体のみ挑戦できます。\n" + awakeningUnlockText(mon));return;}
   const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？
 
-解放条件：全ステータス成長限界到達
+解放条件：究極体 ＋ 全ステータス成長限界到達
 成功率：${formatPercentRate(opt.successRate)}
 成功時：${opt.successText}
 失敗時：${opt.failText}
@@ -2816,13 +2816,13 @@ function renderAwakeningPanel(mon){
       const mark=r.capped ? "到達" : "未到達";
       return `<span class="small ${cls}">${escapeHtml(r.label)} ${escapeHtml(r.value)}/${escapeHtml(r.cap)} ${mark}</span>`;
     }).join("");
-    return `<h3>🌝 覚醒ノ儀</h3><p>全ステータスが成長限界に到達すると、1回だけ挑戦できる危険な最終強化です。成功で大幅強化、大成功で称号獲得、失敗で能力が大幅低下します。</p><div class="awakening-result"><b>解放条件：</b>全ステータス成長限界到達<br><b>現在：</b>${escapeHtml(status.cappedCount)}/${escapeHtml(status.total)} 到達</div><div class="awakening-limit-list">${progressRows}</div>`;
+    return `<h3>🌝 覚醒ノ儀</h3><p>究極体かつ全ステータスが成長限界に到達すると、1回だけ挑戦できる危険な最終強化です。成功で大幅強化、大成功で称号獲得、失敗で能力が大幅低下します。</p><div class="awakening-result"><b>解放条件：</b>全ステータス成長限界到達<br><b>現在：</b>${escapeHtml(status.cappedCount)}/${escapeHtml(status.total)} 到達</div><div class="awakening-limit-list">${progressRows}</div>`;
   }
   const rows=AWAKENING_ORDER.map(key=>{
     const opt=AWAKENING_OPTIONS[key];
     return `<div class="awakening-option"><strong>${escapeHtml(opt.label)}</strong><span class="small">成功率：${formatPercentRate(opt.successRate)} / 大成功：${formatPercentRate(opt.greatRate)}</span><span class="small awakening-success">成功：${escapeHtml(opt.successText)}</span><span class="small awakening-risk">失敗：${escapeHtml(opt.failText)}</span><button class="magic" onclick="performAwakening('${escapeHtml(key)}')">この力で挑む</button></div>`;
   }).join("");
-  return `<h3>🌝 覚醒ノ儀</h3><p>全ステータス成長限界到達者だけが挑める最終強化。1体につき1回のみ。大成功すると称号を獲得します。</p><div class="awakening-result"><b>解放条件：</b>全ステータス成長限界到達済み</div><div class="awakening-options">${rows}</div>`;
+  return `<h3>🌝 覚醒ノ儀</h3><p>究極体かつ全ステータス成長限界到達者だけが挑める最終強化。1体につき1回のみ。大成功すると称号を獲得します。</p><div class="awakening-result"><b>解放条件：</b>究極体 ＋ 全ステータス成長限界到達済み</div><div class="awakening-options">${rows}</div>`;
 }
 
 function makeEnemy(level){
@@ -3676,7 +3676,7 @@ function finishBattle(mon, enemy, win){
     const baseExp=8, cp=10;
     const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;worsenCondition(mon);capMonsterStats(mon);
-    log(`バトル敗北。EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
+    log(`バトル敗北。EXP +${exp}${beforeBonus ? `（矯正ギプス +${beforeBonus}%）` : ""}、CP +${cp}`);
   }
   saveGame();
 }
@@ -5028,7 +5028,7 @@ const ITEM_MASTER = {
 
   focus_sash:{rarity:"SR",name:"きあいの襷",type:"hold",desc:"HPが0になる攻撃を一度だけHP1で耐える",effects:{survive_once:1}},
   regen_seed:{rarity:"SR",name:"再生の種",type:"hold",desc:"毎ターンHPを少し回復",effects:{regen_percent:3}},
-  exp_charm:{rarity:"SR",name:"経験のお守り",type:"hold",desc:"獲得EXP +30%",effects:{exp_percent:30}},
+  exp_charm:{rarity:"SR",name:"矯正ギプス",type:"hold",desc:"装着すると鍛錬効率アップ。獲得EXP +30%",effects:{exp_percent:30}},
   sleep_pillow:{rarity:"SR",name:"ぐっすりまくら",type:"tool",desc:"次の休憩時の成長限界低下率を軽減",effects:{rest_penalty_down:10}},
   fullmoon_fragment:{rarity:"SR",name:"満月の欠片",type:"awakening_tool",desc:"覚醒ノ儀の大成功率 +1%",effects:{awakening_great_success_up:1}},
   black_syringe:{rarity:"SR",name:"黒い注射器",type:"awakening_tool",desc:"覚醒ノ儀の成功時効果アップ。ただし失敗時ダウンも増加",effects:{awakening_success_effect_up:10,awakening_fail_penalty_up:10}},
@@ -5036,10 +5036,16 @@ const ITEM_MASTER = {
   silence_mask:{rarity:"UR",name:"沈黙の仮面",type:"hold",desc:"相手の魔法スキル発動率を少し下げる",effects:{enemy_magic_skill_rate_down:10}},
   awakening_ticket:{rarity:"UR",name:"覚醒ノ札",type:"awakening_tool",desc:"覚醒ノ儀の成功率 +5%",effects:{awakening_success_up:5}},
   moonlight_charm:{rarity:"UR",name:"月光の護符",type:"awakening_tool",desc:"覚醒ノ儀の失敗時ダウン量を少し軽減",effects:{awakening_fail_penalty_down:25}},
-  stabilizer:{rarity:"UR",name:"安定剤",type:"awakening_tool",desc:"覚醒ノ儀の成功率 +10%。ただし大成功は出なくなる",effects:{awakening_success_up:10,no_great_success:1}},
+  stabilizer:{rarity:"UR",name:"お月見団子",type:"awakening_tool",desc:"覚醒ノ儀の成功率 +10%。ただし大成功は出なくなる",effects:{awakening_success_up:10,no_great_success:1}},
   cursed_bracelet:{rarity:"UR",name:"呪いの腕輪",type:"hold",desc:"攻撃 +20%、防御 -10%",effects:{atk_percent:20,def_percent:-10}},
   berserker_fang:{rarity:"UR",name:"狂戦士の牙",type:"hold",desc:"与ダメージアップ、被ダメージアップ",effects:{damage_dealt_up:15,damage_taken_up:15}},
   mana_berserk_stone:{rarity:"UR",name:"魔導暴走石",type:"hold",desc:"魔法 +20%、低確率で自傷",effects:{mag_percent:20,self_damage_chance:10}},
+  shadow_cloak:{rarity:"UR",name:"影縫いのマント",type:"hold",desc:"被弾時、低確率で相手を1ターン行動不能にする",effects:{stun_on_hit_chance:12}},
+  blood_contract:{rarity:"UR",name:"吸血契約書",type:"hold",desc:"与えたダメージの12%を回復。ただし毎ターン最大HPの2%を失う",effects:{lifesteal_percent:12,self_drain_percent:2}},
+  mirror_shield:{rarity:"UR",name:"鏡面の盾",type:"hold",desc:"魔法ダメージを18%軽減。被弾時、低確率で反射ダメージ",effects:{magic_damage_taken_down:18,reflect_chance:12,reflect_percent:30}},
+  last_stand_badge:{rarity:"UR",name:"瀕死の勲章",type:"hold",desc:"HP30%以下で攻撃・魔法・素早さ +25%",effects:{low_hp_offense_up:25}},
+  cheat_dice:{rarity:"UR",name:"イカサマ賽",type:"hold",desc:"毎ターンランダム能力が変動。上振れが強いが低確率で自分も弱体化",effects:{lucky_swing:1}},
+  seal_bell:{rarity:"UR",name:"封印の鈴",type:"hold",desc:"戦闘開始時、25%で相手を沈黙状態にする",effects:{opening_silence_chance:25}},
 
   forbidden_chart:{rarity:"GOD",name:"禁断のカルテ",type:"awakening_tool",desc:"覚醒ノ儀を一度だけやり直せる",effects:{awakening_retry:1}},
   kings_crown:{rarity:"GOD",name:"王者の王冠",type:"hold",desc:"全ステータス +8%。闘技場30連勝初回報酬限定",effects:{all_stats_percent:8}},
@@ -5065,7 +5071,7 @@ const ENEMY_MASTER = [
   {id:"enemy_erohedgehog",name:"エロハリネズミ",type:"normal",rank:"B",direction:"反撃・状態異常型",speciesKey:"sipa",level:36,hpBias:5,atkBias:10,defBias:15,magBias:5,luckBias:15,spdBias:0,itemId:"counter_fang",dropTableId:"drop_strong_b",cpReward:90,expReward:80,weight:6,timeBand:"all",emoji:"🦔",image:"images/enemy_erohedgehog.png"},
   {id:"enemy_anyamako",name:"あんやまこ",type:"normal",rank:"B",direction:"魔法・妨害型",speciesKey:"wacha",level:38,hpBias:0,atkBias:0,defBias:5,magBias:30,luckBias:10,spdBias:5,itemId:"magic_lens",dropTableId:"drop_strong_b",cpReward:95,expReward:85,weight:6,timeBand:"night",emoji:"🌙",image:"images/enemy_anyamako.png"},
   {id:"enemy_saayan",name:"さーやん",type:"normal",rank:"A",direction:"素早さ・運寄り",speciesKey:"forte",level:45,hpBias:0,atkBias:5,defBias:0,magBias:5,luckBias:25,spdBias:25,itemId:"wind_wing",dropTableId:"drop_strong_a",cpReward:120,expReward:100,weight:5,timeBand:"all",emoji:"🪽",image:"images/enemy_saayan.png"},
-  {id:"rare_fullmoon",name:"満月",type:"rare",rank:"A",direction:"覚醒ノ儀系アイテムを落とす",speciesKey:"dentaku",level:55,hpBias:15,atkBias:10,defBias:10,magBias:20,luckBias:25,spdBias:10,itemId:"moonlight_charm",dropTableId:"drop_rare_moon",cpReward:180,expReward:160,weight:1,timeBand:"night",emoji:"🌝",image:"images/enemy_fullmoon.png"},
+  {id:"rare_fullmoon",name:"満月",type:"rare",rank:"A",direction:"覚醒ノ儀系アイテムを落とす。夜・深夜のみ低確率出現",speciesKey:"dentaku",level:55,hpBias:15,atkBias:10,defBias:10,magBias:20,luckBias:25,spdBias:10,itemId:"moonlight_charm",dropTableId:"drop_rare_moon",cpReward:180,expReward:160,weight:2,timeBand:"night",emoji:"🌝",image:"images/enemy_fullmoon.png"},
   {id:"rare_kazuko",name:"栗場カズコ",type:"rare",rank:"S",direction:"超強敵。GOD戦闘用アイテムを落とす",speciesKey:"shinya",level:75,hpBias:30,atkBias:30,defBias:25,magBias:30,luckBias:25,spdBias:25,itemId:"kings_crown",dropTableId:"drop_rare_kazuko",cpReward:300,expReward:260,weight:1,timeBand:"all",emoji:"👑",image:"images/enemy_kazuko.png"}
 ];
 
@@ -5465,7 +5471,7 @@ function enemyFromTemplate(t, playerLevel, arenaStreak=0){
 }
 function makeEnemyFromMaster(level){
   const band=getTimeBand().key;
-  let rareChance = band==="midnight" ? 0.10 : band==="night" ? 0.08 : 0.05;
+  let rareChance = band==="midnight" ? 0.12 : band==="night" ? 0.10 : 0.07;
   const rarePool=ENEMY_MASTER.filter(e=>e.type==="rare" && (e.timeBand==="all" || e.timeBand===band || (e.timeBand==="night" && band==="midnight")));
   const normalPool=ENEMY_MASTER.filter(e=>e.type==="normal" && (e.timeBand==="all" || e.timeBand===band));
   const pool=(Math.random()<rareChance && rarePool.length) ? rarePool : normalPool;
@@ -5480,7 +5486,7 @@ finishBattle = function(mon, enemy, win){
     const baseExp=enemy.expReward || (20+enemy.level*5), cp=enemy.cpReward || (25+enemy.level*5);
     const beforeBonus=expBonusPercent(mon);
     const exp=addExp(mon,baseExp);state.cp+=cp;mon.condition=improveCondition(mon.condition);capMonsterStats(mon);
-    log(`バトル勝利！ EXP +${exp}${beforeBonus ? `（経験のお守り +${beforeBonus}%）` : ""}、CP +${cp}`);
+    log(`バトル勝利！ EXP +${exp}${beforeBonus ? `（矯正ギプス +${beforeBonus}%）` : ""}、CP +${cp}`);
     const itemId=rollDropFromTable(enemy.dropTableId || (enemy.isRare?"drop_rare_moon":"drop_normal_d"));
     if(itemId){addItem(itemId);log(`${enemy.isRare?"レアエネミー":"CPU戦"}報酬：「${itemName(itemId)}」を入手！`);}
   }else{
@@ -5537,7 +5543,7 @@ performAwakening = function(type){
   ensureAwakeningRecord(mon);
   const baseOpt=AWAKENING_OPTIONS[type]; if(!baseOpt){alert("覚醒ノ儀の項目が不正です。");return;}
   if(mon.awakening.done){alert("このクリモンはすでに覚醒ノ儀を終えています。");return;}
-  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達すると挑戦できます。\n"+awakeningUnlockText(mon));return;}
+  if(!canPerformAwakening(mon)){alert("覚醒ノ儀は全ステータスが成長限界に到達した究極体のみ挑戦できます。\n"+awakeningUnlockText(mon));return;}
   const selectAssist=document.getElementById("awakeningAssistItemSelect")?.value || "";
   const assistId=selectAssist || awakeningAssistSelectedId || "";
   if(assistId && (state.inventory[assistId]||0)<=0){alert("補助アイテムの在庫がありません。");return;}
@@ -5553,7 +5559,7 @@ performAwakening = function(type){
     if(e.awakening_fail_penalty_down) opt.failPct=Math.max(0.01,opt.failPct*(1-e.awakening_fail_penalty_down/100));
     assistText=`\n使用アイテム：${it.name}`;
   }
-  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？\n\n解放条件：全ステータス成長限界到達\n成功率：${formatPercentRate(opt.successRate)}\n大成功率：${formatPercentRate(opt.greatRate)}\n成功時：${baseOpt.successText}\n失敗時：${baseOpt.failText}${assistText}\n\n失敗すると能力が大幅に下がります。`;
+  const msg=`${mon.nickname}で覚醒ノ儀「${opt.label}」に挑みますか？\n\n解放条件：究極体 ＋ 全ステータス成長限界到達\n成功率：${formatPercentRate(opt.successRate)}\n大成功率：${formatPercentRate(opt.greatRate)}\n成功時：${baseOpt.successText}\n失敗時：${baseOpt.failText}${assistText}\n\n失敗すると能力が大幅に下がります。`;
   if(!confirm(msg))return;
   if(assistId){
     consumeItem(assistId);
@@ -5870,9 +5876,209 @@ render();
 </script>
 
 
+
+<script>
+// v81: アイテム名称変更 / UR戦闘系アイテム追加
+function injectV78Styles(){
+  if(document.getElementById("v78-style")) return;
+  const style=document.createElement("style");
+  style.id="v78-style";
+  style.textContent=`
+    .cp-exchange-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px;}
+    .cp-exchange-card{border:1px solid var(--line);border-radius:14px;padding:9px;background:rgba(255,255,255,.045);}
+    .cp-exchange-card b{display:block;margin-bottom:4px;}
+    .release-btn{margin-top:7px;width:100%;border-color:rgba(255,120,120,.45)!important;color:#ffd0d0!important;background:rgba(255,80,80,.08)!important;}
+    .awakening-lock-note{border:1px solid rgba(248,214,109,.28);border-radius:14px;padding:10px;background:rgba(248,214,109,.07);margin-top:8px;}
+  `;
+  document.head.appendChild(style);
+}
+
+const CP_EXCHANGE_ITEMS = [
+  {id:"power_bracelet", cost:120},
+  {id:"guard_charm", cost:120},
+  {id:"magic_stone", cost:120},
+  {id:"quick_claw", cost:140},
+  {id:"lucky_bell", cost:220},
+  {id:"wind_wing", cost:220},
+  {id:"life_fruit", cost:260},
+  {id:"friend_ball", cost:280},
+  {id:"exp_charm", cost:650},
+  {id:"sleep_pillow", cost:700},
+  {id:"fullmoon_fragment", cost:900},
+  {id:"black_syringe", cost:1200},
+  // UR覚醒補助系：高額だが交換可能
+  {id:"awakening_ticket", cost:10000},
+  {id:"moonlight_charm", cost:10000},
+  {id:"stabilizer", cost:12000},
+  // UR戦闘系：GODではないが強力なのでさらに高額
+  {id:"silence_mask", cost:20000},
+  {id:"cursed_bracelet", cost:20000},
+  {id:"berserker_fang", cost:20000},
+  {id:"mana_berserk_stone", cost:20000},
+  {id:"shadow_cloak", cost:22000},
+  {id:"blood_contract", cost:24000},
+  {id:"mirror_shield", cost:24000},
+  {id:"last_stand_badge", cost:22000},
+  {id:"cheat_dice", cost:26000},
+  {id:"seal_bell", cost:22000}
+];
+
+
+// CP交換所ではGOD級は交換不可。報酬・ドロップ限定にする。
+if(Array.isArray(CP_EXCHANGE_ITEMS)){
+  for(let i=CP_EXCHANGE_ITEMS.length-1;i>=0;i--){
+    const it=ITEM_MASTER[CP_EXCHANGE_ITEMS[i].id];
+    if(it?.rarity==="GOD") CP_EXCHANGE_ITEMS.splice(i,1);
+  }
+}
+
+function cpExchangeItemHtml(entry){
+  const it=ITEM_MASTER[entry.id];
+  if(!it) return "";
+  const disabled=(state.cp||0)<entry.cost ? "disabled" : "";
+  return `<div class="cp-exchange-card rarity-${escapeHtml(it.rarity)}"><b>${escapeHtml(itemLabel(entry.id))}</b><span class="small">${escapeHtml(it.desc||"")}</span><br><span class="small">必要CP：${entry.cost}</span><br><button class="ghost" ${disabled} onclick="exchangeCpForItem('${escapeHtml(entry.id)}',${entry.cost})">交換する</button></div>`;
+}
+
+function renderCpExchangeHtml(){
+  ensureItemSystems();
+  return `<h3 style="margin-top:14px;">💰 CP交換所</h3><p class="small">余ったCPをアイテムと交換できます。URは高額、GOD級アイテム・GOD抽選チケットは交換対象外です。</p><div class="cp-exchange-grid">${CP_EXCHANGE_ITEMS.map(cpExchangeItemHtml).join("")}</div>`;
+}
+
+function exchangeCpForItem(id,cost){
+  ensureItemSystems();
+  const it=ITEM_MASTER[id];
+  if(!it){alert("交換対象が不正です。");return;}
+  if((state.cp||0)<cost){alert("CPが足りません。");return;}
+  if(!confirm(`${it.name}を${cost}CPで交換しますか？`)) return;
+  state.cp-=cost;
+  addItem(id,1);
+  saveGame();
+  log(`CP交換所で「${it.name}」を入手。CP -${cost}`);
+  render();
+}
+
+function releaseCpReward(mon){
+  const stage=Number(mon?.stage||0);
+  const lv=Number(mon?.level||1);
+  let reward=10 + Math.floor(lv/2) + stage*35;
+  if(mon?.awakening?.done) reward += 120;
+  if(stage>=3) reward += 60;
+  return Math.max(10,reward);
+}
+
+function releaseMonster(id){
+  const mons=state.monsters||[];
+  const idx=mons.findIndex(m=>m.id===id);
+  if(idx<0) return;
+  const mon=mons[idx];
+  if(battleBusy){alert("バトル中は逃がせません。");return;}
+  const reward=releaseCpReward(mon);
+  const name=mon.nickname || mon.formName || "クリモン";
+  const held=mon.holdItemId ? `\n持ち物「${itemName(mon.holdItemId)}」はボックスから外れ、所持アイテムに戻ります。` : "";
+  if(!confirm(`${name}を逃がしますか？\n\n戻ってきません。\nお礼として ${reward}CP を受け取ります。${held}`)) return;
+  mons.splice(idx,1);
+  state.cp=(state.cp||0)+reward;
+  if(state.currentId===id){
+    state.currentId=mons[idx]?.id || mons[idx-1]?.id || mons[0]?.id || null;
+    currentEnemy=null;
+    currentBattleHp=null;
+  }
+  boxRenderKey="";
+  saveGame();
+  log(`${name}を逃がしました。お礼としてCP +${reward}`);
+  render();
+}
+
+function isUltimateMonster(mon){
+  return !!mon && Number(mon.stage)===3;
+}
+
+canPerformAwakening = function(mon){
+  if(!mon) return false;
+  ensureAwakeningRecord(mon);
+  if(mon.awakening.done) return false;
+  return isUltimateMonster(mon) && getGrowthLimitStatus(mon).allCapped;
+};
+
+awakeningUnlockText = function(mon){
+  const status=getGrowthLimitStatus(mon);
+  const stageOk=isUltimateMonster(mon);
+  const stageText=stageOk ? "究極体：到達" : `究極体：未到達（現在：${stageName(mon?.stage)}）`;
+  if(status.allCapped && stageOk) return `${stageText} / 全ステータス成長限界到達 ${status.cappedCount}/${status.total}`;
+  const remaining=status.rows.filter(r=>!r.capped).map(r=>`${r.label}${r.value}/${r.cap}`).join("、") || "なし";
+  return `${stageText} / 成長限界到達 ${status.cappedCount}/${status.total} / 未到達：${remaining}`;
+};
+
+const KURIMON_V78_ORIGINAL_RENDER_AWAKENING_PANEL = renderAwakeningPanel;
+renderAwakeningPanel = function(mon){
+  if(!mon) return "";
+  ensureAwakeningRecord(mon);
+  if(mon.awakening?.done) return KURIMON_V78_ORIGINAL_RENDER_AWAKENING_PANEL(mon);
+  const status=getGrowthLimitStatus(mon);
+  const stageOk=isUltimateMonster(mon);
+  if(!stageOk || !status.allCapped){
+    const progressRows=status.rows.map(r=>{
+      const cls=r.capped ? "awakening-success" : "awakening-risk";
+      const mark=r.capped ? "到達" : "未到達";
+      return `<span class="small ${cls}">${escapeHtml(r.label)} ${escapeHtml(r.value)}/${escapeHtml(r.cap)} ${mark}</span>`;
+    }).join("");
+    const stageCls=stageOk?"awakening-success":"awakening-risk";
+    const capCls=status.allCapped?"awakening-success":"awakening-risk";
+    return `<h3>🌝 覚醒ノ儀</h3><p>覚醒は、全ステータスが成長限界に到達した<strong>究極体</strong>のみ挑戦できます。</p><div class="awakening-lock-note"><b>解放条件：</b><br><span class="${stageCls}">究極体：${stageOk?"到達":"未到達"}</span><br><span class="${capCls}">全ステータス成長限界：${status.cappedCount}/${status.total}</span><br><span class="small">${escapeHtml(awakeningUnlockText(mon))}</span></div><div class="awakening-limit-list">${progressRows}</div>`;
+  }
+  return KURIMON_V78_ORIGINAL_RENDER_AWAKENING_PANEL(mon);
+};
+
+const KURIMON_V78_ORIGINAL_RENDER_ITEM_PANEL = renderItemPanel;
+renderItemPanel = function(mon){
+  injectV78Styles();
+  return KURIMON_V78_ORIGINAL_RENDER_ITEM_PANEL(mon) + renderCpExchangeHtml();
+};
+
+renderBox = function(){
+  injectV78Styles();
+  ensureItemSystems();
+  const area=document.getElementById("boxArea");
+  const mons=state.monsters||[];
+  const key=JSON.stringify(mons.map(m=>[m.id,m.nickname,m.formName,m.level,m.personality,m.condition,m.stats,m.awakening,m.holdItemId,getSkills(m).join(",")]))+":"+state.currentId+":"+state.cp;
+  if(boxRenderKey===key && area.innerHTML) return;
+  boxRenderKey=key;
+  if(mons.length===0){area.innerHTML=`<div class="hint">まだクリモンがいません。</div>`;return;}
+  area.innerHTML=mons.map(mon=>`
+    <div class="mini ${mon.id===state.currentId?"active":""}">
+      <strong>${escapeHtml(mon.nickname)}</strong>
+      <span>種族：${escapeHtml(mon.speciesName)}</span><br>
+      <span>形態：${escapeHtml(mon.formName)}</span><br>
+      <span>${mon.level>=MAX_LEVEL?"Lv.MAX":"Lv."+mon.level} / ${escapeHtml(mon.personality)} / ${escapeHtml(CONDITIONS[mon.condition]?.label||"")}</span><br>
+      <span>${escapeHtml(mon.awakening?.title ? "称号："+mon.awakening.title : "覚醒ノ儀："+awakeningSummary(mon))}</span><br>
+      <span>持ち物：${escapeHtml(mon.holdItemId?itemName(mon.holdItemId):"なし")}</span><br>
+      <span>体${mon.stats.hp} 攻${mon.stats.atk} 防${mon.stats.def}</span><br>
+      <span>魔${mon.stats.mag} 運${mon.stats.luck} 速${mon.stats.spd}</span>
+      <div class="box-skill-wrap">
+        <b class="small">使えるスキル・魔法</b>
+        ${renderSkillChips(mon)}
+      </div>
+      <br>
+      <button class="ghost" onclick="selectMonster('${mon.id}')">${mon.id===state.currentId?"育成中":"育成する"}</button>
+      <button class="ghost release-btn" onclick="releaseMonster('${mon.id}')">逃がす（+${releaseCpReward(mon)}CP）</button>
+    </div>
+  `).join("");
+};
+
+// 満月は夜・深夜のみ出現。昼・夕方は候補から外す。
+(function patchFullmoonEnemy(){
+  try{
+    const moon=ENEMY_MASTER.find(e=>e.id==="rare_fullmoon");
+    if(moon){moon.timeBand="night"; moon.weight=Math.max(Number(moon.weight||1),2); moon.direction="覚醒ノ儀系アイテムを落とす。夜・深夜のみ低確率出現";}
+  }catch(e){}
+})();
+
+injectV78Styles();
+</script>
+
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 77;
+const KURIMON_APP_VERSION = 81;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -5950,8 +6156,110 @@ async function checkKurimonLatestVersion(){
 }
 </script>
 
+
 <script>
-// v77 PWA: Service Worker登録 + 起動時の最新版確認
+// v81: 追加UR戦闘アイテムの効果
+(function(){
+  const prevCStat = cStat;
+  cStat = function(c,key){
+    let val = prevCStat(c,key);
+    const item = heldItem(c);
+    if(item?.effects?.low_hp_offense_up && c.maxHp>0 && c.hp/c.maxHp<=0.30 && ["atk","mag","spd"].includes(key)){
+      val = applyPercent(val, item.effects.low_hp_offense_up);
+    }
+    return Math.max(1,val);
+  };
+
+  const prevCalcDamage = calcDamage;
+  calcDamage = function(attacker, defender, kind="physical", power=1, ignoreDef=0){
+    let dmg = prevCalcDamage(attacker, defender, kind, power, ignoreDef);
+    const defItem = heldItem(defender);
+    if(kind==="magic" && defItem?.effects?.magic_damage_taken_down){
+      dmg = Math.max(1, Math.round(dmg * (1 - defItem.effects.magic_damage_taken_down/100)));
+    }
+    return Math.max(1,dmg);
+  };
+
+  const prevCalcHybridDamage = calcHybridDamage;
+  calcHybridDamage = function(attacker, defender, power=1, pierce=0){
+    let dmg = prevCalcHybridDamage(attacker, defender, power, pierce);
+    const defItem = heldItem(defender);
+    if(defItem?.effects?.magic_damage_taken_down){
+      dmg = Math.max(1, Math.round(dmg * (1 - defItem.effects.magic_damage_taken_down/100)));
+    }
+    return Math.max(1,dmg);
+  };
+
+  const prevStartTurnEffects = startTurnEffects;
+  startTurnEffects = function(actor, opponent, events){
+    prevStartTurnEffects(actor, opponent, events);
+    if(actor.hp<=0) return;
+    const a = actor.side==="me" ? actor : opponent;
+    const b = actor.side==="me" ? opponent : actor;
+    const item = heldItem(actor);
+
+    if(item?.effects?.opening_silence_chance && actor.turnCount===1 && !actor.itemFlags.openingSilenceTried){
+      actor.itemFlags.openingSilenceTried = true;
+      if(Math.random() < item.effects.opening_silence_chance/100){
+        opponent.status.silence = Math.max(opponent.status.silence||0, 2);
+        pushEvent(events,"status",`${actor.name}の封印の鈴！ ${opponent.name}の魔法・妨害スキルを封じた。`,a,b);
+      }
+    }
+
+    if(item?.effects?.self_drain_percent){
+      const d = Math.max(1, Math.round(actor.maxHp * item.effects.self_drain_percent/100));
+      actor.hp = Math.max(1, actor.hp - d);
+      pushEvent(events,"status",`${actor.name}は吸血契約書の代償で${d}ダメージ。`,a,b);
+    }
+
+    if(item?.effects?.lucky_swing){
+      const keys=["atk","def","mag","luck","spd"];
+      const k=keys[Math.floor(Math.random()*keys.length)];
+      if(Math.random()<0.78){
+        actor.buff[k]=Math.max(actor.buff[k]||0, 3);
+        pushEvent(events,"status",`${actor.name}のイカサマ賽！ ${STAT_LABEL[k]}が上振れした。`,a,b);
+      }else{
+        actor.buff[k]=Math.min(actor.buff[k]||0, -2);
+        pushEvent(events,"status",`${actor.name}のイカサマ賽が裏目。${STAT_LABEL[k]}が下がった。`,a,b);
+      }
+    }
+  };
+
+  const prevTakeAction = takeAction;
+  takeAction = function(attacker, defender, events, monRef){
+    const defHpBefore = defender.hp || 0;
+    const atkHpBefore = attacker.hp || 0;
+    prevTakeAction(attacker, defender, events, monRef);
+    const damageToDef = Math.max(0, defHpBefore - (defender.hp || 0));
+    if(damageToDef<=0) return;
+    const a = attacker.side==="me" ? attacker : defender;
+    const b = attacker.side==="me" ? defender : attacker;
+    const atkItem = heldItem(attacker);
+    const defItem = heldItem(defender);
+
+    if(atkItem?.effects?.lifesteal_percent && attacker.hp>0){
+      const heal = Math.max(1, Math.round(damageToDef * atkItem.effects.lifesteal_percent/100));
+      const before = attacker.hp;
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+      if(attacker.hp>before) pushEvent(events,"status",`${attacker.name}の吸血契約書。HPを${attacker.hp-before}回復。`,a,b);
+    }
+
+    if(defItem?.effects?.stun_on_hit_chance && defender.hp>0 && attacker.hp>0 && Math.random()<defItem.effects.stun_on_hit_chance/100){
+      attacker.status.stun = Math.max(attacker.status.stun||0, 1);
+      pushEvent(events,"status",`${defender.name}の影縫いのマント！ ${attacker.name}を行動不能にした。`,a,b);
+    }
+
+    if(defItem?.effects?.reflect_chance && defender.hp>0 && attacker.hp>0 && Math.random()<defItem.effects.reflect_chance/100){
+      const rd = Math.max(1, Math.round(damageToDef * (defItem.effects.reflect_percent||25)/100));
+      applyDamage(attacker, rd);
+      pushEvent(events,"attack",`${defender.name}の鏡面の盾！ ${attacker.name}に${rd}反射ダメージ。`,a,b,{attacker:defender.side,target:attacker.side,dmg:rd,crit:false});
+    }
+  };
+})();
+</script>
+
+<script>
+// v81 PWA: Service Worker登録 + 起動時の最新版確認
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
