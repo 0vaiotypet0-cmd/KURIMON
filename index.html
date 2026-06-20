@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v84</title>
+  <title>クリモン - 製品版 v85</title>
   <style>
     :root{
       --bg:#10131c;
@@ -727,9 +727,10 @@ body{padding-bottom:108px;}
   background:rgba(255,255,255,.08);
   color:var(--text);
   box-shadow:none;
-  padding:7px 10px;
+  padding:5px 8px;
   border-radius:999px;
-  font-size:12px;
+  font-size:11px;
+  line-height:1.15;
   white-space:nowrap;
 }
 .top-tips-btn.active{
@@ -777,7 +778,7 @@ body{padding-bottom:108px;}
   body{padding-bottom:116px;}
   .bottom-tabs{left:8px;right:8px;bottom:10px;gap:4px;padding-left:6px;padding-right:6px;}
   .bottom-tabs button{font-size:10px;padding:8px 2px;}
-  .top-tips-btn{padding:7px 9px;font-size:12px;}
+  .top-tips-btn{padding:5px 7px;font-size:10px;}
 }
 .dex-card{
   cursor:pointer;
@@ -981,6 +982,15 @@ body{padding-bottom:108px;}
   min-height:18px;
   color:#fff1a1;
 }
+
+/* v85: 上段ボタン小型化 */
+.topbar .row{gap:6px;}
+.top-tips-btn{padding:5px 8px!important;font-size:11px!important;line-height:1.15!important;min-height:28px!important;}
+@media(max-width:700px){
+  .topbar .row{gap:4px!important;}
+  .top-tips-btn{padding:4px 6px!important;font-size:10px!important;min-height:26px!important;}
+}
+
 </style>
 
 <style>
@@ -1056,7 +1066,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v84</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v85</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1064,7 +1074,7 @@ body{padding-bottom:108px;}
       <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
       <button class="top-tips-btn" data-tab-btn="records" onclick="showTab('records')">記録</button>
       <button class="top-tips-btn" data-tab-btn="achievements" onclick="showTab('achievements')">称号</button>
-      <button class="top-tips-btn" data-tab-btn="shop" onclick="showTab('shop')">交換所</button>
+      <button class="top-tips-btn" data-tab-btn="shop" onclick="showTab('shop')">交換所/ガチャ</button>
       <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">⚙️ 設定</button>
     </div>
   </div>
@@ -1456,7 +1466,7 @@ body{padding-bottom:108px;}
     </div>
 
     <div id="tab-shop" class="hidden">
-      <h2>交換所</h2>
+      <h2>交換所/ガチャ</h2>
       <p class="small">CP交換所、闇鍋ガチャ、欠片合成、アイテム分解をまとめています。スマホで安定するようプルダウンは使わず、直接ボタンで操作します。</p>
       <div id="shopArea"></div>
     </div>
@@ -6881,32 +6891,6 @@ if ("serviceWorker" in navigator) {
 (function(){
   const V84_TABS = ["home","raise","battle","travel","mock","box","dex","tips","records","achievements","shop","settings"];
   const V84_STAT_KEYS = ['hp','atk','def','mag','luck','spd'];
-  const V84_ACHIEVEMENTS = [
-    ['first_win','はじめての勝利','CPU戦で1勝する'],
-    ['ten_wins','定時退社王','CPU戦で10勝する'],
-    ['fifty_wins','歴戦の育成者','CPU戦で50勝する'],
-    ['hundred_wins','沼の住人','CPU戦で100勝する'],
-    ['moon_1','月を見た者','満月を1回撃破する'],
-    ['moon_10','月を狩る者','満月を10回撃破する'],
-    ['kazuko_1','カズコ討伐者','栗場カズコを撃破する'],
-    ['kazuko_5','学園序列キラー','栗場カズコを5回撃破する'],
-    ['ultimate_1','究極への一歩','究極体を1体作る'],
-    ['ultimate_10','究極体ブリーダー','究極体を10体作る'],
-    ['awaken_1','覚醒者','覚醒ノ儀を1回終える'],
-    ['great_awaken','赤き剛腕','覚醒ノ儀で大成功する'],
-    ['box_10','ボックス管理人','ボックスに10体以上いる'],
-    ['favorite_3','推し活開始','お気に入り★を3体以上付ける'],
-    ['release_10','逃がし屋','10体逃がす'],
-    ['max_damage_100','一撃の快感','最大ダメージ100以上'],
-    ['max_damage_300','破壊神候補','最大ダメージ300以上'],
-    ['gacha_1','闇鍋開封者','闇鍋ガチャを1回引く'],
-    ['gacha_20','闇鍋中毒','闇鍋ガチャを20回引く'],
-    ['dismantle_10','分解職人','アイテムを10個分解する'],
-    ['shard_10','欠片収集家','GODチケットの欠片を10個以上集める'],
-    ['boss_ticket','挑戦状を握る者','ボス挑戦チケットを使う'],
-    ['bad_cond_win','限界突破','限界コンディションのまま勝利する'],
-    ['all_rounder','箱庭王','ボックス20体・勝利100・覚醒5を達成']
-  ];
   const V84_DAILY = [
     ['cpu','CPU戦を3回する',3,{cp:300}],
     ['wins','CPU戦で2勝する',2,{cp:500}],
@@ -6961,17 +6945,13 @@ if ("serviceWorker" in navigator) {
     v84Ensure();
     try{ if(typeof v83UpdateRecords==='function') v83UpdateRecords(); }catch(e){}
     const r=state.records||{};
-    const mons=state.monsters||[];
-    r.bestLevel=Math.max(r.bestLevel||0,...mons.map(m=>m.level||0),0);
-    r.ultimateCount=mons.filter(m=>Number(m.stage||0)>=3).length;
-    r.awakenedCount=mons.filter(m=>m.awakening?.done).length;
     const rows=[['総CPU戦',r.totalBattles],['総勝利数',r.totalWins],['総敗北数',r.totalLosses],['最高ダメージ',r.maxDamage],['満月撃破',r.fullmoonKills],['カズコ撃破',r.kazukoKills],['レア敵撃破',r.rareKills],['覚醒大成功',r.awakeningGreat],['覚醒済み',r.awakenedCount],['究極体数',r.ultimateCount],['闇鍋回数',r.gachaCount],['分解数',r.itemsDismantled],['ボスチケット使用',r.bossTicketsUsed],['逃がした数',r.releaseCount]];
     return `<div class="v84-tab-card"><p class="small">連勝以外のやりこみ記録です。</p><div class="v84-rank-grid">${rows.map(([k,v])=>`<div><b>${escapeHtml(k)}</b><span>${escapeHtml(String(v||0))}</span></div>`).join('')}</div></div>`;
   }
   function v84AchievementsHtml(){
     v84Ensure();
     try{ if(typeof v83CheckAchievements==='function') v83CheckAchievements(); }catch(e){}
-    const list = V84_ACHIEVEMENTS;
+    const list = (typeof V83_ACHIEVEMENTS!=='undefined') ? V83_ACHIEVEMENTS : [];
     const unlocked=new Set(state.achievements||[]);
     return `<div class="v84-tab-card"><p class="small">達成すると称号が解放されます。</p><div class="v84-ach-grid">${list.map(([id,name,desc])=>`<div class="v84-ach ${unlocked.has(id)?'on':''}"><b>${unlocked.has(id)?'🏅':'🔒'} ${escapeHtml(name)}</b><br><span>${escapeHtml(desc)}</span></div>`).join('')}</div></div>`;
   }
@@ -7091,7 +7071,7 @@ if ("serviceWorker" in navigator) {
       .v84-shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.v84-dismantle-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}
       .v84-box-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 10px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09)}.v84-box-tools button{padding:7px 9px;font-size:12px}.v84-box-tools button.active{background:rgba(248,214,109,.2);border-color:rgba(248,214,109,.5);color:#ffe58a}
       .v84-iv-chip{display:inline-flex;vertical-align:middle;margin-left:4px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:900;color:#dce3f2}.v84-iv-chip.hot{background:rgba(248,214,109,.18);border-color:rgba(248,214,109,.55);color:#ffe58a}
-      @media(max-width:700px){.topbar .row{gap:5px}.top-tips-btn{padding:7px 8px;font-size:11px}.v84-shop-grid{grid-template-columns:1fr}.v84-ach-grid,.v84-rank-grid,.v84-dismantle-grid{grid-template-columns:1fr 1fr}.v84-box-tools{gap:5px}.v84-box-tools button{padding:7px 8px}.v84-mission{padding:7px}}
+      @media(max-width:700px){.topbar .row{gap:5px}.top-tips-btn{padding:5px 6px;font-size:10px}.v84-shop-grid{grid-template-columns:1fr}.v84-ach-grid,.v84-rank-grid,.v84-dismantle-grid{grid-template-columns:1fr 1fr}.v84-box-tools{gap:5px}.v84-box-tools button{padding:7px 8px}.v84-mission{padding:7px}}
     `;
     document.head.appendChild(style);
   }
