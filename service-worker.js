@@ -1,5 +1,5 @@
-const CACHE_NAME = "kurimon-pwa-v83";
-const RUNTIME_CACHE = "kurimon-runtime-v83";
+const CACHE_NAME = "kurimon-pwa-v84";
+const RUNTIME_CACHE = "kurimon-runtime-v84";
 
 const CORE_ASSETS = [
   "./icons/icon-32.png",

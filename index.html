@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>クリモン - 製品版 v83</title>
+  <title>クリモン - 製品版 v84</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1056,12 +1056,15 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v83</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v84</span></div>
     <div class="row">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
       <span class="pill">時刻 <b id="timeBandText">--</b></span>
       <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
+      <button class="top-tips-btn" data-tab-btn="records" onclick="showTab('records')">記録</button>
+      <button class="top-tips-btn" data-tab-btn="achievements" onclick="showTab('achievements')">称号</button>
+      <button class="top-tips-btn" data-tab-btn="shop" onclick="showTab('shop')">交換所</button>
       <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">⚙️ 設定</button>
     </div>
   </div>
@@ -1440,6 +1443,22 @@ body{padding-bottom:108px;}
           </p>
         </div>
       </div>
+    </div>
+
+    <div id="tab-records" class="hidden">
+      <h2>記録</h2>
+      <div id="recordsArea"></div>
+    </div>
+
+    <div id="tab-achievements" class="hidden">
+      <h2>称号・実績</h2>
+      <div id="achievementsArea"></div>
+    </div>
+
+    <div id="tab-shop" class="hidden">
+      <h2>交換所</h2>
+      <p class="small">CP交換所、闇鍋ガチャ、欠片合成、アイテム分解をまとめています。スマホで安定するようプルダウンは使わず、直接ボタンで操作します。</p>
+      <div id="shopArea"></div>
     </div>
 
     <div id="tab-settings" class="hidden">
@@ -6853,6 +6872,231 @@ if ("serviceWorker" in navigator) {
 
   // 起動時
   v83Ensure(); v83InjectStyle(); v83CheckAchievements();
+})();
+</script>
+
+
+<script>
+// v84: UI整理 / 交換所タブ化 / 記録・称号タブ化 / スマホ操作安定化
+(function(){
+  const V84_TABS = ["home","raise","battle","travel","mock","box","dex","tips","records","achievements","shop","settings"];
+  const V84_STAT_KEYS = ['hp','atk','def','mag','luck','spd'];
+  const V84_ACHIEVEMENTS = [
+    ['first_win','はじめての勝利','CPU戦で1勝する'],
+    ['ten_wins','定時退社王','CPU戦で10勝する'],
+    ['fifty_wins','歴戦の育成者','CPU戦で50勝する'],
+    ['hundred_wins','沼の住人','CPU戦で100勝する'],
+    ['moon_1','月を見た者','満月を1回撃破する'],
+    ['moon_10','月を狩る者','満月を10回撃破する'],
+    ['kazuko_1','カズコ討伐者','栗場カズコを撃破する'],
+    ['kazuko_5','学園序列キラー','栗場カズコを5回撃破する'],
+    ['ultimate_1','究極への一歩','究極体を1体作る'],
+    ['ultimate_10','究極体ブリーダー','究極体を10体作る'],
+    ['awaken_1','覚醒者','覚醒ノ儀を1回終える'],
+    ['great_awaken','赤き剛腕','覚醒ノ儀で大成功する'],
+    ['box_10','ボックス管理人','ボックスに10体以上いる'],
+    ['favorite_3','推し活開始','お気に入り★を3体以上付ける'],
+    ['release_10','逃がし屋','10体逃がす'],
+    ['max_damage_100','一撃の快感','最大ダメージ100以上'],
+    ['max_damage_300','破壊神候補','最大ダメージ300以上'],
+    ['gacha_1','闇鍋開封者','闇鍋ガチャを1回引く'],
+    ['gacha_20','闇鍋中毒','闇鍋ガチャを20回引く'],
+    ['dismantle_10','分解職人','アイテムを10個分解する'],
+    ['shard_10','欠片収集家','GODチケットの欠片を10個以上集める'],
+    ['boss_ticket','挑戦状を握る者','ボス挑戦チケットを使う'],
+    ['bad_cond_win','限界突破','限界コンディションのまま勝利する'],
+    ['all_rounder','箱庭王','ボックス20体・勝利100・覚醒5を達成']
+  ];
+  const V84_DAILY = [
+    ['cpu','CPU戦を3回する',3,{cp:300}],
+    ['wins','CPU戦で2勝する',2,{cp:500}],
+    ['rest','休憩を1回する',1,{cp:150}],
+    ['train','トレーニングを3回する',3,{cp:250}],
+    ['gacha','闇鍋ガチャを1回引く',1,{item:'god_ticket_shard'}],
+    ['dismantle','アイテムを1個分解する',1,{cp:300}]
+  ];
+  function v84Ensure(){
+    try{ if(typeof v83Ensure==='function') v83Ensure(); }catch(e){}
+    try{ ensureItemSystems?.(); }catch(e){}
+    if(!state.records) state.records={};
+    const defaults={totalBattles:0,totalWins:0,totalLosses:0,maxDamage:0,fullmoonKills:0,kazukoKills:0,rareKills:0,awakeningGreat:0,gachaCount:0,itemsDismantled:0,bossTicketsUsed:0,bestLevel:0,ultimateCount:0,awakenedCount:0,releaseCount:0};
+    for(const [k,v] of Object.entries(defaults)){ if(typeof state.records[k] !== 'number') state.records[k]=v; }
+    if(!Array.isArray(state.achievements)) state.achievements=[];
+    const today = (typeof V83_DAILY_KEY==='function') ? V83_DAILY_KEY() : new Date().toLocaleDateString('ja-JP');
+    if(!state.daily || state.daily.key !== today) state.daily={key:today,cpu:0,wins:0,rest:0,train:0,gacha:0,exchange:0,dismantle:0,claimed:{}};
+    if(!state.daily.claimed) state.daily.claimed={};
+    for(const mon of state.monsters||[]) v84EnsureMonster(mon);
+  }
+  function v84EnsureMonster(mon){
+    if(!mon) return;
+    if(!Array.isArray(mon.memories)) mon.memories=[];
+    if(!mon.createdAt) mon.createdAt=Date.now();
+    if(!mon.ivSeed) mon.ivSeed={};
+    try{ ensureCapBias?.(mon); }catch(e){}
+    for(const k of V84_STAT_KEYS){ if(typeof mon.ivSeed[k] !== 'number') mon.ivSeed[k]=Math.max(-20,Math.min(20,Math.round(mon.capBias?.[k]||0))); }
+    if(!mon.memories.length) mon.memories.push({at:mon.createdAt,text:`${mon.nickname||mon.formName||'クリモン'}が仲間になった。`});
+  }
+  function v84TalentScore(mon,k){
+    v84EnsureMonster(mon);
+    const raw=Number(mon.ivSeed?.[k]||0);
+    const norm=k==='hp' ? raw/15 : raw/6;
+    return Math.max(0,Math.min(100,Math.round(50+norm*45)));
+  }
+  function v84Grade(score){ return score>=92?'S+':score>=82?'S':score>=68?'A':score>=54?'B':score>=40?'C':score>=25?'D':'E'; }
+  function v84GradeFor(mon,k){ return v84Grade(v84TalentScore(mon,k)); }
+  function v84RewardText(r){ return r.item ? `${itemName(r.item)}×1` : `${r.cp||0}CP`; }
+  function v84ConditionDesc(mon){
+    const c=CONDITIONS[mon?.condition||'normal']||CONDITIONS.normal;
+    const exp=c.expBonus||0, battle=c.battleBonus||0;
+    return `${c.label}：トレーニング補正 ${c.trainBonus>=0?'+':''}${c.trainBonus} / EXP ${exp>=0?'+':''}${exp}% / 戦闘能力 ${battle>=0?'+':''}${battle}%`;
+  }
+  function v84DailyHtml(){
+    v84Ensure();
+    return `<details class="v84-section" open><summary>📅 デイリーミッション</summary><div class="v84-mission-list">${V84_DAILY.map(([id,label,need,reward])=>{
+      const cur=Math.min(need,state.daily[id]||0), done=cur>=need, claimed=!!state.daily.claimed[id];
+      return `<div class="v84-mission"><span>${escapeHtml(label)}<br><small>${cur}/${need} / 報酬：${escapeHtml(v84RewardText(reward))}</small></span><button class="ghost" ${(!done||claimed)?'disabled':''} onclick="v83ClaimDaily('${id}')">${claimed?'受取済':done?'受け取る':'未達成'}</button></div>`;
+    }).join('')}</div></details>`;
+  }
+  function v84RecordsHtml(){
+    v84Ensure();
+    try{ if(typeof v83UpdateRecords==='function') v83UpdateRecords(); }catch(e){}
+    const r=state.records||{};
+    const mons=state.monsters||[];
+    r.bestLevel=Math.max(r.bestLevel||0,...mons.map(m=>m.level||0),0);
+    r.ultimateCount=mons.filter(m=>Number(m.stage||0)>=3).length;
+    r.awakenedCount=mons.filter(m=>m.awakening?.done).length;
+    const rows=[['総CPU戦',r.totalBattles],['総勝利数',r.totalWins],['総敗北数',r.totalLosses],['最高ダメージ',r.maxDamage],['満月撃破',r.fullmoonKills],['カズコ撃破',r.kazukoKills],['レア敵撃破',r.rareKills],['覚醒大成功',r.awakeningGreat],['覚醒済み',r.awakenedCount],['究極体数',r.ultimateCount],['闇鍋回数',r.gachaCount],['分解数',r.itemsDismantled],['ボスチケット使用',r.bossTicketsUsed],['逃がした数',r.releaseCount]];
+    return `<div class="v84-tab-card"><p class="small">連勝以外のやりこみ記録です。</p><div class="v84-rank-grid">${rows.map(([k,v])=>`<div><b>${escapeHtml(k)}</b><span>${escapeHtml(String(v||0))}</span></div>`).join('')}</div></div>`;
+  }
+  function v84AchievementsHtml(){
+    v84Ensure();
+    try{ if(typeof v83CheckAchievements==='function') v83CheckAchievements(); }catch(e){}
+    const list = V84_ACHIEVEMENTS;
+    const unlocked=new Set(state.achievements||[]);
+    return `<div class="v84-tab-card"><p class="small">達成すると称号が解放されます。</p><div class="v84-ach-grid">${list.map(([id,name,desc])=>`<div class="v84-ach ${unlocked.has(id)?'on':''}"><b>${unlocked.has(id)?'🏅':'🔒'} ${escapeHtml(name)}</b><br><span>${escapeHtml(desc)}</span></div>`).join('')}</div></div>`;
+  }
+  function v84DismantleHtml(){
+    v84Ensure();
+    const items=Object.entries(state.inventory||{}).filter(([id,c])=>c>0 && ITEM_MASTER[id] && !['god_ticket','god_ticket_shard'].includes(id));
+    if(!items.length) return '<p class="small">分解できるアイテムはありません。</p>';
+    items.sort((a,b)=>(RARITY_ORDER[ITEM_MASTER[b[0]].rarity]||0)-(RARITY_ORDER[ITEM_MASTER[a[0]].rarity]||0) || itemName(a[0]).localeCompare(itemName(b[0]),'ja'));
+    return `<div class="v84-dismantle-grid">${items.map(([id,c])=>{
+      const it=ITEM_MASTER[id]; const reward={N:30,R:90,SR:300,UR:1200,GOD:3000}[it.rarity]||50;
+      return `<button class="ghost" onclick="v83DismantleItem('${escapeHtml(id)}')"><b>${escapeHtml(itemLabel(id))}</b><br><span class="small">所持${c} / 分解 +${reward}CP</span></button>`;
+    }).join('')}</div>`;
+  }
+  function v84ShopHtml(){
+    v84Ensure();
+    const cpExchange = (typeof renderCpExchangeHtml==='function') ? renderCpExchangeHtml() : '';
+    return `<div class="v84-shop-grid">
+      <div class="v84-tab-card"><h3>🎰 闇鍋ガチャ</h3><p class="small">5000CP。N〜URアイテム、ボス挑戦チケット、低確率でGODチケットの欠片。GOD本体は直接出ません。</p><button onclick="v83YanabeGacha()">闇鍋ガチャ 5000CP</button><button class="ghost" onclick="v83CombineGodShard()">欠片10個 → GODチケット</button></div>
+      <div class="v84-tab-card"><h3>🧩 アイテム分解</h3>${v84DismantleHtml()}</div>
+      <div class="v84-tab-card wide">${cpExchange}</div>
+    </div>`;
+  }
+  function v84RenderSpecialTab(){
+    if(currentTab==='records'){
+      const el=document.getElementById('recordsArea'); if(el) el.innerHTML=v84RecordsHtml();
+    }
+    if(currentTab==='achievements'){
+      const el=document.getElementById('achievementsArea'); if(el) el.innerHTML=v84AchievementsHtml();
+    }
+    if(currentTab==='shop'){
+      const el=document.getElementById('shopArea'); if(el) el.innerHTML=v84ShopHtml();
+    }
+  }
+
+  // 新しい上段タブに対応
+  const v84OriginalShowTab = showTab;
+  showTab = function(tab){
+    currentTab=tab;
+    V84_TABS.forEach(t=>{ const el=document.getElementById(`tab-${t}`); if(el) el.classList.toggle('hidden',t!==tab); });
+    document.querySelectorAll('[data-tab-btn]').forEach(btn=>{ btn.classList.toggle('active', btn.dataset.tabBtn===tab); });
+    if(tab==='battle' && getCurrentMonster() && !currentEnemy) prepareBattlePreview();
+    if(tab==='travel') renderTravel();
+    render();
+  };
+
+  // 交換所・闇鍋・分解は専用タブへ移動。ホームのアイテム欄からは外す。
+  try{
+    if(typeof KURIMON_V78_ORIGINAL_RENDER_ITEM_PANEL!=='undefined'){
+      renderItemPanel = function(mon){ return KURIMON_V78_ORIGINAL_RENDER_ITEM_PANEL(mon); };
+    }
+  }catch(e){}
+
+  // ホームのやりこみパネルをデイリー中心に整理。見出し「やりこみ」は出さない。
+  const v84OriginalRenderMonster = renderMonster;
+  renderMonster = function(mon){
+    v84Ensure();
+    v84OriginalRenderMonster(mon);
+    const old=document.getElementById('v83Panel'); if(old) old.remove();
+    const existing=document.getElementById('v84DailyPanel'); if(existing) existing.remove();
+    if(mon){
+      // Lv上限バッジ削除
+      const badges=document.getElementById('monsterBadges');
+      if(badges){ [...badges.querySelectorAll('.badge')].forEach(sp=>{ if((sp.textContent||'').includes('Lv上限')) sp.remove(); }); }
+      // 個体値を各ステータス横へ表示
+      const caps=getStatCaps(mon);
+      const stats=document.getElementById('statsArea');
+      if(stats){
+        stats.innerHTML=Object.entries(STAT_LABEL).map(([key,label])=>{
+          const val=mon.stats[key], cap=caps[key], pct=Math.min(100,Math.round((val/cap)*100));
+          const capped = val >= cap ? ' <span class="awakening-success">成長限界</span>' : '';
+          const grade = v84GradeFor(mon,key);
+          const hot = String(grade).startsWith('S') ? ' hot' : '';
+          return `<div class="stat"><div class="stat-head"><span>${escapeHtml(label)} <span class="v84-iv-chip${hot}">個体値${escapeHtml(grade)}</span>${capped}</span><b>${val}/${cap}</b></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
+        }).join('');
+      }
+      const itemArea=document.getElementById('itemArea') || document.getElementById('skillsArea');
+      if(itemArea) itemArea.insertAdjacentHTML('beforebegin', `<div id="v84DailyPanel" class="v84-panel">${v84DailyHtml()}<details class="v84-section"><summary>🩺 コンディション</summary><p class="small">${escapeHtml(v84ConditionDesc(mon))}</p></details></div>`);
+    }
+  };
+
+  // ボックス並び替えをプルダウンから直接ボタンに変更
+  window.v84SetBoxSort=function(v){ state.boxSort=v||'favorite'; try{ boxRenderKey=''; }catch(e){} saveGame(); render(); };
+  function v84BoxToolsHtml(){
+    const opts=[['favorite','★優先'],['current','育成中'],['level','Lv順'],['stage','進化順'],['awakening','覚醒済'],['atk','攻撃'],['mag','魔法'],['spd','素早さ'],['new','新しい順']];
+    return `<div id="v83BoxTools" class="v84-box-tools"><span class="small">並び替え</span>${opts.map(([v,t])=>`<button class="ghost ${state.boxSort===v?'active':''}" onclick="v84SetBoxSort('${v}')">${escapeHtml(t)}</button>`).join('')}<span class="small">カード長押しで思い出ログ</span></div>`;
+  }
+  const v84OriginalRenderBox = renderBox;
+  renderBox = function(){
+    v84OriginalRenderBox();
+    const tools=document.getElementById('v83BoxTools');
+    if(tools) tools.outerHTML=v84BoxToolsHtml();
+    else {
+      const area=document.getElementById('boxArea');
+      if(area) area.insertAdjacentHTML('beforebegin', v84BoxToolsHtml());
+    }
+  };
+
+  // renderフック：新タブ内容描画
+  const v84OriginalRender = render;
+  render = function(){
+    v84Ensure();
+    const ret=v84OriginalRender();
+    v84RenderSpecialTab();
+    return ret;
+  };
+
+  function v84InjectStyle(){
+    if(document.getElementById('kurimon-v84-style')) return;
+    const style=document.createElement('style'); style.id='kurimon-v84-style';
+    style.textContent=`
+      .v84-panel{margin-top:12px;padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.04)}
+      .v84-section{margin:8px 0;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.12);padding:8px}.v84-section summary{cursor:pointer;font-weight:900;color:#fff1a1;list-style:none}.v84-section summary::-webkit-details-marker{display:none}
+      .v84-mission{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-bottom:1px solid rgba(255,255,255,.08)}.v84-mission:last-child{border-bottom:0}.v84-mission button{min-width:82px}
+      .v84-tab-card{padding:12px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.045);margin:10px 0}.v84-tab-card h3{margin-top:0}.v84-tab-card.wide{grid-column:1/-1}
+      .v84-rank-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.v84-rank-grid div{padding:9px;border-radius:13px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)}.v84-rank-grid span{display:block;font-size:18px;font-weight:950;color:#fff}
+      .v84-ach-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}.v84-ach{padding:9px;border-radius:13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);font-size:12px}.v84-ach.on{background:rgba(248,214,109,.13);border-color:rgba(248,214,109,.35)}
+      .v84-shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.v84-dismantle-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}
+      .v84-box-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 10px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09)}.v84-box-tools button{padding:7px 9px;font-size:12px}.v84-box-tools button.active{background:rgba(248,214,109,.2);border-color:rgba(248,214,109,.5);color:#ffe58a}
+      .v84-iv-chip{display:inline-flex;vertical-align:middle;margin-left:4px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:900;color:#dce3f2}.v84-iv-chip.hot{background:rgba(248,214,109,.18);border-color:rgba(248,214,109,.55);color:#ffe58a}
+      @media(max-width:700px){.topbar .row{gap:5px}.top-tips-btn{padding:7px 8px;font-size:11px}.v84-shop-grid{grid-template-columns:1fr}.v84-ach-grid,.v84-rank-grid,.v84-dismantle-grid{grid-template-columns:1fr 1fr}.v84-box-tools{gap:5px}.v84-box-tools button{padding:7px 8px}.v84-mission{padding:7px}}
+    `;
+    document.head.appendChild(style);
+  }
+  v84InjectStyle(); v84Ensure();
+  try{ render(); }catch(e){ console.warn('v84 initial render skipped',e); }
 })();
 </script>
 
