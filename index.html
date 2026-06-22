@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v104</title>
+  <title>クリモン - 製品版 v105</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v104</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v105</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1701,7 +1701,7 @@ const BASE_SPECIES = {
   // v46追加：卵から低確率で出るレアキャラ
   tsumugi: {speciesName:"つむぎ", role:"超ハイリスク料理魔法型", emoji:"🍳", baseStats:{hp:28,atk:3,def:5,mag:14,luck:9,spd:5}, image:"images/tsumugi_base.png"},
   forte: {speciesName:"フォルテ", role:"音圧バフ・高速連撃型", emoji:"🎼", baseStats:{hp:31,atk:8,def:6,mag:8,luck:7,spd:12}, image:"images/forte_base.png"},
-  sipa: {speciesName:"シパ", role:"進化なし完成型・必殺守護", emoji:"🐺", baseStats:{hp:36,atk:12,def:10,mag:2,luck:8,spd:7}, image:"images/sipa_base.png"}
+  sipa: {speciesName:"シパ", role:"進化なし完成型・必殺守護・反撃型", emoji:"🐺", baseStats:{hp:42,atk:15,def:14,mag:2,luck:12,spd:9}, image:"images/sipa_base.png"}
 };
 
 const EGG = { price:50, hatchMs:10*60*1000 };
@@ -1811,7 +1811,7 @@ const SPECIES_STAT_CAPS = {
   dentaku:{hp:310,atk:85,def:105,mag:160,luck:185,spd:120},
   tsumugi:{hp:260,atk:70,def:70,mag:220,luck:160,spd:100},
   forte:{hp:330,atk:150,def:110,mag:150,luck:125,spd:210},
-  sipa:{hp:420,atk:190,def:185,mag:55,luck:145,spd:130}
+  sipa:{hp:500,atk:230,def:215,mag:65,luck:190,spd:165}
 };
 const STAGE_CAP_RATE = [0.45,0.62,0.82,1.0];
 
@@ -1922,9 +1922,9 @@ const SKILL_DEFS = {
   fortissimoRush:{name:"YOAKE", category:"support", desc:"最大HPの30%を回復する。"},
   riseUp:{name:"RISE UP", category:"support", desc:"3ターン、すべてのステータスを上げる。"},
 
-  sipaGuard:{name:"シパガード", category:"support", desc:"3ターン、防御+4、ダメージ軽減+3。"},
-  sipaDeathblow:{name:"アカウントハック", category:"physical", desc:"攻撃依存の高クリティカル必殺。35%で相手を1ターン行動不能にする。"},
-  sipaPressure:{name:"煽る", category:"status", desc:"相手攻撃-2、防御-2。28%で行動不能。"}
+  sipaGuard:{name:"シパガード", category:"support", desc:"4ターン、防御+6、ダメージ軽減+5。状態異常を1つ解除する。"},
+  sipaDeathblow:{name:"アカウントハック", category:"physical", desc:"攻撃＋運依存の高クリティカル必殺。45%で相手を1ターン行動不能、35%でスキル封印。"},
+  sipaPressure:{name:"煽る", category:"status", desc:"相手の攻撃・防御・素早さを下げる。40%で行動不能。"}
 };
 const SKILL_CATEGORY_LABEL = {physical:"物理",magic:"魔法",support:"補助",status:"状態異常"};
 
@@ -3314,9 +3314,9 @@ function skillScoreForActor(skillId, attacker, defender){
   if(["sonicWave"].includes(skillId)) score += atk*0.30 + magic*0.55 + cStat(attacker,"spd")*0.20;
   if(["fortissimoRush"].includes(skillId)) score += (1 - hp/maxHp) * 160;
   if(["riseUp"].includes(skillId)) score += 80 + magic*0.18 + cStat(attacker,"spd")*0.18;
-  if(["sipaGuard"].includes(skillId)) score += (1 - hp/maxHp) * 75 + cStat(attacker,"def")*0.25;
-  if(["sipaDeathblow"].includes(skillId)) score += atk*0.45 + luck*0.35;
-  if(["sipaPressure"].includes(skillId)) score += luck*0.35 + atk*0.25;
+  if(["sipaGuard"].includes(skillId)) score += (1 - hp/maxHp) * 95 + cStat(attacker,"def")*0.34;
+  if(["sipaDeathblow"].includes(skillId)) score += atk*0.62 + luck*0.50;
+  if(["sipaPressure"].includes(skillId)) score += luck*0.45 + atk*0.32 + cStat(defender,"atk")*0.18;
 
   return Math.max(1, score);
 }
@@ -3465,7 +3465,7 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="crescendo"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}のMake you unhappy！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
   if(skillId==="fortissimoRush"){const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.30));push(`${attacker.name}のYOAKE！ HPを${heal}回復した。`,{myHp:a.hp,enemyHp:b.hp});return;}
   if(skillId==="riseUp"){for(const k of ["atk","def","mag","luck","spd"]){attacker.buff[k]=Math.max(attacker.buff[k]||0,3);}push(`${attacker.name}のRISE UP！ 3ターン、全ステータスが上がった。`);return;}
-  if(skillId==="sipaGuard"){attacker.buff.def=Math.max(attacker.buff.def,4);attacker.buff.shield=Math.max(attacker.buff.shield,3);push(`${attacker.name}のシパガード！ 防御が上がり、受けるダメージを軽減する。`);return;}
+  if(skillId==="sipaGuard"){attacker.buff.def=Math.max(attacker.buff.def,6);attacker.buff.shield=Math.max(attacker.buff.shield,5); if(attacker.status){ if(attacker.status.venom>0) attacker.status.venom=0; else if(attacker.status.silence>0) attacker.status.silence=0; } push(`${attacker.name}のシパガード！ 防御が大きく上がり、受けるダメージを強く軽減する。`);return;}
   if(skillId==="magicConversion"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の魔導変換！ 魔法と攻撃が上がった。`);return;}
   if(skillId==="equationChant"){attacker.buff.mag=Math.max(attacker.buff.mag,5);push(`${attacker.name}の方程式詠唱！ 魔法が大きく上がった。`);return;}
   if(skillId==="chainFormula"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);push(`${attacker.name}の連鎖式！ 魔法と素早さが上がった。`);return;}
@@ -3480,7 +3480,7 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="oniPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}の鬼圧！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
   if(skillId==="failedCooking"){defender.status.poison=Math.max(defender.status.poison,3);const recoil=Math.max(1,Math.round(attacker.maxHp*0.06));attacker.hp=Math.max(1,attacker.hp-recoil);push(`${attacker.name}の失敗料理！ ${defender.name}は毒状態。反動で${recoil}ダメージ。`,{myHp:a.hp,enemyHp:b.hp});return;}
   if(skillId==="superVenom"){defender.status.superVenom=Math.max(defender.status.superVenom,5);push(`${attacker.name}の超猛毒！ ${defender.name}は超猛毒状態になった。`);return;}
-  if(skillId==="sipaPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-2);defender.buff.def=Math.min(defender.buff.def||0,-2);if(Math.random()<0.28) defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の煽る！ ${defender.name}の攻撃と防御を下げた。`);return;}
+  if(skillId==="sipaPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.def=Math.min(defender.buff.def||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);if(Math.random()<0.40) defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の煽る！ ${defender.name}の攻撃・防御・素早さを下げた。`);return;}
   if(skillId==="poison"){defender.status.poison=Math.max(defender.status.poison,3);push(`${attacker.name}の毒！ ${defender.name}は毒状態になった。`);return;}
   if(skillId==="venom"){defender.status.venom=Math.max(defender.status.venom,3);push(`${attacker.name}の猛毒！ ${defender.name}は猛毒状態になった。`);return;}
   if(skillId==="curseBind"){defender.status.silence=Math.max(defender.status.silence,2);defender.buff.atk=Math.min(defender.buff.atk||0,-2);push(`${attacker.name}の呪縛！ ${defender.name}は沈黙し、攻撃も下がった。`);return;}
@@ -3586,10 +3586,11 @@ function useSkill(attacker, defender, skillId, events, monRef){
     dmg=0; for(let i=0;i<hits;i++){dmg+=calcHybridDamage(attacker,defender,0.42,0.05);}
     defender.buff.def=Math.min(defender.buff.def||0,-2); applyDamage(defender,dmg);
   }else if(skillId==="sipaDeathblow"){
-    dmg=calcDamage(attacker,defender,"physical",1.15,0.10)+Math.round(cStat(attacker,"luck")*0.28);
-    crit=Math.random()<Math.min(0.62,0.18+cStat(attacker,"luck")/115);
-    if(crit)dmg=Math.round(dmg*1.65);
-    if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1);
+    dmg=calcDamage(attacker,defender,"physical",1.45,0.22)+Math.round(cStat(attacker,"luck")*0.55);
+    crit=Math.random()<Math.min(0.75,0.25+cStat(attacker,"luck")/95);
+    if(crit)dmg=Math.round(dmg*1.90);
+    if(Math.random()<0.45) defender.status.stun=Math.max(defender.status.stun,1);
+    if(Math.random()<0.35) defender.status.silence=Math.max(defender.status.silence,2);
     applyDamage(defender,dmg);
   }else if(skillId==="magicCannon"){
     dmg=calcDamage(attacker,defender,"magic",1.35,0); applyDamage(defender,dmg);
@@ -3873,7 +3874,7 @@ function growthBySpecies(k){
   if(k==="dentaku")return{hp:0,atk:0,def:1,mag:2,luck:2,spd:1};
   if(k==="tsumugi")return{hp:0,atk:0,def:0,mag:4,luck:2,spd:0};
   if(k==="forte")return{hp:1,atk:2,def:0,mag:2,luck:0,spd:3};
-  if(k==="sipa")return{hp:2,atk:3,def:3,mag:0,luck:2,spd:1};
+  if(k==="sipa")return{hp:3,atk:4,def:4,mag:0,luck:3,spd:2};
   return{hp:1,atk:1,def:1,mag:1,luck:1,spd:1};
 }
 function maxStageForSpecies(speciesKey){
@@ -9271,3 +9272,7 @@ if ("serviceWorker" in navigator) {
 
 <!-- v89: 孵化装置をアイテムから廃止し、1000CP即孵化ボタンに変更 -->
 <!-- v91: iPhone連打時のダブルタップズーム抑制 -->
+
+<script>
+// v105: シパ強化パッチ。進化なし完成型として、HP/攻撃/防御/運/素早さ上限と専用技を強化。
+</script>
