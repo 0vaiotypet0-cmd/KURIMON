@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v93</title>
+  <title>クリモン - 製品版 v94</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1165,7 +1165,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v93</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v94</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -7674,6 +7674,280 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <!-- v93: デイリーミッション受け取り処理を一本化して修正 -->
+
+<script>
+// v94: デイリーミッション完全修正版（進行同期・受取・旧表示除去）
+(function(){
+  const DAILY_VERSION = 94;
+  const MISSIONS = [
+    ['cpu','CPU戦を3回する',3,{cp:300}],
+    ['wins','CPU戦で2勝する',2,{cp:500}],
+    ['rest','休憩を1回する',1,{cp:150}],
+    ['train','トレーニングを3回する',3,{cp:250}],
+    ['gacha','闇鍋ガチャを1回引く',1,{item:'god_ticket_shard'}],
+    ['dismantle','アイテムを1個分解する',1,{cp:300}]
+  ];
+  const KEYS = MISSIONS.map(m=>m[0]);
+  const TOTAL_RECORD_KEYS = {
+    cpu:'totalBattles',
+    wins:'totalWins',
+    gacha:'gachaCount',
+    dismantle:'itemsDismantled'
+  };
+  function todayKey(){
+    const d=new Date();
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function num(v){ return Number.isFinite(Number(v)) ? Number(v) : 0; }
+  function getRecords(){ if(!state.records || typeof state.records!=='object') state.records={}; return state.records; }
+  function getDaily(){
+    const t=todayKey();
+    if(!state.dailyV94 || state.dailyV94.key!==t){
+      const r=getRecords();
+      state.dailyV94 = {key:t, version:DAILY_VERSION, counts:{}, claimed:{}, baseRecords:{}};
+      for(const k of KEYS) state.dailyV94.counts[k]=0;
+      for(const [k,recKey] of Object.entries(TOTAL_RECORD_KEYS)) state.dailyV94.baseRecords[recKey]=num(r[recKey]);
+      // 当日中に旧デイリーが進んでいる場合は引き継ぐ
+      for(const src of [state.dailyV92, state.daily]){
+        if(src && src.key===t){
+          for(const k of KEYS) state.dailyV94.counts[k]=Math.max(num(state.dailyV94.counts[k]), num(src[k]));
+          if(src.claimed && typeof src.claimed==='object') state.dailyV94.claimed={...state.dailyV94.claimed, ...src.claimed};
+        }
+      }
+    }
+    if(!state.dailyV94.counts || typeof state.dailyV94.counts!=='object') state.dailyV94.counts={};
+    if(!state.dailyV94.claimed || typeof state.dailyV94.claimed!=='object') state.dailyV94.claimed={};
+    if(!state.dailyV94.baseRecords || typeof state.dailyV94.baseRecords!=='object') state.dailyV94.baseRecords={};
+    for(const k of KEYS){
+      state.dailyV94.counts[k]=Math.max(0,num(state.dailyV94.counts[k]));
+      if(state.dailyV92 && state.dailyV92.key===state.dailyV94.key) state.dailyV94.counts[k]=Math.max(state.dailyV94.counts[k], num(state.dailyV92[k]));
+      if(state.daily && state.daily.key===state.dailyV94.key) state.dailyV94.counts[k]=Math.max(state.dailyV94.counts[k], num(state.daily[k]));
+    }
+    syncFromRecords();
+    syncLegacyDaily();
+    return state.dailyV94;
+  }
+  function syncFromRecords(){
+    if(!state.dailyV94) return;
+    const r=getRecords();
+    const d=state.dailyV94;
+    if(!d.baseRecords) d.baseRecords={};
+    for(const [missionKey,recKey] of Object.entries(TOTAL_RECORD_KEYS)){
+      if(typeof d.baseRecords[recKey] !== 'number') d.baseRecords[recKey]=num(r[recKey]);
+      const delta=Math.max(0, num(r[recKey])-num(d.baseRecords[recKey]));
+      d.counts[missionKey]=Math.max(num(d.counts[missionKey]), delta);
+    }
+  }
+  function syncLegacyDaily(){
+    const d=state.dailyV94; if(!d) return;
+    const t=d.key;
+    state.daily = {key:t, claimed:{...d.claimed}};
+    state.dailyV92 = state.dailyV92 && state.dailyV92.key===t ? state.dailyV92 : {key:t, claimed:{}};
+    if(!state.dailyV92.claimed) state.dailyV92.claimed={};
+    for(const k of KEYS){
+      state.daily[k]=num(d.counts[k]);
+      state.dailyV92[k]=num(d.counts[k]);
+    }
+    state.dailyV92.claimed={...state.dailyV92.claimed, ...d.claimed};
+  }
+  function addProgress(key,n=1){
+    if(!KEYS.includes(key)) return;
+    const d=getDaily();
+    d.counts[key]=Math.max(0,num(d.counts[key])+Math.max(1,num(n)));
+    syncLegacyDaily();
+    try{ saveGame(); }catch(e){ console.warn('daily save failed',e); }
+  }
+  function rewardText(r){
+    if(r && r.item) return `${typeof itemName==='function' ? itemName(r.item) : r.item}×1`;
+    return `${num(r&&r.cp)}CP`;
+  }
+  function giveReward(r){
+    if(!r) return;
+    if(r.cp) state.cp=num(state.cp)+num(r.cp);
+    if(r.item){
+      let ok=false;
+      try{ ok=!!addItem(r.item,1); }catch(e){ ok=false; }
+      if(!ok){
+        try{ if(typeof ensureItemSystems==='function') ensureItemSystems(); }catch(e){}
+        if(!state.inventory) state.inventory={};
+        state.inventory[r.item]=num(state.inventory[r.item])+1;
+      }
+    }
+  }
+  function claim(id){
+    const d=getDaily();
+    const m=MISSIONS.find(x=>x[0]===id);
+    if(!m){ alert('ミッションIDが見つかりません。'); return false; }
+    const [key,,need,reward]=m;
+    syncFromRecords();
+    const cur=num(d.counts[key]);
+    if(cur<need){ alert(`まだ達成していません。\n現在：${Math.min(cur,need)}/${need}`); mount(); return false; }
+    if(d.claimed[key]){ alert('受け取り済みです。'); mount(); return false; }
+    d.claimed[key]=true;
+    syncLegacyDaily();
+    giveReward(reward);
+    try{ log(`デイリーミッション報酬：${rewardText(reward)}を受け取りました。`); }catch(e){}
+    try{ saveGame(); }catch(e){ console.warn('daily claim save failed', e); }
+    try{ render(); }catch(e){ mount(); }
+    alert(`受け取りました：${rewardText(reward)}`);
+    return true;
+  }
+  function html(){
+    const d=getDaily();
+    return `<details class="v94-daily v84-section" open><summary>📅 デイリーミッション</summary><div class="v84-mission-list">${MISSIONS.map(([id,label,need,reward])=>{
+      const cur=Math.min(need,num(d.counts[id]));
+      const done=cur>=need;
+      const claimed=!!d.claimed[id];
+      const btn=claimed?'受取済':done?'受け取る':'未達成';
+      return `<div class="v84-mission"><span>${escapeHtml(label)}<br><small>${cur}/${need} / 報酬：${escapeHtml(rewardText(reward))}</small></span><button type="button" class="ghost v94-daily-claim ${done&&!claimed?'ok':''}" data-daily-id="${id}" ${claimed?'disabled':''}>${btn}</button></div>`;
+    }).join('')}</div><div class="row" style="margin-top:6px"><button type="button" class="ghost" style="font-size:11px;padding:5px 8px" onclick="v94DailyRepair()">進行を再計算</button></div></details>`;
+  }
+  function mount(){
+    try{
+      getDaily();
+      // 旧パネルが残ると古い受け取り処理に吸われるので毎回撤去
+      document.querySelectorAll('#v84DailyPanel').forEach(el=>el.remove());
+      let panel=document.getElementById('v94DailyPanel');
+      if(!panel){
+        const target=document.getElementById('itemArea') || document.getElementById('skillsArea') || document.querySelector('.main-card') || document.querySelector('main') || document.body.firstElementChild || document.body;
+        if(target && target.insertAdjacentHTML) target.insertAdjacentHTML('beforebegin','<div id="v94DailyPanel" class="v84-panel"></div>');
+        else document.body.insertAdjacentHTML('afterbegin','<div id="v94DailyPanel" class="v84-panel"></div>');
+        panel=document.getElementById('v94DailyPanel');
+      }
+      let condition='';
+      try{
+        const mon=typeof getCurrentMonster==='function' ? getCurrentMonster() : null;
+        const c=CONDITIONS[(mon&&mon.condition)||'normal'] || CONDITIONS.normal;
+        const train=num(c&&c.trainBonus), exp=num(c&&c.expBonus), battle=num(c&&c.battleBonus);
+        condition=`<details class="v84-section"><summary>🩺 コンディション</summary><p class="small">${escapeHtml((c&&c.label)||'普通')}：トレーニング補正 ${train>=0?'+':''}${train} / EXP ${exp>=0?'+':''}${exp}% / 戦闘能力 ${battle>=0?'+':''}${battle}%</p></details>`;
+      }catch(e){}
+      if(panel) panel.innerHTML=html()+condition;
+    }catch(e){ console.warn('v94 daily mount failed', e); }
+  }
+  function repair(){
+    const d=getDaily();
+    syncFromRecords();
+    for(const src of [state.dailyV92,state.daily]){
+      if(src && src.key===d.key){
+        for(const k of KEYS) d.counts[k]=Math.max(num(d.counts[k]), num(src[k]));
+        if(src.claimed) d.claimed={...d.claimed,...src.claimed};
+      }
+    }
+    syncLegacyDaily();
+    try{ saveGame(); }catch(e){}
+    mount();
+    alert('デイリーミッション進行を再計算しました。');
+  }
+  window.v94DailyRepair=repair;
+  window.v94ClaimDaily=claim;
+  window.v93ClaimDaily=claim;
+  window.v92ClaimDaily=claim;
+  window.v83ClaimDaily=claim;
+  window.v94DailyAdd=addProgress;
+  window.v92DailyAdd=addProgress;
+
+  // 関数ラップ：既存実装が変わってもv94側に必ず反映
+  try{
+    if(typeof train==='function' && !train.__v94Daily){
+      const old=train;
+      train=function(stat){
+        const beforeAp=num(state.ap);
+        const ret=old.apply(this,arguments);
+        if(num(state.ap)!==beforeAp) addProgress('train');
+        return ret;
+      };
+      train.__v94Daily=true;
+    }
+  }catch(e){}
+  try{
+    if(typeof rest==='function' && !rest.__v94Daily){
+      const old=rest;
+      rest=function(){ const ret=old.apply(this,arguments); addProgress('rest'); return ret; };
+      rest.__v94Daily=true;
+    }
+  }catch(e){}
+  try{
+    if(typeof restFromBattle==='function' && !restFromBattle.__v94Daily){
+      const old=restFromBattle;
+      restFromBattle=function(){ const ret=old.apply(this,arguments); addProgress('rest'); return ret; };
+      restFromBattle.__v94Daily=true;
+    }
+  }catch(e){}
+  try{
+    if(typeof finishBattle==='function' && !finishBattle.__v94Daily){
+      const old=finishBattle;
+      finishBattle=function(mon,enemy,win){
+        const ret=old.apply(this,arguments);
+        addProgress('cpu');
+        if(win) addProgress('wins');
+        return ret;
+      };
+      finishBattle.__v94Daily=true;
+    }
+  }catch(e){}
+  try{
+    if(typeof window.v83YanabeGacha==='function' && !window.v83YanabeGacha.__v94Daily){
+      const old=window.v83YanabeGacha;
+      window.v83YanabeGacha=function(){
+        const beforeCp=num(state.cp), beforeRec=num(getRecords().gachaCount);
+        const ret=old.apply(this,arguments);
+        if(num(state.cp)<beforeCp || num(getRecords().gachaCount)>beforeRec) addProgress('gacha');
+        return ret;
+      };
+      window.v83YanabeGacha.__v94Daily=true;
+    }
+  }catch(e){}
+  try{
+    if(typeof window.v83DismantleItem==='function' && !window.v83DismantleItem.__v94Daily){
+      const old=window.v83DismantleItem;
+      window.v83DismantleItem=function(id){
+        const before=num(getRecords().itemsDismantled);
+        const ret=old.apply(this,arguments);
+        if(num(getRecords().itemsDismantled)>before) addProgress('dismantle');
+        return ret;
+      };
+      window.v83DismantleItem.__v94Daily=true;
+    }
+  }catch(e){}
+
+  // クリック保険：関数ラップが効かない端末/古いonclickでも未反映なら加算
+  document.addEventListener('click', function(e){
+    const dailyBtn=e.target.closest && e.target.closest('.v94-daily-claim,[data-daily-id]');
+    if(dailyBtn){
+      const id=dailyBtn.getAttribute('data-daily-id');
+      if(id){ e.preventDefault(); e.stopPropagation(); claim(id); }
+      return;
+    }
+    const btn=e.target.closest && e.target.closest('button');
+    if(!btn) return;
+    const oc=btn.getAttribute('onclick') || '';
+    const before={}; for(const k of ['train','rest','gacha','dismantle']) before[k]=num(getDaily().counts[k]);
+    setTimeout(()=>{
+      const d=getDaily();
+      if(/\btrain\s*\(/.test(oc) && num(d.counts.train)===before.train) addProgress('train');
+      if(/\b(rest|restFromBattle)\s*\(/.test(oc) && num(d.counts.rest)===before.rest) addProgress('rest');
+      if(/v83YanabeGacha\s*\(/.test(oc) && num(d.counts.gacha)===before.gacha) addProgress('gacha');
+      if(/v83DismantleItem\s*\(/.test(oc) && num(d.counts.dismantle)===before.dismantle) addProgress('dismantle');
+      mount();
+    },350);
+  }, true);
+
+  const oldRender=render;
+  render=function(){
+    const ret=oldRender.apply(this,arguments);
+    mount();
+    return ret;
+  };
+  getDaily();
+  window.addEventListener('load',()=>setTimeout(()=>{ mount(); try{ saveGame(); }catch(e){} },250));
+})();
+</script>
+
+<!-- v94: デイリーミッションを完全再実装。旧パネルを撤去し、進行/受取/保存を一本化 -->
+
 </body>
 </html>
 
