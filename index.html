@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v102</title>
+  <title>クリモン - 製品版 v103</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v102</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v103</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8926,6 +8926,341 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 <!-- v102: デイリーミッションの無限増殖を防止。正常な「進行を再計算」付きパネルだけを1つ残す。 -->
+
+
+<script>
+// v103: 卵限定「ミルカ」正式実装。ゲームの神スキル、隠し称号、卵出現率を追加。
+(function(){
+  const MILKA_ID = 'milka';
+  const MILKA_HIDDEN_ACH_ID = 'hidden_nerf_pre';
+  const MILKA_INITIAL = ['milkaMischief','milkaSavePoint','milkaTutorialEnd'];
+  const MILKA_ANGEL = ['milkaSanctuary','milkaBlessing','milkaHeavenPunishment'];
+  const MILKA_FALLEN = ['milkaWhatever','milkaHitPlease','milkaWhatIsThat'];
+  const MILKA_CREATOR = ['milkaGenesisCommand','milkaNerfYou','milkaAdminAuthority'];
+
+  function safeArr(x){ return Array.isArray(x) ? x : []; }
+  function isMilka(mon){ return !!mon && (mon.speciesKey===MILKA_ID || String(mon.formId||'').startsWith('milka_') || String(mon.formName||'').includes('ミルカ')); }
+  function hasMilka(){ return safeArr(state.monsters).some(isMilka); }
+  function hasHaruNow(){
+    try{ if(typeof hasHaru==='function') return hasHaru(); }catch(e){}
+    return safeArr(state.monsters).some(m=>m.speciesKey==='haruKondo' || m.formName==='ハル=コンドー');
+  }
+  function installMilkaMaster(){
+    try{
+      BASE_SPECIES[MILKA_ID] = {speciesName:'ミルカ', role:'卵限定・ゲームの神', emoji:'🎮', baseStats:{hp:34,atk:5,def:8,mag:15,luck:15,spd:10}, image:'images/milka_base.png'};
+      EVOLUTION_LEVELS[MILKA_ID] = [6,16,30];
+      EVOLUTION_TREE[MILKA_ID] = {
+        a:{formName:'小さな神子・ミルカ', profile:'ゲームの神の片鱗を見せる。確率と弱体に干渉する。'},
+        b:{formName:'小さな神子・ミルカ', profile:'ゲームの神の片鱗を見せる。確率と弱体に干渉する。'},
+        aa:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
+        ab:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
+        ba:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
+        bb:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
+        aaa:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
+        aba:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
+        baa:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
+        bba:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
+        aab:{formName:'堕天使ミルカ', profile:'テキトーな神の気まぐれで相手のルールを壊す妨害型。'},
+        abb:{formName:'堕天使ミルカ', profile:'テキトーな神の気まぐれで相手のルールを壊す妨害型。'},
+        bab:{formName:'堕天使ミルカ', profile:'テキトーな神の気まぐれで相手のルールを壊す妨害型。'},
+        bbb:{formName:'堕天使ミルカ', profile:'テキトーな神の気まぐれで相手のルールを壊す妨害型。'},
+        aar:{formName:'創世神ミルカ', profile:'世界強制再起動・創世のコマンド・運営権限を扱う神格。'},
+        abr:{formName:'創世神ミルカ', profile:'世界強制再起動・創世のコマンド・運営権限を扱う神格。'},
+        bar:{formName:'創世神ミルカ', profile:'世界強制再起動・創世のコマンド・運営権限を扱う神格。'},
+        bbr:{formName:'創世神ミルカ', profile:'世界強制再起動・創世のコマンド・運営権限を扱う神格。'}
+      };
+      if(typeof SPECIES_STAT_CAPS!=='undefined') SPECIES_STAT_CAPS[MILKA_ID] = {hp:430,atk:125,def:175,mag:235,luck:235,spd:185};
+      if(typeof AWAKENING_SKILL_POOLS!=='undefined') AWAKENING_SKILL_POOLS[MILKA_ID] = ['milkaResurrectionFestival','milkaBugPatch','milkaWorldReboot','milkaAdminAuthority'];
+      if(typeof SKILL_DEFS!=='undefined') Object.assign(SKILL_DEFS, {
+        milkaMischief:{name:'神のいたずら', category:'status', desc:'相手の攻撃・魔法・素早さのどれかを下げる。さらに低確率で相手の次の行動を失敗させる。'},
+        milkaSavePoint:{name:'セーブポイント', category:'support', desc:'1戦闘に1回、HPが0になる攻撃を受けた時、HP1で耐えてHPを30%回復する。'},
+        milkaTutorialEnd:{name:'チュートリアル終了', category:'magic', desc:'魔法＋運依存ダメージ。相手より運が高いほど威力上昇。'},
+        milkaSanctuary:{name:'神域', category:'support', desc:'3ターンの間、受けるダメージを大きく軽減。さらに状態異常を無効化する。'},
+        milkaBlessing:{name:'祝福', category:'support', desc:'HPを大きく回復し、弱体効果をすべて解除する。低確率で再行動する。'},
+        milkaHeavenPunishment:{name:'天罰', category:'magic', desc:'魔法＋運依存の大ダメージ。自分のHPが高いほど威力上昇。相手の強化効果を1つ解除する。'},
+        milkaResurrectionFestival:{name:'復活祭', category:'support', desc:'覚醒後スキル。1戦闘に1回、HPが0になった時にHP50%で復活し、防御・魔法・運が上昇する。'},
+        milkaWhatever:{name:'テキトーでいいでしょ～？', category:'status', desc:'相手の一番高いステータスを大きく下げる。さらに低確率で1ターン行動不能にする。'},
+        milkaBugPatch:{name:'バグだらけのパッチノート', category:'status', desc:'覚醒後スキル。相手の強化効果をすべて解除。解除に成功した場合、自分の魔法・素早さ・運を上げる。'},
+        milkaHitPlease:{name:'当たれ～', category:'magic', desc:'魔法＋運依存の特大ダメージ。ダメージ幅が大きいが、上振れ時は超火力。低確率で追加攻撃。'},
+        milkaWhatIsThat:{name:'なにそれ～', category:'physical', desc:'相手の攻撃を低確率で無効化し、反撃する。さらに相手の次ターンの命中率を下げる。'},
+        milkaWorldReboot:{name:'世界強制再起動', category:'support', desc:'覚醒後スキル。1戦闘に1回、HP30%以下で自動発動。HP全回復、弱体・状態異常解除、全ステータス上昇。'},
+        milkaGenesisCommand:{name:'創世のコマンド', category:'magic', damageType:'hybrid', desc:'魔法＋運＋素早さ依存の極大ダメージ。相手の強化効果を解除し、低確率で追加ターンを得る。'},
+        milkaNerfYou:{name:'ナーフします', category:'status', desc:'相手の一番高いステータスを5ターン大幅低下。さらに相手の専用スキル発動率を下げる。'},
+        milkaAdminAuthority:{name:'運営権限', category:'support', desc:'毎ターン開始時、ランダムで有利効果が発生。HP回復 / 攻撃上昇 / 魔法上昇 / 回避率上昇 / 追加攻撃 / 状態異常解除。'}
+      });
+      if(typeof DEX_PROFILE_TEXT!=='undefined'){
+        Object.assign(DEX_PROFILE_TEXT, {
+          milka_base:'卵から極低確率で生まれるゲームの神。小さな見た目だが、確率とルールに干渉する。',
+          milka_a:'ゲームの神の片鱗を見せる神子。セーブポイントで運命を書き換える。',
+          milka_b:'ゲームの神の片鱗を見せる神子。セーブポイントで運命を書き換える。',
+          milka_aa:'神託を受け、世界の裏側に触れはじめたミルカ。',
+          milka_ab:'神託を受け、世界の裏側に触れはじめたミルカ。',
+          milka_ba:'神託を受け、世界の裏側に触れはじめたミルカ。',
+          milka_bb:'神託を受け、世界の裏側に触れはじめたミルカ。',
+          milka_aaa:'大天使ミルカ。神域・祝福・天罰で味方にやさしい世界を作る。',
+          milka_aab:'堕天使ミルカ。テキトーなパッチで敵だけを不利にする。',
+          milka_aar:'創世神ミルカ。世界を再起動し、コマンドで戦況を書き換える。',
+          'ミルカ':'卵から極低確率で生まれるゲームの神。',
+          '大天使ミルカ':'神域・祝福・天罰で味方にやさしい世界を作る。',
+          '堕天使ミルカ':'テキトーなパッチで敵だけを不利にする。',
+          '創世神ミルカ':'世界を再起動し、コマンドで戦況を書き換える。'
+        });
+      }
+    }catch(e){ console.warn('milka master install failed', e); }
+  }
+
+  function milkaEggRate(){
+    let rate = 0.002; // 通常卵 0.2%
+    try{ if(getTimeBand().key==='midnight') rate = 0.005; }catch(e){} // 深夜 0.5%
+    if(hasHaruNow()) rate += 0.003; // ハル所持 +0.3%
+    return rate;
+  }
+
+  function highestStatKey(actor){
+    const keys=['atk','def','mag','luck','spd'];
+    let best='atk', val=-Infinity;
+    for(const k of keys){ const v=Number(cStat(actor,k)||0); if(v>val){val=v; best=k;} }
+    return best;
+  }
+  function clearBad(actor){
+    if(!actor.status) actor.status={};
+    ['poison','venom','superVenom','silence','stun'].forEach(k=>actor.status[k]=0);
+    if(actor.buff){ ['atk','def','mag','luck','spd'].forEach(k=>{ if(actor.buff[k]<0) actor.buff[k]=0; }); }
+  }
+  function clearGood(actor){
+    let removed=false;
+    if(actor.buff){ ['atk','def','mag','luck','spd','shield'].forEach(k=>{ if((actor.buff[k]||0)>0){ actor.buff[k]=0; removed=true; } }); }
+    return removed;
+  }
+  function actorHasSkill(actor,id){
+    try{ return getSkills(actor).includes(id); }catch(e){ return false; }
+  }
+  function milkaEventSides(actor,opponent){ return actor.side==='me' ? [actor,opponent] : [opponent,actor]; }
+  function pushMilka(events,type,text,actor,opponent,extra={}){ const [a,b]=milkaEventSides(actor,opponent); pushEvent(events,type,text,a,b,{attacker:actor.side,target:opponent.side,...extra}); }
+  function tryMilkaSave(actor,opponent,events){
+    if(!isMilka(actor.source||actor)) return false;
+    if(actor.hp>0) return false;
+    if(actorHasSkill(actor,'milkaResurrectionFestival') && !actor.status.milkaResurrectionUsed){
+      actor.status.milkaResurrectionUsed=1;
+      actor.hp=Math.max(1,Math.round(actor.maxHp*0.50));
+      actor.buff.def=Math.max(actor.buff.def||0,3); actor.buff.mag=Math.max(actor.buff.mag||0,3); actor.buff.luck=Math.max(actor.buff.luck||0,3);
+      pushMilka(events,'status',`${actor.name}の復活祭！ HP50%で復活し、防御・魔法・運が上がった。`,actor,opponent,{myHp:actor.side==='me'?actor.hp:opponent.hp,enemyHp:actor.side==='enemy'?actor.hp:opponent.hp});
+      return true;
+    }
+    if(actorHasSkill(actor,'milkaSavePoint') && !actor.status.milkaSaveUsed){
+      actor.status.milkaSaveUsed=1;
+      actor.hp=Math.max(1,Math.round(actor.maxHp*0.30));
+      pushMilka(events,'status',`${actor.name}のセーブポイント！ HP1で耐え、HPを30%回復した。`,actor,opponent,{myHp:actor.side==='me'?actor.hp:opponent.hp,enemyHp:actor.side==='enemy'?actor.hp:opponent.hp});
+      return true;
+    }
+    return false;
+  }
+  function tryMilkaWorldReboot(actor,opponent,events){
+    if(!actorHasSkill(actor,'milkaWorldReboot')) return false;
+    if(actor.status.milkaWorldRebootUsed || actor.hp<=0 || actor.hp>actor.maxHp*0.30) return false;
+    actor.status.milkaWorldRebootUsed=1;
+    actor.hp=actor.maxHp;
+    clearBad(actor);
+    ['atk','def','mag','luck','spd'].forEach(k=>actor.buff[k]=Math.max(actor.buff[k]||0,3));
+    pushMilka(events,'status',`${actor.name}の世界強制再起動！ HP全回復、弱体解除、全ステータス上昇。`,actor,opponent,{myHp:actor.side==='me'?actor.hp:opponent.hp,enemyHp:actor.side==='enemy'?actor.hp:opponent.hp});
+    return true;
+  }
+  function applyAdminAuthority(actor,opponent,events){
+    if(!actorHasSkill(actor,'milkaAdminAuthority')) return;
+    const r=Math.random();
+    if(r<0.16){ const heal=applyHeal(actor,Math.round(actor.maxHp*0.14)); pushMilka(events,'status',`${actor.name}の運営権限：HPを${heal}回復。`,actor,opponent); }
+    else if(r<0.30){ actor.buff.atk=Math.max(actor.buff.atk||0,2); pushMilka(events,'status',`${actor.name}の運営権限：攻撃上昇。`,actor,opponent); }
+    else if(r<0.44){ actor.buff.mag=Math.max(actor.buff.mag||0,2); pushMilka(events,'status',`${actor.name}の運営権限：魔法上昇。`,actor,opponent); }
+    else if(r<0.58){ actor.status.future=Math.max(actor.status.future||0,1); pushMilka(events,'status',`${actor.name}の運営権限：次の攻撃を回避する権限を得た。`,actor,opponent); }
+    else if(r<0.70){ actor.status.milkaExtraAction=Math.max(actor.status.milkaExtraAction||0,1); pushMilka(events,'status',`${actor.name}の運営権限：追加攻撃権限を得た。`,actor,opponent); }
+    else if(r<0.84){ clearBad(actor); pushMilka(events,'status',`${actor.name}の運営権限：状態異常と弱体を解除。`,actor,opponent); }
+  }
+
+  function showMilkaHatchIntro(mon){
+    try{
+      const el=document.createElement('div');
+      el.id='v103MilkaIntro';
+      el.innerHTML=`<div class="v103-milka-card"><div class="v103-milka-title">🎮 神の卵が割れた</div><p>画面の奥から、金色の輪をまとった少女がこちらを覗きこんだ。</p><p>「この世界、ちょっとバグってて面白いね～」</p><b>ミルカが仲間になった！</b><button onclick="this.closest('#v103MilkaIntro')?.remove()">OK</button></div>`;
+      document.body.appendChild(el);
+      setTimeout(()=>{try{el.remove()}catch(e){}},9000);
+    }catch(e){}
+  }
+  function installMilkaStyle(){
+    if(document.getElementById('v103MilkaStyle')) return;
+    const st=document.createElement('style'); st.id='v103MilkaStyle';
+    st.textContent=`#v103MilkaIntro{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,rgba(255,238,164,.26),rgba(10,12,22,.84));backdrop-filter:blur(4px);padding:18px}.v103-milka-card{max-width:380px;width:100%;border-radius:22px;border:1px solid rgba(255,238,164,.52);background:linear-gradient(160deg,rgba(38,40,70,.96),rgba(18,20,34,.98));box-shadow:0 0 42px rgba(255,236,144,.34),0 18px 48px rgba(0,0,0,.5);padding:20px;text-align:center;color:white}.v103-milka-title{font-size:22px;font-weight:900;color:#fff1a1;margin-bottom:10px}.v103-milka-card button{margin-top:12px;min-width:120px}`;
+    document.head.appendChild(st);
+  }
+  function checkMilkaHiddenTitle(){
+    try{
+      if(!state || !Array.isArray(state.monsters)) return false;
+      if(!Array.isArray(state.achievements)) state.achievements=[];
+      const ok = hasHaruNow() && hasMilka();
+      if(ok && !state.achievements.includes(MILKA_HIDDEN_ACH_ID)){
+        state.achievements.push(MILKA_HIDDEN_ACH_ID);
+        try{ log('称号【俺だけナーフ前性能な件】を獲得！ 世界のルールが、ほんの少しだけ壊れた。'); }catch(e){}
+        try{ alert('称号【俺だけナーフ前性能な件】を獲得！\n\n世界のルールが、ほんの少しだけ壊れた。'); }catch(e){}
+        try{ saveGame(); }catch(e){}
+        return true;
+      }
+    }catch(e){}
+    return false;
+  }
+  function appendHiddenAchievementCard(){
+    try{
+      const area=document.getElementById('achievementsArea'); if(!area) return;
+      if(area.querySelector(`[data-achievement-id="${MILKA_HIDDEN_ACH_ID}"]`)) return;
+      const on=state.achievements?.includes(MILKA_HIDDEN_ACH_ID);
+      const wrap=area.querySelector('.v84-ach-grid') || area;
+      const div=document.createElement('div');
+      div.className='v84-ach '+(on?'on':'');
+      div.dataset.achievementId=MILKA_HIDDEN_ACH_ID;
+      div.innerHTML=on ? '<b>🏅 俺だけナーフ前性能な件</b><br><span>世界のルールが、ほんの少しだけ壊れた。</span>' : '<b>🔒 ？？？</b><br><span>条件：？？？</span>';
+      wrap.appendChild(div);
+    }catch(e){}
+  }
+
+  function installPatches(){
+    installMilkaMaster(); installMilkaStyle();
+    if(typeof rollEggSpeciesKey==='function' && !rollEggSpeciesKey.__v103Milka){
+      const old=rollEggSpeciesKey;
+      rollEggSpeciesKey=function(){ installMilkaMaster(); if(Math.random()<milkaEggRate()) return MILKA_ID; return old.apply(this,arguments); };
+      rollEggSpeciesKey.__v103Milka=true;
+    }
+    if(typeof hatchEgg==='function' && !hatchEgg.__v103Milka){
+      const old=hatchEgg;
+      hatchEgg=function(){ const before=safeArr(state.monsters).length; const ret=old.apply(this,arguments); const mon=state.monsters?.[state.monsters.length-1]; if(safeArr(state.monsters).length>before && isMilka(mon)){ setTimeout(()=>showMilkaHatchIntro(mon),120); } checkMilkaHiddenTitle(); return ret; };
+      hatchEgg.__v103Milka=true;
+    }
+    if(typeof getSkills==='function' && !getSkills.__v103Milka){
+      const old=getSkills;
+      getSkills=function(actor){
+        const arr=old.apply(this,arguments)||[];
+        const source=actor?.source||actor;
+        if(isMilka(source)){
+          const name=String(source.formName||actor?.formName||'');
+          const add=id=>{ if(SKILL_DEFS[id] && !arr.includes(id)) arr.push(id); };
+          MILKA_INITIAL.forEach(add);
+          if(name.includes('大天使')) MILKA_ANGEL.forEach(add);
+          if(name.includes('堕天使')) MILKA_FALLEN.forEach(add);
+          if(name.includes('創世神')) MILKA_CREATOR.forEach(add);
+          if(source.awakening?.done || actor?.awakening?.done){
+            if(name.includes('大天使')) add('milkaResurrectionFestival');
+            if(name.includes('堕天使')) add('milkaBugPatch');
+            if(name.includes('創世神')) add('milkaWorldReboot');
+          }
+        }
+        return arr;
+      };
+      getSkills.__v103Milka=true;
+    }
+    if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v103Milka){
+      const old=skillScoreForActor;
+      skillScoreForActor=function(skillId,attacker,defender){
+        let s=old.apply(this,arguments);
+        if(String(skillId).startsWith('milka')){
+          const hp=(attacker.hp||1)/(attacker.maxHp||attacker.hp||1);
+          s += cStat(attacker,'mag')*0.45 + cStat(attacker,'luck')*0.55;
+          if(['milkaSavePoint','milkaBlessing','milkaWorldReboot','milkaResurrectionFestival'].includes(skillId)) s += (1-hp)*180;
+          if(['milkaGenesisCommand','milkaHitPlease','milkaHeavenPunishment'].includes(skillId)) s += 90;
+          if(['milkaWhatever','milkaNerfYou','milkaBugPatch'].includes(skillId)) s += 80;
+          if(skillId==='milkaAdminAuthority') s -= 30;
+        }
+        return s;
+      };
+      skillScoreForActor.__v103Milka=true;
+    }
+    if(typeof useSkill==='function' && !useSkill.__v103Milka){
+      const old=useSkill;
+      useSkill=function(attacker,defender,skillId,events,monRef){
+        if(!String(skillId).startsWith('milka')) return old.apply(this,arguments);
+        const label=skillLabel(skillId); const push=(txt,extra={})=>pushMilka(events,'skill',txt,attacker,defender,{skill:skillId,...extra});
+        let dmg=0;
+        if(skillId==='milkaMischief'){ const k=['atk','mag','spd'][Math.floor(Math.random()*3)]; defender.buff[k]=Math.min(defender.buff[k]||0,-4); let extra=''; if(Math.random()<0.24){defender.status.stun=Math.max(defender.status.stun||0,1); extra=' さらに次の行動を失敗させる！';} push(`${attacker.name}の神のいたずら！ ${defender.name}の${STAT_LABEL[k]}を下げた。${extra}`); return; }
+        if(skillId==='milkaSavePoint'){ attacker.status.milkaSaveReady=1; push(`${attacker.name}はセーブポイントを作った。運命を書き換える準備ができた。`); return; }
+        if(skillId==='milkaTutorialEnd'){ const diff=Math.max(0,cStat(attacker,'luck')-cStat(defender,'luck')); dmg=Math.max(1,Math.round((cStat(attacker,'mag')*1.25+cStat(attacker,'luck')*0.70+diff*0.9-cStat(defender,'def')*0.32)*(0.9+Math.random()*0.25))); applyDamage(defender,dmg); push(`${attacker.name}のチュートリアル終了！ ${defender.name}に${dmg}ダメージ。`,{dmg,magic:true}); return; }
+        if(skillId==='milkaSanctuary'){ attacker.buff.shield=Math.max(attacker.buff.shield||0,4); attacker.buff.def=Math.max(attacker.buff.def||0,6); attacker.status.milkaStatusGuard=Math.max(attacker.status.milkaStatusGuard||0,3); clearBad(attacker); push(`${attacker.name}の神域！ 3ターン、ダメージを大きく軽減し状態異常を無効化する。`); return; }
+        if(skillId==='milkaBlessing'){ const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.42+cStat(attacker,'mag')*0.65)); clearBad(attacker); push(`${attacker.name}の祝福！ HPを${heal}回復し、弱体効果を解除した。`,{myHp:attacker.side==='me'?attacker.hp:defender.hp,enemyHp:attacker.side==='enemy'?attacker.hp:defender.hp}); if(Math.random()<0.22 && defender.hp>0){ push(`${attacker.name}は祝福の余韻で再行動！`); normalAttack(attacker,defender,events,monRef); } return; }
+        if(skillId==='milkaHeavenPunishment'){ const hpRate=Math.max(0.4,attacker.hp/attacker.maxHp); dmg=Math.max(1,Math.round((cStat(attacker,'mag')*1.35+cStat(attacker,'luck')*0.75-cStat(defender,'def')*0.30)*(0.9+hpRate*0.55)*(0.9+Math.random()*0.25))); applyDamage(defender,dmg); clearGood(defender); push(`${attacker.name}の天罰！ ${defender.name}に${dmg}ダメージ。強化効果を1つ解除した。`,{dmg,magic:true}); return; }
+        if(skillId==='milkaResurrectionFestival'){ attacker.status.milkaResurrectionReady=1; push(`${attacker.name}の復活祭！ 倒れても一度だけ復活する祝祭を開いた。`); return; }
+        if(skillId==='milkaWhatever'){ const k=highestStatKey(defender); defender.buff[k]=Math.min(defender.buff[k]||0,-5); let extra=''; if(Math.random()<0.30){defender.status.stun=Math.max(defender.status.stun||0,1); extra=' さらに行動不能！';} push(`${attacker.name}のテキトーでいいでしょ～？ ${defender.name}の${STAT_LABEL[k]}を大きく下げた。${extra}`); return; }
+        if(skillId==='milkaBugPatch'){ const removed=clearGood(defender); if(removed){ attacker.buff.mag=Math.max(attacker.buff.mag||0,4); attacker.buff.spd=Math.max(attacker.buff.spd||0,4); attacker.buff.luck=Math.max(attacker.buff.luck||0,4); } push(`${attacker.name}のバグだらけのパッチノート！ ${defender.name}の強化をすべて解除${removed?'し、魔法・素早さ・運が上がった':'しようとしたが、解除できる強化はなかった'}。`); return; }
+        if(skillId==='milkaHitPlease'){ const swing=0.65+Math.random()*1.15; dmg=Math.max(1,Math.round((cStat(attacker,'mag')*1.55+cStat(attacker,'luck')*0.95-cStat(defender,'def')*0.26)*swing)); applyDamage(defender,dmg); push(`${attacker.name}の当たれ～！ ${defender.name}に${dmg}ダメージ。`,{dmg,magic:true,crit:swing>1.55}); if(Math.random()<0.22 && defender.hp>0){ const extra=Math.max(1,Math.round(dmg*0.45)); applyDamage(defender,extra); push(`上振れ！ 追加で${extra}ダメージ。`,{dmg:extra,magic:true}); } return; }
+        if(skillId==='milkaWhatIsThat'){ attacker.status.future=Math.max(attacker.status.future||0,1); attacker.status.milkaCounter=Math.max(attacker.status.milkaCounter||0,2); defender.buff.luck=Math.min(defender.buff.luck||0,-2); push(`${attacker.name}のなにそれ～！ 次の攻撃を無効化しやすくなり、${defender.name}の命中率を下げた。`); return; }
+        if(skillId==='milkaWorldReboot'){ tryMilkaWorldReboot(attacker,defender,events); if(attacker.hp>attacker.maxHp*0.30) push(`${attacker.name}は世界強制再起動の権限を握っている……。`); return; }
+        if(skillId==='milkaGenesisCommand'){ clearGood(defender); dmg=Math.max(1,Math.round((cStat(attacker,'mag')*1.45+cStat(attacker,'luck')*0.9+cStat(attacker,'spd')*0.75-cStat(defender,'def')*0.20)*(1.05+Math.random()*0.35))); applyDamage(defender,dmg); push(`${attacker.name}の創世のコマンド！ ${defender.name}に${dmg}ダメージ。強化効果を解除した。`,{dmg,magic:true}); if(Math.random()<0.18 && defender.hp>0){ push(`${attacker.name}は追加ターンを得た！`); normalAttack(attacker,defender,events,monRef); } return; }
+        if(skillId==='milkaNerfYou'){ const k=highestStatKey(defender); defender.buff[k]=Math.min(defender.buff[k]||0,-7); defender.status.milkaSkillNerf=Math.max(defender.status.milkaSkillNerf||0,5); push(`${attacker.name}のナーフします！ ${defender.name}の${STAT_LABEL[k]}を5ターン大幅低下。専用スキル発動率も下がった。`); return; }
+        if(skillId==='milkaAdminAuthority'){ applyAdminAuthority(attacker,defender,events); push(`${attacker.name}は運営権限を確認した。`); return; }
+        return old.apply(this,arguments);
+      };
+      useSkill.__v103Milka=true;
+    }
+    if(typeof startTurnEffects==='function' && !startTurnEffects.__v103Milka){
+      const old=startTurnEffects;
+      startTurnEffects=function(actor,opponent,events){
+        if(actor.status?.milkaStatusGuard>0){ clearBad(actor); }
+        const ret=old.apply(this,arguments);
+        if(actor.hp>0){ applyAdminAuthority(actor,opponent,events); tryMilkaWorldReboot(actor,opponent,events); }
+        return ret;
+      };
+      startTurnEffects.__v103Milka=true;
+    }
+    if(typeof reduceDurations==='function' && !reduceDurations.__v103Milka){
+      const old=reduceDurations;
+      reduceDurations=function(actor){ const ret=old.apply(this,arguments); ['milkaStatusGuard','milkaSkillNerf','milkaCounter'].forEach(k=>{ if(actor.status && actor.status[k]>0) actor.status[k]--; }); return ret; };
+      reduceDurations.__v103Milka=true;
+    }
+    if(typeof skillUseRate==='function' && !skillUseRate.__v103Milka){
+      const old=skillUseRate;
+      skillUseRate=function(actor){ let r=old.apply(this,arguments); if(actor.status?.milkaSkillNerf>0) r*=0.58; return r; };
+      skillUseRate.__v103Milka=true;
+    }
+    if(typeof normalAttack==='function' && !normalAttack.__v103Milka){
+      const old=normalAttack;
+      normalAttack=function(attacker,defender,events,monRef){
+        if(defender.status?.milkaCounter>0 && actorHasSkill(defender,'milkaWhatIsThat') && Math.random()<0.30){
+          defender.status.milkaCounter=0;
+          const dmg=Math.max(1,Math.round((cStat(defender,'mag')*0.65+cStat(defender,'luck')*0.55)-cStat(attacker,'def')*0.18+8));
+          applyDamage(attacker,dmg);
+          attacker.buff.luck=Math.min(attacker.buff.luck||0,-2);
+          pushMilka(events,'skill',`${defender.name}のなにそれ～！ 攻撃を無効化して${dmg}反撃。${attacker.name}の命中率も下げた。`,defender,attacker,{dmg,magic:false});
+          return;
+        }
+        return old.apply(this,arguments);
+      };
+      normalAttack.__v103Milka=true;
+    }
+    if(typeof takeAction==='function' && !takeAction.__v103Milka){
+      const old=takeAction;
+      takeAction=function(attacker,defender,events,monRef){
+        const ret=old.apply(this,arguments);
+        if(defender.hp<=0) tryMilkaSave(defender,attacker,events);
+        if(attacker.hp<=0) tryMilkaSave(attacker,defender,events);
+        if(attacker.status?.milkaExtraAction>0 && attacker.hp>0 && defender.hp>0){ attacker.status.milkaExtraAction=0; pushMilka(events,'bonus',`${attacker.name}の運営権限：追加攻撃！`,attacker,defender); normalAttack(attacker,defender,events,monRef); if(defender.hp<=0) tryMilkaSave(defender,attacker,events); }
+        return ret;
+      };
+      takeAction.__v103Milka=true;
+    }
+    if(typeof showTab==='function' && !showTab.__v103Milka){
+      const old=showTab;
+      showTab=function(tab){ const ret=old.apply(this,arguments); checkMilkaHiddenTitle(); if(tab==='achievements') setTimeout(appendHiddenAchievementCard,50); return ret; };
+      showTab.__v103Milka=true;
+    }
+    if(typeof render==='function' && !render.__v103Milka){
+      const old=render;
+      render=function(){ installMilkaMaster(); const ret=old.apply(this,arguments); checkMilkaHiddenTitle(); if((window.currentTab||'')==='achievements') setTimeout(appendHiddenAchievementCard,30); return ret; };
+      render.__v103Milka=true;
+    }
+    const tick=()=>{ installMilkaMaster(); checkMilkaHiddenTitle(); if((window.currentTab||'')==='achievements') appendHiddenAchievementCard(); };
+    setTimeout(tick,100); setTimeout(tick,800);
+  }
+  window.v103MilkaRate=milkaEggRate;
+  window.v103CheckMilkaHiddenTitle=checkMilkaHiddenTitle;
+  window.addEventListener('load',installPatches);
+  installPatches();
+})();
+</script>
+<!-- v103: 卵限定「ミルカ」追加。通常卵0.2%、深夜卵0.5%、ハル所持+0.3%。隠し称号は未取得時、称号名・条件ともに？？？表示。 -->
 
 </body>
 </html>
