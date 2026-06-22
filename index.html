@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v112</title>
+  <title>クリモン - 製品版 v113</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v112</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v113</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1197,6 +1197,7 @@ body{padding-bottom:108px;}
       <button class="top-tips-btn" data-tab-btn="tips" onclick="showTab('tips')">TIPS</button>
       <button class="top-tips-btn" data-tab-btn="records" onclick="showTab('records')">記録</button>
       <button class="top-tips-btn" data-tab-btn="achievements" onclick="showTab('achievements')">称号</button>
+      <button class="top-tips-btn" data-tab-btn="daily" onclick="showTab('daily')">デイリー</button>
       <button class="top-tips-btn" data-tab-btn="shop" onclick="showTab('shop')">交換所/ガチャ</button>
       <button class="top-tips-btn" data-tab-btn="settings" onclick="showTab('settings')">設定</button>
     </div>
@@ -1587,6 +1588,11 @@ body{padding-bottom:108px;}
     <div id="tab-achievements" class="hidden">
       <h2>称号・実績</h2>
       <div id="achievementsArea"></div>
+    </div>
+
+    <div id="tab-daily" class="hidden">
+      <h2>デイリーミッション</h2>
+      <div id="dailyTabArea"></div>
     </div>
 
     <div id="tab-shop" class="hidden">
@@ -2688,7 +2694,7 @@ function getStatCaps(mon){
     base.hp += 50; base.atk += 20; base.def += 20; base.mag += 20; base.luck += 20; base.spd += 20;
   }
 
-  const rate = STAGE_CAP_RATE[Math.max(0,Math.min(3,mon.stage||0))] || 1;
+  const rate = (mon && mon.speciesKey==="sipa") ? 1 : (STAGE_CAP_RATE[Math.max(0,Math.min(3,mon.stage||0))] || 1);
   const bias = ensureCapBias(mon);
   const caps = {};
   for(const key of Object.keys(STAT_LABEL)){
@@ -6232,7 +6238,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 109;
+const KURIMON_APP_VERSION = 113;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -7013,7 +7019,7 @@ if ("serviceWorker" in navigator) {
 <script>
 // v84: UI整理 / 交換所タブ化 / 記録・称号タブ化 / スマホ操作安定化
 (function(){
-  const V84_TABS = ["home","raise","battle","travel","mock","box","dex","tips","records","achievements","shop","settings"];
+  const V84_TABS = ["home","raise","battle","travel","mock","box","dex","tips","records","achievements","daily","shop","settings"];
   const V84_STAT_KEYS = ['hp','atk','def','mag','luck','spd'];
   const V84_DAILY = [
     ['cpu','CPU戦を3回する',3,{cp:300}],
@@ -10085,7 +10091,7 @@ if ("serviceWorker" in navigator) {
 <script>
 // v112: 闇鍋ガチャ取得保証 / 詫びCP / 再合成パネル維持 / 成長限界バトル後低下防止 / 最新版通知修正
 (function(){
-  const V112_APP_VERSION = 112;
+  const V112_APP_VERSION = 113;
   const COMP_KEY = 'v112_gacha_bug_apology_cp';
   const EXCLUDE_IDS = new Set(['god_ticket','god_ticket_shard','fullmoon_invite','kazuko_challenge','incubator']);
   function safe(fn){ try{return fn();}catch(e){ console.warn('[v112]', e); } }
@@ -10379,6 +10385,223 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <!-- v112: 闇鍋ガチャ取得保証・詫びCP・再合成維持・成長限界バトル後低下防止。 -->
+
+
+<script>
+// v113: シパ手動更新ステータス低下防止 + デイリーミッション上タブ復帰
+(function(){
+  const V113_APP_VERSION = 113;
+  const DAILY = [
+    ['cpu','CPU戦を3回する',3,{cp:300}],
+    ['wins','CPU戦で2勝する',2,{cp:500}],
+    ['rest','休憩を1回する',1,{cp:150}],
+    ['train','トレーニングを3回する',3,{cp:250}],
+    ['gacha','闇鍋ガチャを1回引く',1,{item:'god_ticket_shard'}],
+    ['dismantle','アイテムを1個分解する',1,{cp:300}]
+  ];
+  const KEYS = DAILY.map(x=>x[0]);
+  const RECORD_KEYS = {cpu:'totalBattles',wins:'totalWins',gacha:'gachaCount',dismantle:'itemsDismantled'};
+  function safe(fn){try{return fn();}catch(e){console.warn('[v113]',e);}}
+  function n(v){v=Number(v||0); return Number.isFinite(v)?v:0;}
+  function esc(s){try{return typeof escapeHtml==='function'?escapeHtml(String(s??'')):String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}catch(e){return String(s??'');}}
+  function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+  function itemNm(id){return (typeof itemName==='function') ? itemName(id) : id;}
+  function rewardText(r){ if(r&&r.item) return `${itemNm(r.item)}×1`; return `${n(r&&r.cp)}CP`; }
+  function ensureRecords(){ if(!state.records||typeof state.records!=='object') state.records={}; return state.records; }
+  function ensureDaily(){
+    const t=today(); const r=ensureRecords();
+    if(!state.dailyV94 || state.dailyV94.key!==t){
+      const old94 = state.dailyV94 && state.dailyV94.key===t ? state.dailyV94 : null;
+      state.dailyV94={key:t,version:113,counts:{},claimed:{},baseRecords:{}};
+      for(const k of KEYS) state.dailyV94.counts[k]=old94?.counts?.[k] ? n(old94.counts[k]) : 0;
+      for(const [k,rec] of Object.entries(RECORD_KEYS)) state.dailyV94.baseRecords[rec]=n(r[rec]);
+      for(const src of [state.dailyV92,state.daily]){
+        if(src && src.key===t){
+          for(const k of KEYS) state.dailyV94.counts[k]=Math.max(n(state.dailyV94.counts[k]), n(src[k]));
+          if(src.claimed) state.dailyV94.claimed={...state.dailyV94.claimed,...src.claimed};
+        }
+      }
+    }
+    if(!state.dailyV94.counts || typeof state.dailyV94.counts!=='object') state.dailyV94.counts={};
+    if(!state.dailyV94.claimed || typeof state.dailyV94.claimed!=='object') state.dailyV94.claimed={};
+    if(!state.dailyV94.baseRecords || typeof state.dailyV94.baseRecords!=='object') state.dailyV94.baseRecords={};
+    for(const k of KEYS) state.dailyV94.counts[k]=Math.max(0,n(state.dailyV94.counts[k]));
+    syncFromRecords(false);
+    syncLegacy();
+    return state.dailyV94;
+  }
+  function syncFromRecords(resetBase){
+    const d=state.dailyV94; if(!d) return;
+    const r=ensureRecords();
+    for(const [k,rec] of Object.entries(RECORD_KEYS)){
+      if(resetBase || typeof d.baseRecords[rec] !== 'number') d.baseRecords[rec]=n(r[rec]);
+      const delta=Math.max(0,n(r[rec])-n(d.baseRecords[rec]));
+      d.counts[k]=Math.max(n(d.counts[k]), delta);
+    }
+  }
+  function syncLegacy(){
+    const d=state.dailyV94; if(!d) return;
+    state.daily={key:d.key,claimed:{...d.claimed}};
+    state.dailyV92=state.dailyV92 && state.dailyV92.key===d.key ? state.dailyV92 : {key:d.key,claimed:{}};
+    if(!state.dailyV92.claimed) state.dailyV92.claimed={};
+    for(const k of KEYS){ state.daily[k]=n(d.counts[k]); state.dailyV92[k]=n(d.counts[k]); }
+    state.dailyV92.claimed={...state.dailyV92.claimed,...d.claimed};
+  }
+  function giveReward(r){
+    if(!r) return;
+    if(r.cp) state.cp=n(state.cp)+n(r.cp);
+    if(r.item){
+      let ok=false; safe(()=>{ok=!!addItem(r.item,1);});
+      if(!ok){ if(!state.inventory) state.inventory={}; state.inventory[r.item]=n(state.inventory[r.item])+1; }
+    }
+  }
+  function claim(id){
+    const d=ensureDaily(); syncFromRecords(false);
+    const m=DAILY.find(x=>x[0]===id); if(!m){alert('ミッションIDが見つかりません。');return false;}
+    const [key,,need,reward]=m; const cur=n(d.counts[key]);
+    if(cur<need){ alert(`まだ達成していません。\n現在：${Math.min(cur,need)}/${need}`); renderDailyTab(); return false; }
+    if(d.claimed[key]){ alert('受け取り済みです。'); renderDailyTab(); return false; }
+    d.claimed[key]=true; syncLegacy(); giveReward(reward);
+    safe(()=>log(`デイリーミッション報酬：${rewardText(reward)}を受け取りました。`));
+    safe(()=>saveGame()); renderDailyTab(); safe(()=>render());
+    alert(`受け取りました：${rewardText(reward)}`);
+    return true;
+  }
+  function repair(noAlert){
+    const d=ensureDaily();
+    syncFromRecords(false);
+    for(const src of [state.dailyV92,state.daily]){
+      if(src && src.key===d.key){
+        for(const k of KEYS) d.counts[k]=Math.max(n(d.counts[k]), n(src[k]));
+        if(src.claimed) d.claimed={...d.claimed,...src.claimed};
+      }
+    }
+    syncLegacy(); safe(()=>saveGame()); renderDailyTab();
+    if(!noAlert) alert('デイリーミッション進行を再計算しました。');
+  }
+  function dailyHtml(){
+    const d=ensureDaily();
+    const rows=DAILY.map(([id,label,need,reward])=>{
+      const cur=Math.min(need,n(d.counts[id])); const done=cur>=need; const claimed=!!d.claimed[id];
+      const btn=claimed?'受取済':done?'受け取る':'未達成';
+      return `<div class="v84-mission"><span>${esc(label)}<br><small>${cur}/${need} / 報酬：${esc(rewardText(reward))}</small></span><button type="button" class="ghost ${done&&!claimed?'ok':''}" onclick="v113ClaimDaily('${id}')" ${claimed?'disabled':''}>${btn}</button></div>`;
+    }).join('');
+    let condition='';
+    safe(()=>{
+      const mon=typeof getCurrentMonster==='function'?getCurrentMonster():null;
+      const c=CONDITIONS[(mon&&mon.condition)||'normal']||CONDITIONS.normal;
+      condition=`<details class="v84-section"><summary>🩺 コンディション</summary><p class="small">${esc((c&&c.label)||'普通')}：トレーニング補正 ${n(c&&c.trainBonus)>=0?'+':''}${n(c&&c.trainBonus)} / EXP ${n(c&&c.expBonus)>=0?'+':''}${n(c&&c.expBonus)}% / 戦闘能力 ${n(c&&c.battleBonus)>=0?'+':''}${n(c&&c.battleBonus)}%</p></details>`;
+    });
+    return `<details class="v94-daily v84-section" open><summary>📅 デイリーミッション</summary><div class="v84-mission-list">${rows}</div><div class="row" style="margin-top:6px"><button type="button" class="ghost" style="font-size:11px;padding:5px 8px" onclick="v113DailyRepair()">進行を再計算</button></div></details>${condition}`;
+  }
+  function ensureDailyTabDom(){
+    const nav=document.querySelector('.top-nav-actions');
+    if(nav && !nav.querySelector('[data-tab-btn="daily"]')){
+      const btn=document.createElement('button'); btn.className='top-tips-btn'; btn.dataset.tabBtn='daily'; btn.textContent='デイリー'; btn.onclick=()=>showTab('daily');
+      const settings=nav.querySelector('[data-tab-btn="settings"]'); nav.insertBefore(btn, settings||null);
+    }
+    const main=document.querySelector('main section');
+    if(main && !document.getElementById('tab-daily')){
+      const div=document.createElement('div'); div.id='tab-daily'; div.className='hidden'; div.innerHTML='<h2>デイリーミッション</h2><div id="dailyTabArea"></div>';
+      const shop=document.getElementById('tab-shop'); main.insertBefore(div, shop||null);
+    }
+  }
+  function renderDailyTab(){ ensureDailyTabDom(); const area=document.getElementById('dailyTabArea'); if(area) area.innerHTML=dailyHtml(); document.querySelectorAll('#v94DailyPanel').forEach(el=>{ if(!document.getElementById('tab-daily')?.contains(el)) el.style.display='none'; }); }
+  window.v113ClaimDaily=claim; window.v113DailyRepair=()=>repair(false);
+  window.v94ClaimDaily=claim; window.v93ClaimDaily=claim; window.v92ClaimDaily=claim; window.v83ClaimDaily=claim;
+  const oldAdd=window.v94DailyAdd || window.v92DailyAdd || function(key,amount){ const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=n(d.counts[key])+Math.max(1,n(amount)||1); };
+  window.v94DailyAdd=function(key,amount=1){ let ret; safe(()=>{ret=oldAdd.apply(this,arguments);}); const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=Math.max(n(d.counts[key]), n(d.counts[key])); syncLegacy(); if((window.currentTab||currentTab)==='daily') renderDailyTab(); return ret; };
+  window.v92DailyAdd=window.v94DailyAdd;
+
+  function patchShowTab(){
+    if(typeof showTab==='function' && !showTab.__v113Daily){
+      const old=showTab;
+      showTab=function(tab){
+        ensureDailyTabDom();
+        const ret=old.apply(this,arguments);
+        if(tab==='daily'){
+          currentTab='daily';
+          document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.toggle('hidden', el.id!=='tab-daily'));
+          document.querySelectorAll('[data-tab-btn]').forEach(btn=>btn.classList.toggle('active', btn.dataset.tabBtn==='daily'));
+          renderDailyTab();
+        } else {
+          document.getElementById('tab-daily')?.classList.add('hidden');
+        }
+        return ret;
+      };
+      showTab.__v113Daily=true;
+    }
+  }
+  function patchRender(){
+    if(typeof render==='function' && !render.__v113Daily){
+      const old=render;
+      render=function(){
+        const ret=old.apply(this,arguments);
+        ensureDailyTabDom();
+        document.querySelectorAll('#v94DailyPanel').forEach(el=>{ if(!document.getElementById('tab-daily')?.contains(el)) el.style.display='none'; });
+        if((window.currentTab||currentTab)==='daily') renderDailyTab();
+        return ret;
+      };
+      render.__v113Daily=true;
+    }
+  }
+  function patchSipaCaps(){
+    safe(()=>{ if(typeof SPECIES_STAT_CAPS!=='undefined') SPECIES_STAT_CAPS.sipa={hp:510,atk:235,def:225,mag:75,luck:200,spd:175}; });
+    if(typeof getStatCaps==='function' && !getStatCaps.__v113SipaNoDrop){
+      const old=getStatCaps;
+      getStatCaps=function(mon){
+        const caps=old.apply(this,arguments)||{};
+        if(mon && mon.speciesKey==='sipa'){
+          const bias=mon.capBias||{};
+          const min={hp:510,atk:235,def:225,mag:75,luck:240,spd:175};
+          for(const k of Object.keys(min)) caps[k]=Math.max(n(caps[k]), min[k]+n(bias[k]));
+        }
+        return caps;
+      };
+      getStatCaps.__v113SipaNoDrop=true;
+    }
+    if(typeof capMonsterStats==='function' && !capMonsterStats.__v113SipaNoDrop){
+      const old=capMonsterStats;
+      capMonsterStats=function(mon){
+        const before=mon&&mon.speciesKey==='sipa'&&mon.stats?{...mon.stats}:null;
+        const beforeHp=mon&&mon.speciesKey==='sipa'?mon.hpCurrent:null;
+        const ret=old.apply(this,arguments);
+        if(before && mon && mon.stats){
+          for(const k of Object.keys(before)) mon.stats[k]=Math.max(n(mon.stats[k]), n(before[k]));
+          if(beforeHp!=null) mon.hpCurrent=Math.min(mon.stats.hp, Math.max(n(mon.hpCurrent), n(beforeHp)));
+        }
+        return ret;
+      };
+      capMonsterStats.__v113SipaNoDrop=true;
+    }
+    safe(()=>{
+      let changed=false;
+      (state.monsters||[]).forEach(mon=>{
+        if(mon && mon.speciesKey==='sipa'){
+          if((mon.stage||0)<3){ mon.stage=3; changed=true; }
+          const floors={hp:510,atk:235,def:225,mag:75,luck:200,spd:175};
+          if(!mon.stats) mon.stats={};
+          for(const [k,v] of Object.entries(floors)){
+            if(n(mon.stats[k])<v){ mon.stats[k]=v; changed=true; }
+          }
+          mon.hpCurrent=Math.min(mon.stats.hp, Math.max(n(mon.hpCurrent), mon.stats.hp));
+        }
+      });
+      if(changed) saveGame();
+    });
+  }
+  function patchVersionCheck(){
+    window.kurimonVersionCheckDone=false;
+    window.checkKurimonLatestVersion=async function(){
+      if(window.kurimonVersionCheckDone) return; window.kurimonVersionCheckDone=true;
+      try{const u=new URL('./version.json',location.href);u.searchParams.set('ts',Date.now());const res=await fetch(u,{cache:'no-store'});if(!res.ok)return;const data=await res.json();const latest=n(data.version);if(!latest||latest<=V113_APP_VERSION)return; if(confirm(data.message||'新しいバージョンがあります。\n最新版に更新しますか？')) await forceKurimonUpdate({targetVersion:latest,skipConfirm:true});}catch(e){console.log('Kurimon version check skipped',e);}
+    };
+  }
+  function boot(){ensureDailyTabDom(); patchSipaCaps(); patchShowTab(); patchRender(); patchVersionCheck(); repair(true); if((window.currentTab||currentTab)==='daily') renderDailyTab();}
+  boot(); window.addEventListener('load',()=>{setTimeout(boot,80);setTimeout(boot,500);});
+})();
+</script>
+<!-- v113: シパ更新時ステータス低下防止・デイリーミッション上タブ復帰 -->
 
 </body>
 </html>
