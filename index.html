@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v105</title>
+  <title>クリモン - 製品版 v106</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v105</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v106</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -9265,6 +9265,178 @@ if ("serviceWorker" in navigator) {
 </script>
 <!-- v103: 卵限定「ミルカ」追加。通常卵0.2%、深夜卵0.5%、ハル所持+0.3%。隠し称号は未取得時、称号名・条件ともに？？？表示。 -->
 
+
+
+<script>
+// v106: つむぎ強化 + シパ/つむぎ/フォルテ覚醒専用スキル追加
+(function(){
+  const V106_AWAKEN_SKILL = {
+    sipa: 'sipaAdminHack',
+    tsumugi: 'tsumugiHellFullCourse',
+    forte: 'forteLegendLive'
+  };
+  function safe(fn){try{return fn();}catch(e){console.warn('[v106]', e);}}
+  function addUnique(arr,id){ if(Array.isArray(arr) && id && !arr.includes(id)) arr.push(id); }
+  function ensureDefs(){
+    safe(()=>{
+      if(BASE_SPECIES && BASE_SPECIES.tsumugi){
+        BASE_SPECIES.tsumugi.role = '毒・妨害・事故らせ料理魔法型';
+        BASE_SPECIES.tsumugi.baseStats = {hp:34,atk:5,def:8,mag:18,luck:13,spd:8};
+      }
+      if(SPECIES_STAT_CAPS){
+        SPECIES_STAT_CAPS.tsumugi = {hp:390,atk:95,def:125,mag:255,luck:205,spd:135};
+        SPECIES_STAT_CAPS.forte = {hp:360,atk:165,def:120,mag:165,luck:145,spd:225};
+        SPECIES_STAT_CAPS.sipa = {hp:510,atk:235,def:225,mag:75,luck:200,spd:175};
+      }
+      Object.assign(SKILL_DEFS, {
+        sipaAdminHack:{name:'管理者権限ハック', category:'physical', desc:'覚醒シパ専用。攻撃＋運依存の超必殺。高確率で行動不能・沈黙・強化解除をまとめて狙う。'},
+        tsumugiHellFullCourse:{name:'地獄のフルコース', category:'magic', desc:'覚醒つむぎ専用。魔法＋運依存の大ダメージ。猛毒・行動不能・弱体をまとめて押し付ける事故料理。'},
+        forteLegendLive:{name:'伝説の神席ライブ', category:'magic', damageType:'hybrid', desc:'覚醒フォルテ専用。攻撃＋魔法＋素早さ依存の連続音圧。自分を強化しながら複数回攻撃する。'}
+      });
+      if(AWAKENING_SKILL_POOLS){
+        AWAKENING_SKILL_POOLS.sipa = [...new Set([...(AWAKENING_SKILL_POOLS.sipa||[]), 'sipaAdminHack'])];
+        AWAKENING_SKILL_POOLS.tsumugi = [...new Set([...(AWAKENING_SKILL_POOLS.tsumugi||[]), 'tsumugiHellFullCourse'])];
+        AWAKENING_SKILL_POOLS.forte = [...new Set([...(AWAKENING_SKILL_POOLS.forte||[]), 'forteLegendLive'])];
+      }
+    });
+  }
+  function grantAwakenedSignature(mon){
+    if(!mon || !mon.awakening || !mon.awakening.done) return false;
+    const skill = V106_AWAKEN_SKILL[mon.speciesKey];
+    if(!skill || !SKILL_DEFS[skill]) return false;
+    if(!Array.isArray(mon.awakening.skills)) mon.awakening.skills = [];
+    if(!mon.awakening.skills.includes(skill)){
+      mon.awakening.skills.push(skill);
+      if(!Array.isArray(mon.awakening.effects)) mon.awakening.effects = [];
+      const label = SKILL_DEFS[skill]?.name || skill;
+      if(!mon.awakening.effects.includes(`覚醒専用スキル「${label}」獲得`)) mon.awakening.effects.push(`覚醒専用スキル「${label}」獲得`);
+      return true;
+    }
+    return false;
+  }
+  function migrateExisting(){
+    ensureDefs();
+    let changed=false;
+    safe(()=>{ (state.monsters||[]).forEach(mon=>{ if(grantAwakenedSignature(mon)) changed=true; }); });
+    if(changed) safe(()=>saveGame());
+  }
+  function installSkillPatch(){
+    ensureDefs();
+    safe(()=>{
+      if(typeof getSkills==='function' && !getSkills.__v106AwakenSingles){
+        const oldGet=getSkills;
+        getSkills=function(actor){
+          const arr=oldGet.apply(this, arguments) || [];
+          const source=actor && actor.source ? actor.source : actor;
+          if(source){
+            const skill=V106_AWAKEN_SKILL[source.speciesKey];
+            if(source.awakening && source.awakening.done && skill && SKILL_DEFS[skill] && !arr.includes(skill)) arr.push(skill);
+          }
+          return arr;
+        };
+        getSkills.__v106AwakenSingles=true;
+      }
+    });
+    safe(()=>{
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v106AwakenSingles){
+        const oldScore=skillScoreForActor;
+        skillScoreForActor=function(skillId, attacker, defender){
+          let s=oldScore.apply(this, arguments);
+          if(skillId==='sipaAdminHack') s += 180 + cStat(attacker,'atk')*0.45 + cStat(attacker,'luck')*0.55;
+          if(skillId==='tsumugiHellFullCourse') s += 190 + cStat(attacker,'mag')*0.65 + cStat(attacker,'luck')*0.45;
+          if(skillId==='forteLegendLive') s += 170 + cStat(attacker,'spd')*0.55 + cStat(attacker,'atk')*0.25 + cStat(attacker,'mag')*0.25;
+          return s;
+        };
+        skillScoreForActor.__v106AwakenSingles=true;
+      }
+    });
+    safe(()=>{
+      if(typeof useSkill==='function' && !useSkill.__v106AwakenSingles){
+        const oldUse=useSkill;
+        useSkill=function(attacker, defender, skillId, events, monRef){
+          if(!['sipaAdminHack','tsumugiHellFullCourse','forteLegendLive'].includes(skillId)) return oldUse.apply(this, arguments);
+          const a=attacker.side==='me'?attacker:defender;
+          const b=attacker.side==='me'?defender:attacker;
+          const name=SKILL_DEFS[skillId]?.name || skillId;
+          if(skillId==='sipaAdminHack'){
+            let dmg=Math.max(1, Math.round((cStat(attacker,'atk')*1.10 + cStat(attacker,'luck')*0.95 - cStat(defender,'def')*0.35 + 18) * (0.95 + Math.random()*0.20)));
+            const critRate=Math.min(0.75, 0.25 + cStat(attacker,'luck')/220);
+            const crit=Math.random()<critRate;
+            if(crit) dmg=Math.round(dmg*1.8);
+            applyDamage(defender,dmg);
+            defender.buff.atk=0; defender.buff.def=0; defender.buff.mag=0; defender.buff.luck=0; defender.buff.spd=0;
+            const stun=Math.random()<0.55; if(stun) defender.status.stun=Math.max(defender.status.stun||0,1);
+            const silence=Math.random()<0.60; if(silence) defender.status.silence=Math.max(defender.status.silence||0,2);
+            if(crit && monRef && monRef.history) monRef.history.crits=(monRef.history.crits||0)+1;
+            pushEvent(events,'attack',`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ${crit?'！ クリティカル！':''} 強化を解除し${stun?'、行動不能':''}${silence?'、沈黙':''}を付与した。`,a,b,{dmg,crit});
+            return;
+          }
+          if(skillId==='tsumugiHellFullCourse'){
+            let dmg=Math.max(1, Math.round((cStat(attacker,'mag')*1.25 + cStat(attacker,'luck')*0.70 - cStat(defender,'def')*0.22 + 20) * (0.85 + Math.random()*0.35)));
+            applyDamage(defender,dmg);
+            defender.status.superVenom=Math.max(defender.status.superVenom||0,5);
+            defender.status.venom=Math.max(defender.status.venom||0,4);
+            defender.buff.atk=Math.min(defender.buff.atk||0,-3);
+            defender.buff.mag=Math.min(defender.buff.mag||0,-3);
+            defender.buff.spd=Math.min(defender.buff.spd||0,-2);
+            const stun=Math.random()<0.45; if(stun) defender.status.stun=Math.max(defender.status.stun||0,1);
+            const heal=applyHeal(attacker, Math.round(attacker.maxHp*0.12));
+            pushEvent(events,'magic',`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ。超猛毒と弱体を押し付け、HPを${heal}回復した${stun?'。さらに行動不能！':'。'}`,a,b,{dmg,magic:true});
+            return;
+          }
+          if(skillId==='forteLegendLive'){
+            attacker.buff.atk=Math.max(attacker.buff.atk||0,3);
+            attacker.buff.mag=Math.max(attacker.buff.mag||0,3);
+            attacker.buff.spd=Math.max(attacker.buff.spd||0,4);
+            const hits=3 + (Math.random()<0.45 ? 1 : 0) + (Math.random()<0.18 ? 1 : 0);
+            let total=0;
+            for(let i=0;i<hits;i++){
+              const per=Math.max(1, Math.round((cStat(attacker,'atk')*0.28 + cStat(attacker,'mag')*0.28 + cStat(attacker,'spd')*0.34 - cStat(defender,'def')*0.12 + 5) * (0.90 + Math.random()*0.25)));
+              applyDamage(defender,per); total+=per;
+            }
+            if(hits>=4 && monRef && monRef.history) monRef.history.doubleAttacks=(monRef.history.doubleAttacks||0)+1;
+            if(Math.random()<0.35) defender.buff.spd=Math.min(defender.buff.spd||0,-3);
+            pushEvent(events,'magic',`${attacker.name}の${name}！ ${hits}連続の音圧で合計${total}ダメージ。攻撃・魔法・素早さも上がった！`,a,b,{dmg:total,magic:true});
+            return;
+          }
+          return oldUse.apply(this, arguments);
+        };
+        useSkill.__v106AwakenSingles=true;
+      }
+    });
+  }
+  function installAwakeningHook(){
+    safe(()=>{
+      if(typeof performAwakening==='function' && !performAwakening.__v106AwakenSingles){
+        const oldPerform=performAwakening;
+        performAwakening=function(type){
+          const ret=oldPerform.apply(this, arguments);
+          const mon=(typeof getCurrentMonster==='function')?getCurrentMonster():null;
+          if(mon && grantAwakenedSignature(mon)){
+            try{log(`${mon.nickname||mon.formName}は覚醒専用スキル「${SKILL_DEFS[V106_AWAKEN_SKILL[mon.speciesKey]].name}」を習得した！`);}catch(e){}
+            try{saveGame(); render();}catch(e){}
+          }
+          return ret;
+        };
+        performAwakening.__v106AwakenSingles=true;
+      }
+    });
+  }
+  function installRenderMigration(){
+    safe(()=>{
+      if(typeof render==='function' && !render.__v106AwakenSingles){
+        const oldRender=render;
+        render=function(){migrateExisting(); return oldRender.apply(this, arguments);};
+        render.__v106AwakenSingles=true;
+      }
+    });
+  }
+  function boot(){ ensureDefs(); installSkillPatch(); installAwakeningHook(); installRenderMigration(); migrateExisting(); }
+  window.addEventListener('load',()=>setTimeout(boot,250));
+  setTimeout(boot,80);
+})();
+</script>
+
 </body>
 </html>
 
@@ -9274,5 +9446,5 @@ if ("serviceWorker" in navigator) {
 <!-- v91: iPhone連打時のダブルタップズーム抑制 -->
 
 <script>
-// v105: シパ強化パッチ。進化なし完成型として、HP/攻撃/防御/運/素早さ上限と専用技を強化。
+// v106: シパ強化パッチ。進化なし完成型として、HP/攻撃/防御/運/素早さ上限と専用技を強化。
 </script>
