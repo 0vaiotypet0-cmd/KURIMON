@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v96</title>
+  <title>クリモン - 製品版 v97</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v96</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v97</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8184,6 +8184,111 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <!-- v96: ボス出現演出強化と進化前プレビューを追加。A/Bは完全な物理/魔法固定ではなく系統ごとの傾向表示。 -->
+
+
+
+<script>
+// v97: 称号タブ表示修正（v83内部称号リストを外部タブから参照できるよう再定義）
+(function(){
+  const V97_ACHIEVEMENTS = [
+    ['first_win','はじめての勝利','CPU戦で1勝する',()=>state.records.totalWins>=1],
+    ['ten_wins','定時退社王','CPU戦で10勝する',()=>state.records.totalWins>=10],
+    ['fifty_wins','歴戦の育成者','CPU戦で50勝する',()=>state.records.totalWins>=50],
+    ['hundred_wins','沼の住人','CPU戦で100勝する',()=>state.records.totalWins>=100],
+    ['moon_1','月を見た者','満月を1回撃破する',()=>state.records.fullmoonKills>=1],
+    ['moon_10','月を狩る者','満月を10回撃破する',()=>state.records.fullmoonKills>=10],
+    ['kazuko_1','カズコ討伐者','栗場カズコを撃破する',()=>state.records.kazukoKills>=1],
+    ['kazuko_5','学園序列キラー','栗場カズコを5回撃破する',()=>state.records.kazukoKills>=5],
+    ['ultimate_1','究極への一歩','究極体を1体作る',()=>state.records.ultimateCount>=1],
+    ['ultimate_10','究極体ブリーダー','究極体を10体作る',()=>state.records.ultimateCount>=10],
+    ['awaken_1','覚醒者','覚醒ノ儀を1回終える',()=>state.records.awakenedCount>=1],
+    ['great_awaken','赤き剛腕','覚醒ノ儀で大成功する',()=>state.records.awakeningGreat>=1],
+    ['box_10','ボックス管理人','ボックスに10体以上いる',()=> (state.monsters||[]).length>=10],
+    ['favorite_3','推し活開始','お気に入り★を3体以上付ける',()=> (state.monsters||[]).filter(m=>{try{return isKurimonFavorite?.(m)}catch(e){return !!m.favorite}}).length>=3],
+    ['release_10','逃がし屋','10体逃がす',()=>state.records.releaseCount>=10],
+    ['max_damage_100','一撃の快感','最大ダメージ100以上',()=>state.records.maxDamage>=100],
+    ['max_damage_300','破壊神候補','最大ダメージ300以上',()=>state.records.maxDamage>=300],
+    ['gacha_1','闇鍋開封者','闇鍋ガチャを1回引く',()=>state.records.gachaCount>=1],
+    ['gacha_20','闇鍋中毒','闇鍋ガチャを20回引く',()=>state.records.gachaCount>=20],
+    ['dismantle_10','分解職人','アイテムを10個分解する',()=>state.records.itemsDismantled>=10],
+    ['shard_10','欠片収集家','GODチケットの欠片を10個以上集める',()=> (state.inventory?.god_ticket_shard||0)>=10],
+    ['boss_ticket','挑戦状を握る者','ボス挑戦チケットを使う',()=>state.records.bossTicketsUsed>=1],
+    ['bad_cond_win','限界突破','限界コンディションのまま勝利する',()=>state.achievements?.includes('bad_cond_win')],
+    ['all_rounder','箱庭王','ボックス20体・勝利100・覚醒5を達成',()=> (state.monsters||[]).length>=20 && state.records.totalWins>=100 && state.records.awakenedCount>=5]
+  ];
+  window.KURIMON_ACHIEVEMENTS = V97_ACHIEVEMENTS;
+
+  function v97EnsureRecords(){
+    if(!state.records) state.records={};
+    const defaults={totalBattles:0,totalWins:0,totalLosses:0,maxDamage:0,fullmoonKills:0,kazukoKills:0,rareKills:0,awakeningGreat:0,gachaCount:0,itemsDismantled:0,bossTicketsUsed:0,bestLevel:0,ultimateCount:0,awakenedCount:0,releaseCount:0};
+    for(const [k,v] of Object.entries(defaults)){ if(typeof state.records[k] !== 'number') state.records[k]=v; }
+    if(!state.inventory) state.inventory={};
+    if(!Array.isArray(state.achievements)) state.achievements=[];
+    const mons=state.monsters||[];
+    state.records.bestLevel=Math.max(state.records.bestLevel||0,...mons.map(m=>Number(m.level||0)),0);
+    state.records.ultimateCount=mons.filter(m=>Number(m.stage||0)>=3).length;
+    state.records.awakenedCount=mons.filter(m=>m.awakening?.done).length;
+  }
+
+  function v97CheckAchievements(){
+    v97EnsureRecords();
+    let changed=false;
+    for(const [id,name,,cond] of V97_ACHIEVEMENTS){
+      try{
+        if(!state.achievements.includes(id) && cond()){
+          state.achievements.push(id);
+          changed=true;
+          try{ log(`称号獲得：「${name}」`); }catch(e){}
+        }
+      }catch(e){}
+    }
+    if(changed){ try{ saveGame(); }catch(e){} }
+    return changed;
+  }
+
+  function v97AchievementsHtml(){
+    v97CheckAchievements();
+    const unlocked=new Set(state.achievements||[]);
+    const got=V97_ACHIEVEMENTS.filter(([id])=>unlocked.has(id)).length;
+    const esc=(s)=>{ try{return escapeHtml(String(s));}catch(e){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));} };
+    return `<div class="v84-tab-card v97-ach-card"><p class="small">取得済み称号：${got}/${V97_ACHIEVEMENTS.length}</p><div class="v84-ach-grid">${V97_ACHIEVEMENTS.map(([id,name,desc])=>{
+      const on=unlocked.has(id);
+      return `<div class="v84-ach ${on?'on':''}" data-achievement-id="${esc(id)}"><b>${on?'🏅':'🔒'} ${esc(name)}</b><br><span>${esc(desc)}</span></div>`;
+    }).join('')}</div></div>`;
+  }
+
+  function v97RenderAchievements(){
+    const el=document.getElementById('achievementsArea');
+    if(!el) return;
+    el.innerHTML=v97AchievementsHtml();
+  }
+
+  window.v83CheckAchievements = v97CheckAchievements;
+  window.v97CheckAchievements = v97CheckAchievements;
+  window.v97RenderAchievements = v97RenderAchievements;
+
+  const oldShowTab=window.showTab;
+  if(typeof oldShowTab==='function'){
+    window.showTab=function(tab){
+      const ret=oldShowTab.apply(this,arguments);
+      if(tab==='achievements') v97RenderAchievements();
+      return ret;
+    };
+  }
+  const oldRender=window.render;
+  if(typeof oldRender==='function'){
+    window.render=function(){
+      const ret=oldRender.apply(this,arguments);
+      if(window.currentTab==='achievements' || (typeof currentTab!=='undefined' && currentTab==='achievements')) v97RenderAchievements();
+      return ret;
+    };
+  }
+  window.addEventListener('load',()=>setTimeout(()=>{
+    v97CheckAchievements();
+    try{ if((window.currentTab||currentTab)==='achievements') v97RenderAchievements(); }catch(e){}
+  },300));
+})();
+</script>
 
 </body>
 </html>
