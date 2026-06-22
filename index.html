@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v99</title>
+  <title>クリモン - 製品版 v100</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v99</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v100</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6231,7 +6231,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 96;
+const KURIMON_APP_VERSION = 100;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -8306,15 +8306,15 @@ if ("serviceWorker" in navigator) {
   @media(max-width:540px){.v99-expedition-grid{grid-template-columns:1fr}.v99-exp-card button,.v99-exp-row button{width:100%;}.v99-expedition-panel{padding:10px}}
 </style>
 <script id="v99ExpeditionKikumonScript">
-// v99: 遠征システム調整 + 菊門スカウト正式仕様
+// v100: 遠征説明整理 + 出発確認 + 途中帰還
 (function(){
   const V99 = 99;
   const STAT_KEYS = ['hp','atk','def','mag','luck','spd'];
   const KIKUMON_PERSONALITIES = ['豪運','ガチ勢','堅実','天才','俊足'];
   const EXP_TYPES = {
-    normal:{name:'通常遠征', minutes:10, scoutRate:0.005, cp:[80,180], item:'R', shardRate:0.02, ticketRate:0.02, desc:'短時間でCPとアイテムを狙う基本遠征。菊門スカウト率0.5%。'},
-    secret:{name:'秘境遠征', minutes:60, scoutRate:0.015, cp:[250,620], item:'SR', shardRate:0.06, ticketRate:0.05, desc:'報酬が重め。菊門スカウト率1.5%。'},
-    nightGate:{name:'夜の門前遠征', minutes:60, scoutRate:0.015, cp:[220,560], item:'SR', shardRate:0.07, ticketRate:0.08, desc:'ボス挑戦チケットを狙いやすい。菊門スカウト率1.5%。'}
+    normal:{name:'通常遠征', minutes:10, scoutRate:0.005, cp:[80,180], item:'R', shardRate:0.02, ticketRate:0.02, desc:'短時間でCPとアイテムを狙う基本遠征。低確率で特別なモンスターがスカウトできるかも……'},
+    secret:{name:'秘境遠征', minutes:60, scoutRate:0.015, cp:[250,620], item:'SR', shardRate:0.06, ticketRate:0.05, desc:'報酬が重め。まれに特別なモンスターとの出会いがあるかも……'},
+    nightGate:{name:'夜の門前遠征', minutes:60, scoutRate:0.015, cp:[220,560], item:'SR', shardRate:0.07, ticketRate:0.08, desc:'ボス挑戦チケットを狙いやすい遠征。夜の門前には特別な気配がある……'}
   };
   function esc(s){try{return typeof escapeHtml==='function'?escapeHtml(String(s??'')):String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}catch(e){return String(s??'');}}
   function rnd(min,max){return Math.floor(min+Math.random()*(max-min+1));}
@@ -8391,6 +8391,8 @@ if ("serviceWorker" in navigator) {
     if(!mon || !def){alert('遠征対象が見つかりません。');return;}
     if(isAway(monId)){alert('このクリモンはすでに遠征中です。');return;}
     if((state.v99Expeditions||[]).length>=3){alert('同時遠征は最大3体までです。');return;}
+    const ok=confirm(`${mon.nickname||mon.formName}を${def.name}に出しますか？\n遠征中は育成・バトルに使えません。途中帰還もできますが、途中帰還では報酬は受け取れません。`);
+    if(!ok) return;
     const endAt=Date.now()+def.minutes*60*1000;
     state.v99Expeditions.push({id:'ex_'+Date.now()+'_'+rnd(1000,9999),monId,type,startAt:Date.now(),endAt});
     addExpLog(`${mon.nickname||mon.formName}を${def.name}に出した。`);
@@ -8417,6 +8419,18 @@ if ("serviceWorker" in navigator) {
     try{log(`${mon?mon.nickname:'クリモン'}が遠征から帰還。${got.join('、')}を入手。${scoutMsg}`);}catch(e){}
     saveGame(); render();
   };
+  window.v99CancelExpedition=function(expId){
+    normalizeState();
+    const idx=state.v99Expeditions.findIndex(e=>String(e.id)===String(expId));
+    if(idx<0){alert('遠征が見つかりません。');return;}
+    const exp=state.v99Expeditions[idx]; const def=EXP_TYPES[exp.type]||{}; const mon=monById(exp.monId);
+    const ok=confirm(`${mon?mon.nickname:'クリモン'}を${def.name||'遠征'}から途中帰還させますか？\n途中帰還ではCP・アイテム・スカウト判定などの報酬は受け取れません。`);
+    if(!ok) return;
+    state.v99Expeditions.splice(idx,1);
+    addExpLog(`${mon?mon.nickname:'クリモン'}を${def.name||'遠征'}から途中帰還させた。報酬はなし。`);
+    try{log(`${mon?mon.nickname:'クリモン'}が途中帰還した。報酬はありません。`);}catch(e){}
+    saveGame(); render();
+  };
   window.v99CompleteAllExpeditions=function(){
     normalizeState();
     const ready=(state.v99Expeditions||[]).filter(e=>Date.now()>=Number(e.endAt||0)).map(e=>e.id);
@@ -8438,11 +8452,11 @@ if ("serviceWorker" in navigator) {
     const targetHtml=target ? `<p class="small">遠征に出す候補：<b>${esc(target.nickname||target.formName)}</b> Lv.${esc(target.level||1)}　※別キャラはボックスで育成中に切替えてから遠征。</p>` : '<p class="small">遠征に出せるクリモンがいません。</p>';
     return `<div id="v99ExpeditionPanel" class="v99-expedition-panel">
       <h3>🧭 遠征</h3>
-      <p class="small">控えクリモンにも役割を持たせる放置要素。CP・アイテム・欠片・ボス挑戦チケットを持ち帰ります。<span class="v99-scout-note">菊門は1体までの低確率スカウト限定キャラ</span>です。</p>
+      <p class="small">控えクリモンにも役割を持たせる放置要素。CP・アイテム・欠片・ボス挑戦チケットを持ち帰ります。<span class="v99-scout-note">低確率で特別なモンスターがスカウトできるかも……</span></p>
       ${targetHtml}
-      <div class="v99-expedition-grid">${Object.entries(EXP_TYPES).map(([type,d])=>`<div class="v99-exp-card"><b>${esc(d.name)}</b><span class="small">${esc(d.minutes)}分 / 菊門スカウト率 ${(d.scoutRate*100).toFixed(1)}%</span><p class="small">${esc(d.desc)}</p><button ${target?'':'disabled'} onclick="v99StartExpedition('${target?esc(target.id):''}','${type}')">この遠征に出す</button></div>`).join('')}</div>
+      <div class="v99-expedition-grid">${Object.entries(EXP_TYPES).map(([type,d])=>`<div class="v99-exp-card"><b>${esc(d.name)}</b><span class="small">${esc(d.minutes)}分 / 特別スカウトあり</span><p class="small">${esc(d.desc)}</p><button ${target?'':'disabled'} onclick="v99StartExpedition('${target?esc(target.id):''}','${type}')">この遠征に出す</button></div>`).join('')}</div>
       <h3 style="margin-top:12px;">遠征中</h3>
-      <div class="v99-exp-list">${exp.length?exp.map(e=>{const m=monById(e.monId); const d=EXP_TYPES[e.type]||{}; const ready=Date.now()>=Number(e.endAt||0); return `<div class="v99-exp-row"><div><b>${esc(m?.nickname||'クリモン')}</b>：${esc(d.name||e.type)}<br><span class="small">${esc(remainingText(e.endAt))}</span></div><button class="${ready?'ok':'ghost'}" ${ready?'':'disabled'} onclick="v99CompleteExpedition('${esc(e.id)}')">帰還</button></div>`}).join(''):'<p class="small">遠征中のクリモンはいません。</p>'}</div>
+      <div class="v99-exp-list">${exp.length?exp.map(e=>{const m=monById(e.monId); const d=EXP_TYPES[e.type]||{}; const ready=Date.now()>=Number(e.endAt||0); return `<div class="v99-exp-row"><div><b>${esc(m?.nickname||'クリモン')}</b>：${esc(d.name||e.type)}<br><span class="small">${esc(remainingText(e.endAt))}</span></div><div class="row" style="gap:6px;margin:0;"><button class="${ready?'ok':'ghost'}" ${ready?'':'disabled'} onclick="v99CompleteExpedition('${esc(e.id)}')">報酬受取</button>${ready?'':`<button class="ghost" onclick="v99CancelExpedition('${esc(e.id)}')">途中帰還</button>`}</div></div>`}).join(''):'<p class="small">遠征中のクリモンはいません。</p>'}</div>
       <div class="row" style="margin-top:8px;"><button class="ghost" onclick="v99CompleteAllExpeditions()">帰還できる遠征を全部回収</button></div>
       <h3 style="margin-top:12px;">遠征ログ</h3><div class="log" style="max-height:150px;">${(state.v99ExpeditionLog||[]).map(esc).map(x=>`<div>${x}</div>`).join('') || '<div class="small">まだ遠征ログはありません。</div>'}</div>
     </div>`;
@@ -8548,7 +8562,7 @@ if ("serviceWorker" in navigator) {
   setTimeout(boot,80);
 })();
 </script>
-<!-- v99: 菊門を低確率スカウト限定・1体までに正式設定。加入Lv20〜30、加入状態普通、通常0.5%、秘境/夜の門前1.5%。専用技名・効果を指定どおり更新。 -->
+<!-- v100: 遠征説明からスカウト限定名を伏せ、出発確認と途中帰還を追加。 -->
 
 </body>
 </html>
