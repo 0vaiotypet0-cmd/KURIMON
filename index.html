@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v111</title>
+  <title>クリモン - 製品版 v112</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v111</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v112</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -10079,6 +10079,306 @@ if ("serviceWorker" in navigator) {
   boot(); window.addEventListener('load',()=>setTimeout(boot,100)); document.addEventListener('click',()=>setTimeout(()=>{ if(window.currentTab==='shop') injectShopPanel(); },80),true);
 })();
 </script>
+
+
+
+<script>
+// v112: 闇鍋ガチャ取得保証 / 詫びCP / 再合成パネル維持 / 成長限界バトル後低下防止 / 最新版通知修正
+(function(){
+  const V112_APP_VERSION = 112;
+  const COMP_KEY = 'v112_gacha_bug_apology_cp';
+  const EXCLUDE_IDS = new Set(['god_ticket','god_ticket_shard','fullmoon_invite','kazuko_challenge','incubator']);
+  function safe(fn){ try{return fn();}catch(e){ console.warn('[v112]', e); } }
+  function num(v){ v=Number(v||0); return Number.isFinite(v)?v:0; }
+  function ensure(){
+    safe(()=>{ if(typeof ensureItemSystems==='function') ensureItemSystems(); });
+    if(!state.inventory) state.inventory={};
+    if(!state.records) state.records={};
+    if(!state.flags) state.flags={};
+  }
+  function itemNameSafe(id){
+    return (typeof itemName==='function') ? itemName(id) : ((ITEM_MASTER && ITEM_MASTER[id] && ITEM_MASTER[id].name) || id);
+  }
+  function addItemGuaranteed(id,count=1){
+    ensure();
+    if(!id) return false;
+    const before=num(state.inventory[id]);
+    safe(()=>{ if(typeof addItem==='function') addItem(id,count); });
+    if(num(state.inventory[id]) < before + count){
+      state.inventory[id] = before + count;
+    }
+    return num(state.inventory[id]) >= before + count;
+  }
+  function randomBy(list){
+    const total=list.reduce((s,x)=>s+num(x.rate),0);
+    let r=Math.random()*total;
+    for(const x of list){ r-=num(x.rate); if(r<=0) return x; }
+    return list[list.length-1];
+  }
+  function poolByRarity(rarity){
+    ensure();
+    const pool=Object.keys(ITEM_MASTER||{}).filter(id=>{
+      const it=ITEM_MASTER[id];
+      if(!it || it.rarity!==rarity) return false;
+      if(EXCLUDE_IDS.has(id)) return false;
+      if(it.type==='ticket') return false;
+      return true;
+    });
+    return pool;
+  }
+  function randomItemGuaranteedByRarity(rarity){
+    let id=null;
+    // 既存関数の結果も使うが、無効なら自前プールへフォールバック
+    safe(()=>{ if(typeof randomItemByRarity==='function') id=randomItemByRarity(rarity); });
+    if(id && ITEM_MASTER && ITEM_MASTER[id] && !EXCLUDE_IDS.has(id)) return id;
+    const pool=poolByRarity(rarity);
+    if(pool.length) return pool[Math.floor(Math.random()*pool.length)];
+    const fallback={N:'power_bracelet',R:'lucky_bell',SR:'training_gips',UR:'moon_charm'}[rarity];
+    return (fallback && ITEM_MASTER && ITEM_MASTER[fallback]) ? fallback : 'god_ticket_shard';
+  }
+  function popup(title, html, fallback){
+    if(typeof v87Popup==='function') v87Popup(title, html);
+    else alert(fallback || title);
+  }
+  window.v83YanabeGacha = function(){
+    ensure();
+    if(num(state.cp) < 5000){ alert('CPが足りません。闇鍋ガチャは5000CPです。'); return; }
+    if(!confirm('闇鍋ガチャを5000CPで引きますか？\nN〜URアイテム、ボス挑戦チケット、低確率でGODチケットの欠片が出ます。')) return;
+
+    const roll = randomBy([
+      {kind:'rarity', rarity:'N', rate:27},
+      {kind:'rarity', rarity:'R', rate:29},
+      {kind:'rarity', rarity:'SR', rate:24},
+      {kind:'rarity', rarity:'UR', rate:10},
+      {kind:'item', itemId:'fullmoon_invite', rate:4},
+      {kind:'item', itemId:'kazuko_challenge', rate:3},
+      {kind:'item', itemId:'god_ticket_shard', rate:3}
+    ]);
+    const id = roll.kind==='rarity' ? randomItemGuaranteedByRarity(roll.rarity) : roll.itemId;
+    if(!id || !(ITEM_MASTER && ITEM_MASTER[id])){
+      alert('ガチャ結果の取得に失敗したため、CPは消費しませんでした。');
+      return;
+    }
+
+    // アイテム付与が確認できてからCPを消費。これでCPだけ減る事故を防ぐ。
+    const ok = addItemGuaranteed(id,1);
+    if(!ok){
+      alert('アイテム付与に失敗したため、CPは消費しませんでした。');
+      return;
+    }
+    state.cp = num(state.cp) - 5000;
+    state.records.gachaCount = num(state.records.gachaCount) + 1;
+    safe(()=>{ if(typeof v83DailyAdd==='function') v83DailyAdd('gacha'); });
+    safe(()=>{ if(typeof v94DailyAdd==='function') v94DailyAdd('gacha'); });
+    safe(()=>{ if(typeof v83CheckAchievements==='function') v83CheckAchievements(); });
+
+    const it = ITEM_MASTER[id] || {};
+    const rarity = it.rarity || '';
+    const name = itemNameSafe(id);
+    safe(()=>{ if(typeof log==='function') log(`闇鍋ガチャ結果：「${name}」を入手！`); });
+    safe(()=>{ if(typeof saveGame==='function') saveGame(); });
+    popup('🎰 闇鍋ガチャ結果', `<div class="v87-gacha-result rarity-${String(rarity).replace(/[^a-zA-Z0-9_-]/g,'')}"><div class="v87-rarity">${rarity}</div><div class="v87-item-name">${name}</div><p class="small">${typeof escapeHtml==='function'?escapeHtml(it.desc||''):(it.desc||'')}</p></div>`, `闇鍋ガチャ結果：${name}`);
+    safe(()=>{ if(typeof render==='function') render(); });
+    setTimeout(injectCraftPanel,80);
+  };
+
+  function isAllCapped(mon){
+    if(!mon || typeof getGrowthLimitStatus!=='function') return false;
+    const st=getGrowthLimitStatus(mon);
+    return !!st && !!st.allCapped;
+  }
+  function statSnapshot(mon){
+    return {
+      stats: Object.assign({}, mon.stats||{}),
+      capBias: Object.assign({}, mon.capBias||{}),
+      condition: mon.condition
+    };
+  }
+  function restoreBattleCapped(mon,snap){
+    if(!mon || !snap) return;
+    mon.stats = Object.assign({}, snap.stats);
+    mon.capBias = Object.assign({}, snap.capBias);
+    // 全ステ成長限界済みは、CPU戦後のコンディション悪化による実質ステ低下を発生させない
+    if(snap.condition) mon.condition = snap.condition;
+    mon.hpCurrent = Math.min(mon.hpCurrent || mon.stats.hp, mon.stats.hp);
+  }
+  if(typeof finishBattle==='function' && !finishBattle.__v112NoCappedDrop){
+    const oldFinishBattle=finishBattle;
+    finishBattle=function(mon,enemy,win){
+      const capped=isAllCapped(mon);
+      const snap=capped ? statSnapshot(mon) : null;
+      const ret=oldFinishBattle.apply(this,arguments);
+      if(capped){
+        restoreBattleCapped(mon,snap);
+        safe(()=>{ if(typeof log==='function') log(`${mon.nickname}は全ステータス成長限界到達済みのため、バトル後のステータス低下を受けません。`); });
+        safe(()=>{ if(typeof saveGame==='function') saveGame(); });
+      }
+      return ret;
+    };
+    finishBattle.__v112NoCappedDrop=true;
+  }
+
+  function giveApologyCp(){
+    ensure();
+    if(state.flags[COMP_KEY]) return;
+    state.flags[COMP_KEY]=true;
+    state.cp=num(state.cp)+10000;
+    safe(()=>{ if(typeof log==='function') log('v112詫びCPとして10000CPを受け取りました。'); });
+    safe(()=>{ if(typeof saveGame==='function') saveGame(); });
+    setTimeout(()=>alert('v112更新のお詫びとして10000CPを付与しました。'),350);
+  }
+
+  function availableCountSafe(id){
+    if(typeof availableCount==='function') return Math.max(0,num(availableCount(id)));
+    return Math.max(0,num(state.inventory && state.inventory[id]));
+  }
+  function canCraftItem(id){
+    const it=ITEM_MASTER && ITEM_MASTER[id];
+    if(!it) return false;
+    if(EXCLUDE_IDS.has(id)) return false;
+    if(it.rarity==='GOD') return false;
+    return true;
+  }
+  function byRarity(rarity){
+    ensure();
+    return Object.keys(state.inventory||{}).filter(id=>canCraftItem(id) && ITEM_MASTER[id].rarity===rarity && availableCountSafe(id)>0).map(id=>({id,count:availableCountSafe(id)}));
+  }
+  function craftCounts(){
+    const c={};
+    for(const r of ['N','R','SR','UR']) c[r]=byRarity(r).reduce((s,x)=>s+x.count,0);
+    return c;
+  }
+  function craftHtml(){
+    const c=craftCounts();
+    return `<div id="v111ItemCraftPanel" class="v84-tab-card wide v111-craft-panel v112-craft-panel">
+      <h3>🧰 まとめて分解・再合成</h3>
+      <p class="small">余ったアイテム整理用。装備中、GOD、GODチケット、GODチケットの欠片、ボス挑戦チケットは対象外です。</p>
+      <div class="v111-craft-grid">
+        <div><h4>まとめて分解</h4>
+          <div class="row">
+            <button class="ghost" onclick="v111BulkDismantleByRarity('N')">N全部分解（${c.N}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('R')">R全部分解（${c.R}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('SR')">SR全部分解（${c.SR}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('UR')">UR全部分解（${c.UR}）</button>
+            <button onclick="v111BulkDismantleAllLow()">N〜SRを全部分解</button>
+          </div>
+          <p class="small">分解CP：N 30 / R 90 / SR 300 / UR 1200。UR分解は1個ごとに10%でGOD欠片。</p>
+        </div>
+        <div><h4>再合成</h4>
+          <div class="row">
+            <button class="ghost" onclick="v112RecomposeByRarity('N')">N×5 → R</button>
+            <button class="ghost" onclick="v112RecomposeByRarity('R')">R×5 → SR</button>
+            <button class="ghost" onclick="v112RecomposeByRarity('SR')">SR×5 → UR</button>
+            <button class="ghost" onclick="v112RecomposeByRarity('UR')">UR×3 → GOD欠片</button>
+          </div>
+          <p class="small">再合成後もこのパネルは消えず、所持数だけ更新されます。</p>
+        </div>
+      </div>
+    </div>`;
+  }
+  function shopVisible(){
+    const tab=document.getElementById('tab-shop');
+    if(!tab) return false;
+    return !tab.classList.contains('hidden');
+  }
+  function injectCraftPanel(){
+    const area=document.getElementById('shopArea');
+    if(!area) return;
+    area.querySelectorAll('#v111ItemCraftPanel').forEach(x=>x.remove());
+    area.insertAdjacentHTML('beforeend', craftHtml());
+  }
+  window.v112RecomposeByRarity=function(rarity){
+    ensure();
+    const rules={N:{need:5,to:'R',label:'Nアイテム5個 → Rアイテム1個'},R:{need:5,to:'SR',label:'Rアイテム5個 → SRアイテム1個'},SR:{need:5,to:'UR',label:'SRアイテム5個 → URアイテム1個'},UR:{need:3,to:'shard',label:'URアイテム3個 → GODチケットの欠片1個'}};
+    const rule=rules[rarity];
+    if(!rule) return;
+    const rows=byRarity(rarity);
+    const total=rows.reduce((s,x)=>s+x.count,0);
+    if(total<rule.need){ alert(`${rule.label}には${rarity}アイテムが${rule.need}個必要です。現在：${total}個`); injectCraftPanel(); return; }
+    let rest=rule.need, used=[];
+    for(const row of rows){
+      if(rest<=0) break;
+      const take=Math.min(rest,row.count);
+      used.push({id:row.id,count:take});
+      rest-=take;
+    }
+    const preview=used.map(u=>`${itemNameSafe(u.id)}×${u.count}`).join(' / ');
+    if(!confirm(`${rule.label}を実行しますか？\n消費：${preview}`)){ injectCraftPanel(); return; }
+    for(const u of used){
+      if(typeof consumeItem==='function') consumeItem(u.id,u.count);
+      else state.inventory[u.id]=num(state.inventory[u.id])-u.count;
+    }
+    let resultText='';
+    if(rule.to==='shard'){
+      addItemGuaranteed('god_ticket_shard',1);
+      resultText='GODチケットの欠片';
+    }else{
+      const resultId=randomItemGuaranteedByRarity(rule.to);
+      addItemGuaranteed(resultId,1);
+      resultText=itemNameSafe(resultId);
+    }
+    safe(()=>{ if(typeof log==='function') log(`${rule.label}：${resultText}を入手！`); });
+    safe(()=>{ if(typeof saveGame==='function') saveGame(); });
+    injectCraftPanel();
+    // renderすると一瞬消える環境があるので、再描画後にも戻す
+    safe(()=>{ if(typeof render==='function') render(); });
+    setTimeout(injectCraftPanel,50);
+    setTimeout(injectCraftPanel,250);
+  };
+  // 既存ボタンから呼ばれてもv112へ流す
+  window.v111RecomposeByRarity = window.v112RecomposeByRarity;
+
+  function patchUiHooks(){
+    if(typeof render==='function' && !render.__v112CraftKeep){
+      const old=render;
+      render=function(){ const ret=old.apply(this,arguments); setTimeout(()=>{ if(shopVisible()) injectCraftPanel(); },60); return ret; };
+      render.__v112CraftKeep=true;
+    }
+    if(typeof showTab==='function' && !showTab.__v112CraftKeep){
+      const old=showTab;
+      showTab=function(tab){ const ret=old.apply(this,arguments); setTimeout(()=>{ if(tab==='shop' || shopVisible()) injectCraftPanel(); },80); return ret; };
+      showTab.__v112CraftKeep=true;
+    }
+    const area=document.getElementById('shopArea');
+    if(area && !area.__v112Observer){
+      area.__v112Observer = new MutationObserver(()=>{ if(shopVisible() && !area.querySelector('#v111ItemCraftPanel')) setTimeout(injectCraftPanel,0); });
+      area.__v112Observer.observe(area,{childList:true,subtree:false});
+    }
+  }
+
+  function patchVersionCheck(){
+    window.kurimonVersionCheckDone = false;
+    window.checkKurimonLatestVersion = async function(){
+      if(window.kurimonVersionCheckDone) return;
+      window.kurimonVersionCheckDone = true;
+      try{
+        const url=new URL('./version.json', window.location.href);
+        url.searchParams.set('ts', String(Date.now()));
+        const res=await fetch(url.toString(), {cache:'no-store'});
+        if(!res.ok) return;
+        const data=await res.json();
+        const latest=Number(data.version||0);
+        if(!latest || latest <= V112_APP_VERSION) return;
+        const ok=confirm(data.message || '新しいバージョンがあります。\n最新版に更新しますか？');
+        if(ok && typeof forceKurimonUpdate==='function') await forceKurimonUpdate({targetVersion:latest, skipConfirm:true});
+      }catch(e){ console.log('Kurimon version check skipped', e); }
+    };
+  }
+
+  function boot(){
+    ensure();
+    giveApologyCp();
+    patchUiHooks();
+    patchVersionCheck();
+    if(shopVisible()) injectCraftPanel();
+  }
+  boot();
+  window.addEventListener('load',()=>{ boot(); setTimeout(boot,200); setTimeout(boot,900); });
+  document.addEventListener('click',()=>setTimeout(()=>{ if(shopVisible()) injectCraftPanel(); },120), true);
+})();
+</script>
+
+<!-- v112: 闇鍋ガチャ取得保証・詫びCP・再合成維持・成長限界バトル後低下防止。 -->
 
 </body>
 </html>
