@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v110</title>
+  <title>クリモン - 製品版 v111</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v110</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v111</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -9864,6 +9864,221 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <!-- v110: 記録タブに卵の孵化数を確実に表示。 -->
+
+
+
+<script>
+// v111: まとめて分解 / 再合成 / 最新版通知v111基準
+(function(){
+  const V111_APP_VERSION = 111;
+  const DISMANTLE_REWARD = {N:30,R:90,SR:300,UR:1200,GOD:3000};
+  const COMPOSE_RULES = {
+    N:{need:5,to:'R',label:'Nアイテム5個 → Rアイテム1個'},
+    R:{need:5,to:'SR',label:'Rアイテム5個 → SRアイテム1個'},
+    SR:{need:5,to:'UR',label:'SRアイテム5個 → URアイテム1個'},
+    UR:{need:3,to:'shard',label:'URアイテム3個 → GODチケットの欠片1個'}
+  };
+  const EXCLUDE_IDS = new Set(['god_ticket','god_ticket_shard','fullmoon_invite','kazuko_challenge']);
+  function safe(fn){ try{return fn();}catch(e){ console.warn('[v111]', e); } }
+  function num(v){ v=Number(v||0); return Number.isFinite(v)?v:0; }
+  function ensure(){ safe(()=>ensureItemSystems&&ensureItemSystems()); if(!state.inventory) state.inventory={}; if(!state.records) state.records={}; if(typeof state.records.itemsDismantled!=='number') state.records.itemsDismantled=0; }
+  function itemRarity(id){ return (ITEM_MASTER && ITEM_MASTER[id] && ITEM_MASTER[id].rarity) || 'N'; }
+  function itemLabelSafe(id){ return (typeof itemLabel==='function') ? itemLabel(id) : ((ITEM_MASTER&&ITEM_MASTER[id]?.name)||id); }
+  function itemNameSafe(id){ return (typeof itemName==='function') ? itemName(id) : ((ITEM_MASTER&&ITEM_MASTER[id]?.name)||id); }
+  function canProcessItem(id){
+    const it=ITEM_MASTER && ITEM_MASTER[id];
+    if(!it) return false;
+    if(EXCLUDE_IDS.has(id)) return false;
+    if(it.rarity==='GOD') return false;
+    return true;
+  }
+  function avail(id){
+    if(typeof availableCount==='function') return Math.max(0,num(availableCount(id)));
+    return Math.max(0,num(state.inventory&&state.inventory[id]));
+  }
+  function getAvailableByRarity(rarity){
+    ensure();
+    return Object.keys(state.inventory||{})
+      .filter(id=>canProcessItem(id) && itemRarity(id)===rarity && avail(id)>0)
+      .sort((a,b)=>itemNameSafe(a).localeCompare(itemNameSafe(b),'ja'))
+      .map(id=>({id,count:avail(id)}));
+  }
+  function consumeAvailableItems(list, need){
+    let rest=need;
+    const used=[];
+    for(const row of list){
+      if(rest<=0) break;
+      const take=Math.min(rest, row.count);
+      if(take>0){ used.push({id:row.id,count:take}); rest-=take; }
+    }
+    if(rest>0) return null;
+    for(const u of used){ if(typeof consumeItem==='function') consumeItem(u.id,u.count); else state.inventory[u.id]=num(state.inventory[u.id])-u.count; }
+    return used;
+  }
+  function addItemSafe(id,count=1){ if(typeof addItem==='function') addItem(id,count); else state.inventory[id]=num(state.inventory[id])+count; }
+  function addDailyDismantle(n){
+    safe(()=>{ if(typeof window.v94DailyAdd==='function') window.v94DailyAdd('dismantle',n); else if(typeof window.v92DailyAdd==='function') window.v92DailyAdd('dismantle',n); });
+  }
+  function addLog(msg){ safe(()=>{ if(typeof log==='function') log(msg); }); }
+  window.v111BulkDismantleByRarity = function(rarity){
+    ensure();
+    const rows=getAvailableByRarity(rarity);
+    const total=rows.reduce((s,x)=>s+x.count,0);
+    if(total<=0){ alert(`${rarity}でまとめて分解できるアイテムがありません。`); return; }
+    const reward=(DISMANTLE_REWARD[rarity]||50)*total;
+    const sample=rows.slice(0,5).map(x=>`${itemLabelSafe(x.id)}×${x.count}`).join(' / ')+(rows.length>5?' ほか':'');
+    if(!confirm(`${rarity}アイテムをまとめて${total}個分解しますか？\n${sample}\n\n獲得CP：${reward}\n※装備中、GOD、チケット、欠片は対象外です。`)) return;
+    let dismantled=0, cp=0, shards=0;
+    for(const row of rows){
+      const c=avail(row.id);
+      if(c<=0) continue;
+      if(typeof consumeItem==='function') consumeItem(row.id,c); else state.inventory[row.id]=num(state.inventory[row.id])-c;
+      dismantled+=c; cp+=(DISMANTLE_REWARD[rarity]||50)*c;
+      if(rarity==='UR'){
+        for(let i=0;i<c;i++) if(Math.random()<0.10) shards++;
+      }
+    }
+    state.cp=num(state.cp)+cp;
+    state.records.itemsDismantled=num(state.records.itemsDismantled)+dismantled;
+    if(shards>0) addItemSafe('god_ticket_shard',shards);
+    addDailyDismantle(dismantled);
+    addLog(`${rarity}アイテムを${dismantled}個まとめて分解。CP +${cp}${shards?` / GODチケットの欠片 +${shards}`:''}`);
+    safe(()=>{ if(typeof v83CheckAchievements==='function') v83CheckAchievements(); });
+    safe(()=>saveGame&&saveGame());
+    safe(()=>render&&render());
+  };
+  window.v111BulkDismantleAllLow = function(){
+    ensure();
+    const rarities=['N','R','SR'];
+    const rows=[];
+    for(const r of rarities) for(const x of getAvailableByRarity(r)) rows.push({...x,rarity:r});
+    const total=rows.reduce((s,x)=>s+x.count,0);
+    if(total<=0){ alert('まとめて分解できるN〜SRアイテムがありません。'); return; }
+    const reward=rows.reduce((s,x)=>s+(DISMANTLE_REWARD[x.rarity]||50)*x.count,0);
+    if(!confirm(`N〜SRアイテムをまとめて${total}個分解しますか？\n獲得CP：${reward}\n※UR/GOD/チケット/欠片/装備中は対象外です。`)) return;
+    let dismantled=0, cp=0;
+    for(const row of rows){
+      const c=avail(row.id);
+      if(c<=0) continue;
+      if(typeof consumeItem==='function') consumeItem(row.id,c); else state.inventory[row.id]=num(state.inventory[row.id])-c;
+      dismantled+=c; cp+=(DISMANTLE_REWARD[row.rarity]||50)*c;
+    }
+    state.cp=num(state.cp)+cp;
+    state.records.itemsDismantled=num(state.records.itemsDismantled)+dismantled;
+    addDailyDismantle(dismantled);
+    addLog(`N〜SRアイテムを${dismantled}個まとめて分解。CP +${cp}`);
+    safe(()=>{ if(typeof v83CheckAchievements==='function') v83CheckAchievements(); });
+    safe(()=>saveGame&&saveGame());
+    safe(()=>render&&render());
+  };
+  window.v111RecomposeByRarity = function(rarity){
+    ensure();
+    const rule=COMPOSE_RULES[rarity];
+    if(!rule){ alert('再合成ルールがありません。'); return; }
+    const rows=getAvailableByRarity(rarity);
+    const total=rows.reduce((s,x)=>s+x.count,0);
+    if(total<rule.need){ alert(`${rule.label}には${rarity}アイテムが${rule.need}個必要です。現在：${total}個`); return; }
+    const usePreview=[]; let rest=rule.need;
+    for(const row of rows){ if(rest<=0) break; const take=Math.min(rest,row.count); usePreview.push(`${itemLabelSafe(row.id)}×${take}`); rest-=take; }
+    if(!confirm(`${rule.label}を実行しますか？\n消費：${usePreview.join(' / ')}\n※装備中、GOD、チケット、欠片は対象外です。`)) return;
+    const used=consumeAvailableItems(rows,rule.need);
+    if(!used){ alert('再合成できる空き在庫が足りません。'); return; }
+    let resultText='';
+    if(rule.to==='shard'){
+      addItemSafe('god_ticket_shard',1);
+      resultText='GODチケットの欠片';
+    }else{
+      let resultId=null;
+      for(let i=0;i<20 && !resultId;i++) resultId = (typeof randomItemByRarity==='function') ? randomItemByRarity(rule.to) : null;
+      if(!resultId){
+        const pool=Object.keys(ITEM_MASTER||{}).filter(id=>ITEM_MASTER[id]?.rarity===rule.to && !EXCLUDE_IDS.has(id));
+        resultId=pool[Math.floor(Math.random()*pool.length)];
+      }
+      if(!resultId){ alert('再合成先アイテムが見つかりません。'); return; }
+      addItemSafe(resultId,1);
+      resultText=itemLabelSafe(resultId);
+    }
+    addLog(`${rule.label}：${resultText}を入手！`);
+    safe(()=>saveGame&&saveGame());
+    safe(()=>render&&render());
+  };
+  function v111ShopExtraHtml(){
+    ensure();
+    const counts={};
+    for(const r of ['N','R','SR','UR']) counts[r]=getAvailableByRarity(r).reduce((s,x)=>s+x.count,0);
+    return `<div id="v111ItemCraftPanel" class="v84-tab-card wide v111-craft-panel">
+      <h3>🧰 まとめて分解・再合成</h3>
+      <p class="small">余ったアイテム整理用。装備中、GOD、GODチケット、GODチケットの欠片、ボス挑戦チケットは対象外です。</p>
+      <div class="v111-craft-grid">
+        <div><h4>まとめて分解</h4>
+          <div class="row">
+            <button class="ghost" onclick="v111BulkDismantleByRarity('N')">N全部分解（${counts.N}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('R')">R全部分解（${counts.R}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('SR')">SR全部分解（${counts.SR}）</button>
+            <button class="ghost" onclick="v111BulkDismantleByRarity('UR')">UR全部分解（${counts.UR}）</button>
+            <button onclick="v111BulkDismantleAllLow()">N〜SRを全部分解</button>
+          </div>
+          <p class="small">分解CP：N 30 / R 90 / SR 300 / UR 1200。UR分解は1個ごとに10%でGOD欠片。</p>
+        </div>
+        <div><h4>再合成</h4>
+          <div class="row">
+            <button class="ghost" onclick="v111RecomposeByRarity('N')">N×5 → R</button>
+            <button class="ghost" onclick="v111RecomposeByRarity('R')">R×5 → SR</button>
+            <button class="ghost" onclick="v111RecomposeByRarity('SR')">SR×5 → UR</button>
+            <button class="ghost" onclick="v111RecomposeByRarity('UR')">UR×3 → GOD欠片</button>
+          </div>
+          <p class="small">再合成は同レアの空き在庫を自動で消費します。結果はランダムです。</p>
+        </div>
+      </div>
+    </div>`;
+  }
+  function injectShopPanel(){
+    const area=document.getElementById('shopArea');
+    if(!area) return;
+    const old=area.querySelector('#v111ItemCraftPanel');
+    if(old) old.remove();
+    area.insertAdjacentHTML('beforeend', v111ShopExtraHtml());
+  }
+  function injectStyle(){
+    if(document.getElementById('v111-style')) return;
+    const st=document.createElement('style'); st.id='v111-style';
+    st.textContent=`.v111-craft-panel .row{gap:6px}.v111-craft-panel button{padding:7px 9px;font-size:12px}.v111-craft-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.v111-craft-grid h4{margin:6px 0}`;
+    document.head.appendChild(st);
+  }
+  function patchHooks(){
+    if(typeof render==='function' && !render.__v111Craft){
+      const old=render;
+      render=function(){ const ret=old.apply(this,arguments); setTimeout(()=>{ injectStyle(); if(window.currentTab==='shop') injectShopPanel(); },0); return ret; };
+      render.__v111Craft=true;
+    }
+    if(typeof showTab==='function' && !showTab.__v111Craft){
+      const old=showTab;
+      showTab=function(tab){ const ret=old.apply(this,arguments); setTimeout(()=>{ injectStyle(); if(tab==='shop' || window.currentTab==='shop') injectShopPanel(); },50); return ret; };
+      showTab.__v111Craft=true;
+    }
+  }
+  function patchVersionCheck(){
+    window.kurimonVersionCheckDone = false;
+    window.checkKurimonLatestVersion = async function(){
+      if(window.kurimonVersionCheckDone) return;
+      window.kurimonVersionCheckDone = true;
+      try{
+        const url = new URL('./version.json', window.location.href);
+        url.searchParams.set('ts', String(Date.now()));
+        const res = await fetch(url.toString(), {cache:'no-store'});
+        if(!res.ok) return;
+        const data = await res.json();
+        const latestVersion = Number(data.version || 0);
+        if(!latestVersion || latestVersion <= V111_APP_VERSION) return;
+        const ok = confirm(data.message || '新しいバージョンがあります。\n最新版に更新しますか？');
+        if(ok && typeof forceKurimonUpdate === 'function') await forceKurimonUpdate({targetVersion: latestVersion, skipConfirm: true});
+      }catch(e){ console.log('Kurimon version check skipped', e); }
+    };
+  }
+  function boot(){ ensure(); injectStyle(); patchHooks(); patchVersionCheck(); if(window.currentTab==='shop') injectShopPanel(); }
+  boot(); window.addEventListener('load',()=>setTimeout(boot,100)); document.addEventListener('click',()=>setTimeout(()=>{ if(window.currentTab==='shop') injectShopPanel(); },80),true);
+})();
+</script>
 
 </body>
 </html>
