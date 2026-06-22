@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v103</title>
+  <title>クリモン - 製品版 v104</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v103</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v104</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8929,7 +8929,7 @@ if ("serviceWorker" in navigator) {
 
 
 <script>
-// v103: 卵限定「ミルカ」正式実装。ゲームの神スキル、隠し称号、卵出現率を追加。
+// v104: ミルカ進化順変更。小さな神子→神託→ミルカ→大天使/堕天使/創世神。
 (function(){
   const MILKA_ID = 'milka';
   const MILKA_HIDDEN_ACH_ID = 'hidden_nerf_pre';
@@ -8947,15 +8947,15 @@ if ("serviceWorker" in navigator) {
   }
   function installMilkaMaster(){
     try{
-      BASE_SPECIES[MILKA_ID] = {speciesName:'ミルカ', role:'卵限定・ゲームの神', emoji:'🎮', baseStats:{hp:34,atk:5,def:8,mag:15,luck:15,spd:10}, image:'images/milka_base.png'};
+      BASE_SPECIES[MILKA_ID] = {speciesName:'小さな神子・ミルカ', role:'卵限定・ゲームの神', emoji:'🎮', baseStats:{hp:34,atk:5,def:8,mag:15,luck:15,spd:10}, image:'images/milka_base.png'};
       EVOLUTION_LEVELS[MILKA_ID] = [6,16,30];
       EVOLUTION_TREE[MILKA_ID] = {
-        a:{formName:'小さな神子・ミルカ', profile:'ゲームの神の片鱗を見せる。確率と弱体に干渉する。'},
-        b:{formName:'小さな神子・ミルカ', profile:'ゲームの神の片鱗を見せる。確率と弱体に干渉する。'},
-        aa:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
-        ab:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
-        ba:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
-        bb:{formName:'神託のミルカ', profile:'ルールに触れはじめた神子。魔法と運が高い。'},
+        a:{formName:'神託のミルカ', profile:'神からの言葉を受け取り、世界の裏側に触れはじめた。'},
+        b:{formName:'神託のミルカ', profile:'神からの言葉を受け取り、世界の裏側に触れはじめた。'},
+        aa:{formName:'ミルカ', profile:'ゲームの神として本来の名前を取り戻した。確率と戦況を書き換える。'},
+        ab:{formName:'ミルカ', profile:'ゲームの神として本来の名前を取り戻した。確率と戦況を書き換える。'},
+        ba:{formName:'ミルカ', profile:'ゲームの神として本来の名前を取り戻した。確率と戦況を書き換える。'},
+        bb:{formName:'ミルカ', profile:'ゲームの神として本来の名前を取り戻した。確率と戦況を書き換える。'},
         aaa:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
         aba:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
         baa:{formName:'大天使ミルカ', profile:'神域・祝福・天罰で戦う守護型のゲームの神。'},
@@ -8990,17 +8990,19 @@ if ("serviceWorker" in navigator) {
       });
       if(typeof DEX_PROFILE_TEXT!=='undefined'){
         Object.assign(DEX_PROFILE_TEXT, {
-          milka_base:'卵から極低確率で生まれるゲームの神。小さな見た目だが、確率とルールに干渉する。',
-          milka_a:'ゲームの神の片鱗を見せる神子。セーブポイントで運命を書き換える。',
-          milka_b:'ゲームの神の片鱗を見せる神子。セーブポイントで運命を書き換える。',
-          milka_aa:'神託を受け、世界の裏側に触れはじめたミルカ。',
-          milka_ab:'神託を受け、世界の裏側に触れはじめたミルカ。',
-          milka_ba:'神託を受け、世界の裏側に触れはじめたミルカ。',
-          milka_bb:'神託を受け、世界の裏側に触れはじめたミルカ。',
+          milka_base:'小さな神子・ミルカ。卵から極低確率で生まれるゲームの神の幼い姿。',
+          milka_a:'神託のミルカ。神からの言葉を受け取り、世界の裏側に触れはじめた。',
+          milka_b:'神託のミルカ。神からの言葉を受け取り、世界の裏側に触れはじめた。',
+          milka_aa:'ミルカ。ゲームの神として本来の名前を取り戻し、確率と戦況を書き換える。',
+          milka_ab:'ミルカ。ゲームの神として本来の名前を取り戻し、確率と戦況を書き換える。',
+          milka_ba:'ミルカ。ゲームの神として本来の名前を取り戻し、確率と戦況を書き換える。',
+          milka_bb:'ミルカ。ゲームの神として本来の名前を取り戻し、確率と戦況を書き換える。',
           milka_aaa:'大天使ミルカ。神域・祝福・天罰で味方にやさしい世界を作る。',
           milka_aab:'堕天使ミルカ。テキトーなパッチで敵だけを不利にする。',
           milka_aar:'創世神ミルカ。世界を再起動し、コマンドで戦況を書き換える。',
-          'ミルカ':'卵から極低確率で生まれるゲームの神。',
+          '小さな神子・ミルカ':'卵から極低確率で生まれるゲームの神の幼い姿。',
+          '神託のミルカ':'神託を受け、世界の裏側に触れはじめたミルカ。',
+          'ミルカ':'ゲームの神として本来の名前を取り戻した姿。',
           '大天使ミルカ':'神域・祝福・天罰で味方にやさしい世界を作る。',
           '堕天使ミルカ':'テキトーなパッチで敵だけを不利にする。',
           '創世神ミルカ':'世界を再起動し、コマンドで戦況を書き換える。'
@@ -9079,16 +9081,16 @@ if ("serviceWorker" in navigator) {
   function showMilkaHatchIntro(mon){
     try{
       const el=document.createElement('div');
-      el.id='v103MilkaIntro';
-      el.innerHTML=`<div class="v103-milka-card"><div class="v103-milka-title">🎮 神の卵が割れた</div><p>画面の奥から、金色の輪をまとった少女がこちらを覗きこんだ。</p><p>「この世界、ちょっとバグってて面白いね～」</p><b>ミルカが仲間になった！</b><button onclick="this.closest('#v103MilkaIntro')?.remove()">OK</button></div>`;
+      el.id='v104MilkaIntro';
+      el.innerHTML=`<div class="v104-milka-card"><div class="v104-milka-title">🎮 神の卵が割れた</div><p>画面の奥から、金色の輪をまとった少女がこちらを覗きこんだ。</p><p>「この世界、ちょっとバグってて面白いね～」</p><b>小さな神子・ミルカが仲間になった！</b><button onclick="this.closest('#v104MilkaIntro')?.remove()">OK</button></div>`;
       document.body.appendChild(el);
       setTimeout(()=>{try{el.remove()}catch(e){}},9000);
     }catch(e){}
   }
   function installMilkaStyle(){
-    if(document.getElementById('v103MilkaStyle')) return;
-    const st=document.createElement('style'); st.id='v103MilkaStyle';
-    st.textContent=`#v103MilkaIntro{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,rgba(255,238,164,.26),rgba(10,12,22,.84));backdrop-filter:blur(4px);padding:18px}.v103-milka-card{max-width:380px;width:100%;border-radius:22px;border:1px solid rgba(255,238,164,.52);background:linear-gradient(160deg,rgba(38,40,70,.96),rgba(18,20,34,.98));box-shadow:0 0 42px rgba(255,236,144,.34),0 18px 48px rgba(0,0,0,.5);padding:20px;text-align:center;color:white}.v103-milka-title{font-size:22px;font-weight:900;color:#fff1a1;margin-bottom:10px}.v103-milka-card button{margin-top:12px;min-width:120px}`;
+    if(document.getElementById('v104MilkaStyle')) return;
+    const st=document.createElement('style'); st.id='v104MilkaStyle';
+    st.textContent=`#v104MilkaIntro{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,rgba(255,238,164,.26),rgba(10,12,22,.84));backdrop-filter:blur(4px);padding:18px}.v104-milka-card{max-width:380px;width:100%;border-radius:22px;border:1px solid rgba(255,238,164,.52);background:linear-gradient(160deg,rgba(38,40,70,.96),rgba(18,20,34,.98));box-shadow:0 0 42px rgba(255,236,144,.34),0 18px 48px rgba(0,0,0,.5);padding:20px;text-align:center;color:white}.v104-milka-title{font-size:22px;font-weight:900;color:#fff1a1;margin-bottom:10px}.v104-milka-card button{margin-top:12px;min-width:120px}`;
     document.head.appendChild(st);
   }
   function checkMilkaHiddenTitle(){
@@ -9122,17 +9124,17 @@ if ("serviceWorker" in navigator) {
 
   function installPatches(){
     installMilkaMaster(); installMilkaStyle();
-    if(typeof rollEggSpeciesKey==='function' && !rollEggSpeciesKey.__v103Milka){
+    if(typeof rollEggSpeciesKey==='function' && !rollEggSpeciesKey.__v104Milka){
       const old=rollEggSpeciesKey;
       rollEggSpeciesKey=function(){ installMilkaMaster(); if(Math.random()<milkaEggRate()) return MILKA_ID; return old.apply(this,arguments); };
-      rollEggSpeciesKey.__v103Milka=true;
+      rollEggSpeciesKey.__v104Milka=true;
     }
-    if(typeof hatchEgg==='function' && !hatchEgg.__v103Milka){
+    if(typeof hatchEgg==='function' && !hatchEgg.__v104Milka){
       const old=hatchEgg;
       hatchEgg=function(){ const before=safeArr(state.monsters).length; const ret=old.apply(this,arguments); const mon=state.monsters?.[state.monsters.length-1]; if(safeArr(state.monsters).length>before && isMilka(mon)){ setTimeout(()=>showMilkaHatchIntro(mon),120); } checkMilkaHiddenTitle(); return ret; };
-      hatchEgg.__v103Milka=true;
+      hatchEgg.__v104Milka=true;
     }
-    if(typeof getSkills==='function' && !getSkills.__v103Milka){
+    if(typeof getSkills==='function' && !getSkills.__v104Milka){
       const old=getSkills;
       getSkills=function(actor){
         const arr=old.apply(this,arguments)||[];
@@ -9152,9 +9154,9 @@ if ("serviceWorker" in navigator) {
         }
         return arr;
       };
-      getSkills.__v103Milka=true;
+      getSkills.__v104Milka=true;
     }
-    if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v103Milka){
+    if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v104Milka){
       const old=skillScoreForActor;
       skillScoreForActor=function(skillId,attacker,defender){
         let s=old.apply(this,arguments);
@@ -9168,9 +9170,9 @@ if ("serviceWorker" in navigator) {
         }
         return s;
       };
-      skillScoreForActor.__v103Milka=true;
+      skillScoreForActor.__v104Milka=true;
     }
-    if(typeof useSkill==='function' && !useSkill.__v103Milka){
+    if(typeof useSkill==='function' && !useSkill.__v104Milka){
       const old=useSkill;
       useSkill=function(attacker,defender,skillId,events,monRef){
         if(!String(skillId).startsWith('milka')) return old.apply(this,arguments);
@@ -9193,9 +9195,9 @@ if ("serviceWorker" in navigator) {
         if(skillId==='milkaAdminAuthority'){ applyAdminAuthority(attacker,defender,events); push(`${attacker.name}は運営権限を確認した。`); return; }
         return old.apply(this,arguments);
       };
-      useSkill.__v103Milka=true;
+      useSkill.__v104Milka=true;
     }
-    if(typeof startTurnEffects==='function' && !startTurnEffects.__v103Milka){
+    if(typeof startTurnEffects==='function' && !startTurnEffects.__v104Milka){
       const old=startTurnEffects;
       startTurnEffects=function(actor,opponent,events){
         if(actor.status?.milkaStatusGuard>0){ clearBad(actor); }
@@ -9203,19 +9205,19 @@ if ("serviceWorker" in navigator) {
         if(actor.hp>0){ applyAdminAuthority(actor,opponent,events); tryMilkaWorldReboot(actor,opponent,events); }
         return ret;
       };
-      startTurnEffects.__v103Milka=true;
+      startTurnEffects.__v104Milka=true;
     }
-    if(typeof reduceDurations==='function' && !reduceDurations.__v103Milka){
+    if(typeof reduceDurations==='function' && !reduceDurations.__v104Milka){
       const old=reduceDurations;
       reduceDurations=function(actor){ const ret=old.apply(this,arguments); ['milkaStatusGuard','milkaSkillNerf','milkaCounter'].forEach(k=>{ if(actor.status && actor.status[k]>0) actor.status[k]--; }); return ret; };
-      reduceDurations.__v103Milka=true;
+      reduceDurations.__v104Milka=true;
     }
-    if(typeof skillUseRate==='function' && !skillUseRate.__v103Milka){
+    if(typeof skillUseRate==='function' && !skillUseRate.__v104Milka){
       const old=skillUseRate;
       skillUseRate=function(actor){ let r=old.apply(this,arguments); if(actor.status?.milkaSkillNerf>0) r*=0.58; return r; };
-      skillUseRate.__v103Milka=true;
+      skillUseRate.__v104Milka=true;
     }
-    if(typeof normalAttack==='function' && !normalAttack.__v103Milka){
+    if(typeof normalAttack==='function' && !normalAttack.__v104Milka){
       const old=normalAttack;
       normalAttack=function(attacker,defender,events,monRef){
         if(defender.status?.milkaCounter>0 && actorHasSkill(defender,'milkaWhatIsThat') && Math.random()<0.30){
@@ -9228,9 +9230,9 @@ if ("serviceWorker" in navigator) {
         }
         return old.apply(this,arguments);
       };
-      normalAttack.__v103Milka=true;
+      normalAttack.__v104Milka=true;
     }
-    if(typeof takeAction==='function' && !takeAction.__v103Milka){
+    if(typeof takeAction==='function' && !takeAction.__v104Milka){
       const old=takeAction;
       takeAction=function(attacker,defender,events,monRef){
         const ret=old.apply(this,arguments);
@@ -9239,17 +9241,17 @@ if ("serviceWorker" in navigator) {
         if(attacker.status?.milkaExtraAction>0 && attacker.hp>0 && defender.hp>0){ attacker.status.milkaExtraAction=0; pushMilka(events,'bonus',`${attacker.name}の運営権限：追加攻撃！`,attacker,defender); normalAttack(attacker,defender,events,monRef); if(defender.hp<=0) tryMilkaSave(defender,attacker,events); }
         return ret;
       };
-      takeAction.__v103Milka=true;
+      takeAction.__v104Milka=true;
     }
-    if(typeof showTab==='function' && !showTab.__v103Milka){
+    if(typeof showTab==='function' && !showTab.__v104Milka){
       const old=showTab;
       showTab=function(tab){ const ret=old.apply(this,arguments); checkMilkaHiddenTitle(); if(tab==='achievements') setTimeout(appendHiddenAchievementCard,50); return ret; };
-      showTab.__v103Milka=true;
+      showTab.__v104Milka=true;
     }
-    if(typeof render==='function' && !render.__v103Milka){
+    if(typeof render==='function' && !render.__v104Milka){
       const old=render;
       render=function(){ installMilkaMaster(); const ret=old.apply(this,arguments); checkMilkaHiddenTitle(); if((window.currentTab||'')==='achievements') setTimeout(appendHiddenAchievementCard,30); return ret; };
-      render.__v103Milka=true;
+      render.__v104Milka=true;
     }
     const tick=()=>{ installMilkaMaster(); checkMilkaHiddenTitle(); if((window.currentTab||'')==='achievements') appendHiddenAchievementCard(); };
     setTimeout(tick,100); setTimeout(tick,800);
