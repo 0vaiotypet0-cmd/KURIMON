@@ -1,4 +1,4 @@
-const CACHE_NAME = "kurimon-pwa-v94";
+const CACHE_NAME = "kurimon-pwa-v95";
 const RUNTIME_CACHE = "kurimon-runtime-v88";
 
 const CORE_ASSETS = [

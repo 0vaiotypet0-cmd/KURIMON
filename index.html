@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v94</title>
+  <title>クリモン - 製品版 v95</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1165,7 +1165,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v94</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v95</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -7129,7 +7129,7 @@ if ("serviceWorker" in navigator) {
         }).join('');
       }
       const itemArea=document.getElementById('itemArea') || document.getElementById('skillsArea');
-      if(itemArea) itemArea.insertAdjacentHTML('beforebegin', `<div id="v84DailyPanel" class="v84-panel">${v84DailyHtml()}<details class="v84-section"><summary>🩺 コンディション</summary><p class="small">${escapeHtml(v84ConditionDesc(mon))}</p></details></div>`);
+      // v95: 古いデイリーミッション二重表示防止。コンディション欄はv94DailyPanel側で表示する。
     }
   };
 
@@ -7809,7 +7809,12 @@ if ("serviceWorker" in navigator) {
     try{
       getDaily();
       // 旧パネルが残ると古い受け取り処理に吸われるので毎回撤去
-      document.querySelectorAll('#v84DailyPanel').forEach(el=>el.remove());
+      document.querySelectorAll('#v83Panel,#v84DailyPanel').forEach(el=>el.remove());
+      document.querySelectorAll('details').forEach(el=>{
+        if(el.closest && el.closest('#v94DailyPanel')) return;
+        const summary=el.querySelector('summary');
+        if(summary && (summary.textContent||'').includes('デイリーミッション')) el.remove();
+      });
       let panel=document.getElementById('v94DailyPanel');
       if(!panel){
         const target=document.getElementById('itemArea') || document.getElementById('skillsArea') || document.querySelector('.main-card') || document.querySelector('main') || document.body.firstElementChild || document.body;
@@ -7947,6 +7952,88 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <!-- v94: デイリーミッションを完全再実装。旧パネルを撤去し、進行/受取/保存を一本化 -->
+
+
+
+<script>
+// v95: 古いデイリーミッション表示を完全撤去し、正常に動くv94版だけを残す
+(function(){
+  const DAILY_PANEL_ID = 'v94DailyPanel';
+  let cleaning = false;
+
+  function isInsideNewDaily(el){
+    return !!(el && el.closest && el.closest('#' + DAILY_PANEL_ID));
+  }
+
+  function removeOldDailyDisplays(){
+    if(cleaning) return;
+    cleaning = true;
+    try{
+      // v83/v84時代の旧やりこみ/旧デイリーパネルは、v94パネルと二重表示になるため撤去
+      document.querySelectorAll('#v83Panel,#v84DailyPanel').forEach(el=>{
+        if(!isInsideNewDaily(el)) el.remove();
+      });
+
+      // IDなしで残った旧デイリーミッションdetailsも保険で撤去
+      document.querySelectorAll('details').forEach(el=>{
+        if(isInsideNewDaily(el)) return;
+        const summary = el.querySelector('summary');
+        const label = summary ? (summary.textContent || '') : '';
+        if(label.includes('デイリーミッション')) el.remove();
+      });
+
+      // 新デイリーが存在する場合は、進行再計算ボタン付きのものだけを残す
+      document.querySelectorAll('#' + DAILY_PANEL_ID).forEach((panel,idx)=>{
+        if(idx>0) panel.remove();
+      });
+    }catch(e){
+      console.warn('v95 daily cleanup skipped', e);
+    }finally{
+      cleaning = false;
+    }
+  }
+
+  window.v95RemoveOldDailyDisplays = removeOldDailyDisplays;
+
+  try{
+    const oldRender = render;
+    render = function(){
+      const ret = oldRender.apply(this, arguments);
+      removeOldDailyDisplays();
+      setTimeout(removeOldDailyDisplays, 0);
+      setTimeout(removeOldDailyDisplays, 80);
+      return ret;
+    };
+  }catch(e){}
+
+  try{
+    const oldRenderMonster = renderMonster;
+    renderMonster = function(mon){
+      const ret = oldRenderMonster.apply(this, arguments);
+      removeOldDailyDisplays();
+      setTimeout(removeOldDailyDisplays, 0);
+      return ret;
+    };
+  }catch(e){}
+
+  window.addEventListener('load', ()=>{
+    setTimeout(removeOldDailyDisplays, 80);
+    setTimeout(removeOldDailyDisplays, 400);
+  });
+
+  try{
+    const observer = new MutationObserver(()=>{
+      // v84側が再描画で旧パネルを再挿入しても即座に消す
+      removeOldDailyDisplays();
+    });
+    window.addEventListener('load', ()=>{
+      if(document.body) observer.observe(document.body, {childList:true, subtree:true});
+    });
+  }catch(e){}
+})();
+</script>
+
+<!-- v95: 旧デイリーミッション表示を削除。進行を再計算できるv94デイリーのみ表示 -->
 
 </body>
 </html>
