@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v91</title>
+  <title>クリモン - 製品版 v92</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1165,7 +1165,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v91</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v92</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6209,7 +6209,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 83;
+const KURIMON_APP_VERSION = 92;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -7386,6 +7386,165 @@ if ("serviceWorker" in navigator) {
   document.addEventListener('gesturestart', function(e){
     e.preventDefault();
   }, { passive:false });
+})();
+</script>
+
+
+
+<script>
+// v92: デイリーミッション安定化（日付キー統一 / 進行保存 / 報酬受取安定）
+(function(){
+  const V92_DAILY = [
+    ['cpu','CPU戦を3回する',3,{cp:300}],
+    ['wins','CPU戦で2勝する',2,{cp:500}],
+    ['rest','休憩を1回する',1,{cp:150}],
+    ['train','トレーニングを3回する',3,{cp:250}],
+    ['gacha','闇鍋ガチャを1回引く',1,{item:'god_ticket_shard'}],
+    ['dismantle','アイテムを1個分解する',1,{cp:300}]
+  ];
+  const V92_KEYS = V92_DAILY.map(x=>x[0]);
+  function v92Today(){ return new Date().toLocaleDateString('sv-SE'); }
+  function v92EnsureDaily(){
+    const today = v92Today();
+    if(!state.dailyV92 || state.dailyV92.key !== today){
+      const old = (state.daily && state.daily.key === today) ? state.daily : null;
+      state.dailyV92 = {key:today, claimed:{}};
+      for(const k of V92_KEYS) state.dailyV92[k] = old ? Number(old[k]||0) : 0;
+      if(old && old.claimed) state.dailyV92.claimed = {...old.claimed};
+    }
+    if(!state.dailyV92.claimed) state.dailyV92.claimed = {};
+    for(const k of V92_KEYS) if(typeof state.dailyV92[k] !== 'number') state.dailyV92[k]=0;
+    // 旧デイリー表示側が日付形式違いでリセットしても、v92側を正として復元できるよう同期しておく
+    state.daily = {key:today, claimed:{...state.dailyV92.claimed}};
+    for(const k of V92_KEYS) state.daily[k] = state.dailyV92[k];
+  }
+  function v92DailyAdd(key,n=1){
+    v92EnsureDaily();
+    if(!V92_KEYS.includes(key)) return;
+    state.dailyV92[key] = Math.max(0, Number(state.dailyV92[key]||0) + Number(n||1));
+    state.daily[key] = state.dailyV92[key];
+    try{ saveGame(); }catch(e){}
+  }
+  function v92RewardText(r){
+    if(r && r.item) return `${itemName(r.item)}×1`;
+    return `${(r && r.cp) || 0}CP`;
+  }
+  function v92ClaimDaily(id){
+    v92EnsureDaily();
+    const m = V92_DAILY.find(x=>x[0]===id);
+    if(!m) return;
+    const [key,,need,reward] = m;
+    if((state.dailyV92[key]||0) < need){ alert('まだ達成していません。'); return; }
+    if(state.dailyV92.claimed[key]){ alert('受け取り済みです。'); return; }
+    state.dailyV92.claimed[key] = true;
+    state.daily.claimed[key] = true;
+    if(reward.cp) state.cp += reward.cp;
+    if(reward.item) addItem(reward.item);
+    log(`デイリーミッション報酬：${v92RewardText(reward)}を受け取りました。`);
+    try{ saveGame(); }catch(e){}
+    render();
+  }
+  function v92ConditionDesc(mon){
+    const c = CONDITIONS[(mon && mon.condition) || 'normal'] || CONDITIONS.normal || {label:'普通',trainBonus:0,expBonus:0,battleBonus:0};
+    const exp = c.expBonus || 0, battle = c.battleBonus || 0, train = c.trainBonus || 0;
+    return `${c.label}：トレーニング補正 ${train>=0?'+':''}${train} / EXP ${exp>=0?'+':''}${exp}% / 戦闘能力 ${battle>=0?'+':''}${battle}%`;
+  }
+  function v92DailyHtml(){
+    v92EnsureDaily();
+    return `<details class="v84-section" open><summary>📅 デイリーミッション</summary><div class="v84-mission-list">${V92_DAILY.map(([id,label,need,reward])=>{
+      const cur = Math.min(need, Number(state.dailyV92[id]||0));
+      const done = cur >= need;
+      const claimed = !!state.dailyV92.claimed[id];
+      return `<div class="v84-mission"><span>${escapeHtml(label)}<br><small>${cur}/${need} / 報酬：${escapeHtml(v92RewardText(reward))}</small></span><button class="ghost" ${(!done||claimed)?'disabled':''} onclick="v92ClaimDaily('${id}')">${claimed?'受取済':done?'受け取る':'未達成'}</button></div>`;
+    }).join('')}</div></details>`;
+  }
+  function v92MountDailyPanel(){
+    try{
+      v92EnsureDaily();
+      const mon = getCurrentMonster ? getCurrentMonster() : null;
+      let panel = document.getElementById('v84DailyPanel');
+      if(!panel && mon){
+        const itemArea = document.getElementById('itemArea') || document.getElementById('skillsArea');
+        if(itemArea){
+          itemArea.insertAdjacentHTML('beforebegin', '<div id="v84DailyPanel" class="v84-panel"></div>');
+          panel = document.getElementById('v84DailyPanel');
+        }
+      }
+      if(panel){
+        panel.innerHTML = `${v92DailyHtml()}<details class="v84-section"><summary>🩺 コンディション</summary><p class="small">${escapeHtml(v92ConditionDesc(mon))}</p></details>`;
+      }
+    }catch(e){ console.warn('v92 daily panel skipped', e); }
+  }
+
+  window.v92DailyAdd = v92DailyAdd;
+  window.v92ClaimDaily = v92ClaimDaily;
+
+  // 各アクションの実行結果からv92デイリーへ確実に加算する
+  if(typeof train === 'function' && !train.__v92Daily){
+    const old = train;
+    train = function(stat){
+      const beforeAp = state.ap;
+      const ret = old.apply(this, arguments);
+      if(state.ap !== beforeAp){ v92DailyAdd('train'); try{ render(); }catch(e){} }
+      return ret;
+    };
+    train.__v92Daily = true;
+  }
+  if(typeof rest === 'function' && !rest.__v92Daily){
+    const old = rest;
+    rest = function(){
+      const ret = old.apply(this, arguments);
+      v92DailyAdd('rest');
+      try{ render(); }catch(e){}
+      return ret;
+    };
+    rest.__v92Daily = true;
+  }
+  if(typeof finishBattle === 'function' && !finishBattle.__v92Daily){
+    const old = finishBattle;
+    finishBattle = function(mon, enemy, win){
+      const ret = old.apply(this, arguments);
+      v92DailyAdd('cpu');
+      if(win) v92DailyAdd('wins');
+      try{ render(); }catch(e){}
+      return ret;
+    };
+    finishBattle.__v92Daily = true;
+  }
+  if(typeof window.v83YanabeGacha === 'function' && !window.v83YanabeGacha.__v92Daily){
+    const old = window.v83YanabeGacha;
+    window.v83YanabeGacha = function(){
+      const beforeCp = state.cp;
+      const beforeCount = state.records ? Number(state.records.gachaCount||0) : 0;
+      const ret = old.apply(this, arguments);
+      const afterCount = state.records ? Number(state.records.gachaCount||0) : beforeCount;
+      if(state.cp < beforeCp || afterCount > beforeCount){ v92DailyAdd('gacha'); try{ render(); }catch(e){} }
+      return ret;
+    };
+    window.v83YanabeGacha.__v92Daily = true;
+  }
+  if(typeof window.v83DismantleItem === 'function' && !window.v83DismantleItem.__v92Daily){
+    const old = window.v83DismantleItem;
+    window.v83DismantleItem = function(id){
+      const before = state.records ? Number(state.records.itemsDismantled||0) : 0;
+      const ret = old.apply(this, arguments);
+      const after = state.records ? Number(state.records.itemsDismantled||0) : before;
+      if(after > before){ v92DailyAdd('dismantle'); try{ render(); }catch(e){} }
+      return ret;
+    };
+    window.v83DismantleItem.__v92Daily = true;
+  }
+
+  const oldRender = render;
+  render = function(){
+    v92EnsureDaily();
+    const ret = oldRender.apply(this, arguments);
+    v92MountDailyPanel();
+    return ret;
+  };
+
+  v92EnsureDaily();
+  window.addEventListener('load', ()=>setTimeout(()=>{ v92MountDailyPanel(); try{ saveGame(); }catch(e){} }, 100));
 })();
 </script>
 
