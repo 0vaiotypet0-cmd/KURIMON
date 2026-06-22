@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v95</title>
+  <title>クリモン - 製品版 v96</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1161,11 +1161,33 @@ body{padding-bottom:108px;}
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<style id="v96BossEvoStyles">
+  .v96-boss-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(255,255,255,.10),rgba(0,0,0,.72));opacity:0;pointer-events:none;transition:opacity .22s ease;}
+  .v96-boss-overlay.show{opacity:1;}
+  .v96-boss-card{width:min(92vw,420px);border-radius:22px;border:1px solid rgba(255,255,255,.25);background:linear-gradient(180deg,rgba(18,22,35,.96),rgba(7,8,14,.96));box-shadow:0 20px 80px rgba(0,0,0,.65),0 0 32px rgba(248,214,109,.22);padding:20px;text-align:center;transform:scale(.94);animation:v96BossPop .72s ease both;}
+  .v96-boss-face{font-size:62px;line-height:1;margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(248,214,109,.75));}
+  .v96-boss-title{font-size:13px;letter-spacing:.18em;color:#ffe38b;font-weight:950;margin-bottom:8px;}
+  .v96-boss-name{font-size:26px;font-weight:950;color:white;text-shadow:0 0 12px rgba(255,255,255,.38);}
+  .v96-boss-sub{font-size:12px;color:#dce3ff;margin-top:8px;line-height:1.55;}
+  .v96-boss-card.fullmoon{box-shadow:0 20px 80px rgba(0,0,0,.65),0 0 40px rgba(154,208,255,.45);border-color:rgba(160,215,255,.45);}
+  .v96-boss-card.kazuko{box-shadow:0 20px 80px rgba(0,0,0,.70),0 0 46px rgba(255,77,145,.50);border-color:rgba(255,110,170,.55);}
+  .battle-stage.v96-boss-fullmoon{background:radial-gradient(circle at 70% 18%,rgba(154,208,255,.30),transparent 26%),linear-gradient(180deg,rgba(17,28,54,.95),rgba(7,11,24,.92));box-shadow:inset 0 0 28px rgba(154,208,255,.18),0 0 18px rgba(154,208,255,.20);}
+  .battle-stage.v96-boss-kazuko{background:radial-gradient(circle at 70% 18%,rgba(255,77,145,.30),transparent 24%),linear-gradient(180deg,rgba(45,12,30,.95),rgba(12,7,14,.94));box-shadow:inset 0 0 30px rgba(255,77,145,.18),0 0 20px rgba(255,77,145,.20);}
+  .v96-evo-preview{font-size:12px;line-height:1.55;}
+  .v96-evo-preview b{color:#fff1a1;}
+  .v96-evo-preview .v96-evo-grid{display:grid;gap:5px;margin-top:6px;}
+  .v96-evo-preview .v96-evo-chip{border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.16);border-radius:10px;padding:6px 8px;}
+  .v96-evo-preview .v96-evo-note{font-size:11px;color:#aeb8d4;margin-top:6px;}
+  @keyframes v96BossPop{0%{transform:scale(.86);filter:blur(2px);opacity:.2}45%{transform:scale(1.04);filter:blur(0);opacity:1}100%{transform:scale(1);opacity:1}}
+  @media(max-width:520px){.v96-boss-card{padding:16px}.v96-boss-face{font-size:52px}.v96-boss-name{font-size:22px}.v96-evo-preview{font-size:11.5px}.v96-evo-preview .v96-evo-chip{padding:5px 7px}}
+</style>
+
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v95</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v96</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6209,7 +6231,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 92;
+const KURIMON_APP_VERSION = 96;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -7036,11 +7058,8 @@ if ("serviceWorker" in navigator) {
     return `${c.label}：トレーニング補正 ${c.trainBonus>=0?'+':''}${c.trainBonus} / EXP ${exp>=0?'+':''}${exp}% / 戦闘能力 ${battle>=0?'+':''}${battle}%`;
   }
   function v84DailyHtml(){
-    v84Ensure();
-    return `<details class="v84-section" open><summary>📅 デイリーミッション</summary><div class="v84-mission-list">${V84_DAILY.map(([id,label,need,reward])=>{
-      const cur=Math.min(need,state.daily[id]||0), done=cur>=need, claimed=!!state.daily.claimed[id];
-      return `<div class="v84-mission"><span>${escapeHtml(label)}<br><small>${cur}/${need} / 報酬：${escapeHtml(v84RewardText(reward))}</small></span><button class="ghost" ${(!done||claimed)?'disabled':''} onclick="v83ClaimDaily('${id}')">${claimed?'受取済':done?'受け取る':'未達成'}</button></div>`;
-    }).join('')}</div></details>`;
+    // v95: 古いデイリーミッションHTMLは非表示。v94/v95デイリーのみ使用。
+    return '';
   }
   function v84RecordsHtml(){
     v84Ensure();
@@ -7128,8 +7147,8 @@ if ("serviceWorker" in navigator) {
           return `<div class="stat"><div class="stat-head"><span>${escapeHtml(label)} <span class="v84-iv-chip${hot}">個体値${escapeHtml(grade)}</span>${capped}</span><b>${val}/${cap}</b></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
         }).join('');
       }
-      const itemArea=document.getElementById('itemArea') || document.getElementById('skillsArea');
-      // v95: 古いデイリーミッション二重表示防止。コンディション欄はv94DailyPanel側で表示する。
+      // v95: 古いデイリーミッション表示は廃止。正常動作するv94/v95デイリーだけを表示する。
+      document.querySelectorAll('#v84DailyPanel').forEach(el=>el.remove());
     }
   };
 
@@ -7809,12 +7828,7 @@ if ("serviceWorker" in navigator) {
     try{
       getDaily();
       // 旧パネルが残ると古い受け取り処理に吸われるので毎回撤去
-      document.querySelectorAll('#v83Panel,#v84DailyPanel').forEach(el=>el.remove());
-      document.querySelectorAll('details').forEach(el=>{
-        if(el.closest && el.closest('#v94DailyPanel')) return;
-        const summary=el.querySelector('summary');
-        if(summary && (summary.textContent||'').includes('デイリーミッション')) el.remove();
-      });
+      document.querySelectorAll('#v84DailyPanel').forEach(el=>el.remove());
       let panel=document.getElementById('v94DailyPanel');
       if(!panel){
         const target=document.getElementById('itemArea') || document.getElementById('skillsArea') || document.querySelector('.main-card') || document.querySelector('main') || document.body.firstElementChild || document.body;
@@ -7956,84 +7970,220 @@ if ("serviceWorker" in navigator) {
 
 
 <script>
-// v95: 古いデイリーミッション表示を完全撤去し、正常に動くv94版だけを残す
+// v95: デイリーミッション表示一本化。正常動作する「進行を再計算」付きのみ残す。
 (function(){
-  const DAILY_PANEL_ID = 'v94DailyPanel';
-  let cleaning = false;
-
-  function isInsideNewDaily(el){
-    return !!(el && el.closest && el.closest('#' + DAILY_PANEL_ID));
-  }
-
-  function removeOldDailyDisplays(){
-    if(cleaning) return;
-    cleaning = true;
+  function v95CleanOldDailyPanels(){
     try{
-      // v83/v84時代の旧やりこみ/旧デイリーパネルは、v94パネルと二重表示になるため撤去
-      document.querySelectorAll('#v83Panel,#v84DailyPanel').forEach(el=>{
-        if(!isInsideNewDaily(el)) el.remove();
+      // 旧v83/v84/v92/v93のデイリー表示を確実に撤去する。
+      document.querySelectorAll('#v83Panel').forEach(el=>el.remove());
+      document.querySelectorAll('#v84DailyPanel').forEach(el=>el.remove());
+      document.querySelectorAll('.v83-mission-list').forEach(el=>{
+        const root=el.closest('#v94DailyPanel,#v95DailyPanel') || null;
+        if(!root){ const p=el.closest('details,.v83-panel,.v84-panel'); if(p) p.remove(); }
       });
-
-      // IDなしで残った旧デイリーミッションdetailsも保険で撤去
-      document.querySelectorAll('details').forEach(el=>{
-        if(isInsideNewDaily(el)) return;
-        const summary = el.querySelector('summary');
-        const label = summary ? (summary.textContent || '') : '';
-        if(label.includes('デイリーミッション')) el.remove();
+      document.querySelectorAll('details').forEach(d=>{
+        if((d.textContent||'').includes('デイリーミッション') && !d.closest('#v94DailyPanel') && !d.closest('#v95DailyPanel')) d.remove();
       });
-
-      // 新デイリーが存在する場合は、進行再計算ボタン付きのものだけを残す
-      document.querySelectorAll('#' + DAILY_PANEL_ID).forEach((panel,idx)=>{
-        if(idx>0) panel.remove();
-      });
-    }catch(e){
-      console.warn('v95 daily cleanup skipped', e);
-    }finally{
-      cleaning = false;
-    }
+      // 正常版パネルのIDはそのまま利用。表示上はv95として扱う。
+      const p=document.getElementById('v94DailyPanel');
+      if(p){ p.id='v95DailyPanel'; p.dataset.dailyVersion='95'; }
+    }catch(e){ console.warn('v95CleanOldDailyPanels failed', e); }
   }
 
-  window.v95RemoveOldDailyDisplays = removeOldDailyDisplays;
-
-  try{
-    const oldRender = render;
-    render = function(){
+  const oldRender = window.render;
+  if(typeof oldRender === 'function' && !oldRender.__v95DailySingle){
+    window.render = function(){
       const ret = oldRender.apply(this, arguments);
-      removeOldDailyDisplays();
-      setTimeout(removeOldDailyDisplays, 0);
-      setTimeout(removeOldDailyDisplays, 80);
+      setTimeout(v95CleanOldDailyPanels, 0);
       return ret;
     };
-  }catch(e){}
+    window.render.__v95DailySingle = true;
+  }
 
-  try{
-    const oldRenderMonster = renderMonster;
-    renderMonster = function(mon){
-      const ret = oldRenderMonster.apply(this, arguments);
-      removeOldDailyDisplays();
-      setTimeout(removeOldDailyDisplays, 0);
-      return ret;
-    };
-  }catch(e){}
+  const oldRepair = window.v94DailyRepair;
+  if(typeof oldRepair === 'function'){
+    window.v95DailyRepair = function(){ const ret=oldRepair.apply(this, arguments); setTimeout(v95CleanOldDailyPanels,0); return ret; };
+    window.v94DailyRepair = window.v95DailyRepair;
+  }
+  const oldClaim = window.v94ClaimDaily;
+  if(typeof oldClaim === 'function'){
+    window.v95ClaimDaily = function(id){ const ret=oldClaim.apply(this, arguments); setTimeout(v95CleanOldDailyPanels,0); return ret; };
+    window.v94ClaimDaily = window.v95ClaimDaily;
+    window.v93ClaimDaily = window.v95ClaimDaily;
+    window.v92ClaimDaily = window.v95ClaimDaily;
+    window.v83ClaimDaily = window.v95ClaimDaily;
+  }
 
-  window.addEventListener('load', ()=>{
-    setTimeout(removeOldDailyDisplays, 80);
-    setTimeout(removeOldDailyDisplays, 400);
-  });
-
-  try{
-    const observer = new MutationObserver(()=>{
-      // v84側が再描画で旧パネルを再挿入しても即座に消す
-      removeOldDailyDisplays();
-    });
-    window.addEventListener('load', ()=>{
-      if(document.body) observer.observe(document.body, {childList:true, subtree:true});
-    });
-  }catch(e){}
+  window.addEventListener('load',()=>setTimeout(v95CleanOldDailyPanels,300));
+  setTimeout(v95CleanOldDailyPanels,100);
 })();
 </script>
 
-<!-- v95: 旧デイリーミッション表示を削除。進行を再計算できるv94デイリーのみ表示 -->
+<!-- v95: 古いデイリーミッション表示を削除し、正常動作版だけに一本化 -->
+
+
+<script id="v96BossEvoScript">
+// v96: ボス出現演出強化 + 進化前プレビュー
+(function(){
+  const VERSION = 96;
+  function esc(s){
+    try{ return typeof escapeHtml === 'function' ? escapeHtml(String(s ?? '')) : String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    catch(e){ return String(s ?? ''); }
+  }
+  function bossKind(enemy){
+    if(!enemy) return '';
+    const id = enemy.enemyId || enemy.id || '';
+    const name = enemy.name || enemy.nickname || '';
+    if(id === 'rare_fullmoon' || name === '満月') return 'fullmoon';
+    if(id === 'rare_kazuko' || name === '栗場カズコ') return 'kazuko';
+    return enemy.isRare || enemy.enemyType === 'rare' ? 'rare' : '';
+  }
+  function bossText(enemy){
+    const kind=bossKind(enemy);
+    if(kind==='fullmoon') return {title:'RARE BOSS ENCOUNTER',face:'🌝',name:'満月',sub:'夜空が歪み、月光が戦場を照らす。覚醒ノ儀系アイテムを狙える強敵。'};
+    if(kind==='kazuko') return {title:'DANGER / SPECIAL BOSS',face:'👑',name:'栗場カズコ',sub:'学園序列1位が立ちはだかる。GOD級アイテムを狙える超強敵。'};
+    return {title:'RARE ENEMY',face:enemy?.emoji||'⚠️',name:enemy?.name||'レア敵',sub:'いつものCPU戦とは違う気配がする。'};
+  }
+  function ensureBossOverlay(){
+    let el=document.getElementById('v96BossOverlay');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='v96BossOverlay';
+    el.className='v96-boss-overlay';
+    el.innerHTML='<div class="v96-boss-card"><div class="v96-boss-title"></div><div class="v96-boss-face"></div><div class="v96-boss-name"></div><div class="v96-boss-sub"></div></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function showBossEncounter(enemy){
+    const kind=bossKind(enemy);
+    if(!kind || kind==='') return;
+    const data=bossText(enemy);
+    const el=ensureBossOverlay();
+    const card=el.querySelector('.v96-boss-card');
+    card.className='v96-boss-card '+kind;
+    el.querySelector('.v96-boss-title').textContent=data.title;
+    el.querySelector('.v96-boss-face').textContent=data.face;
+    el.querySelector('.v96-boss-name').textContent=data.name;
+    el.querySelector('.v96-boss-sub').textContent=data.sub;
+    el.classList.add('show');
+    try{ if(navigator.vibrate) navigator.vibrate(kind==='kazuko'?[80,40,100]:[50,30,50]); }catch(e){}
+    setTimeout(()=>el.classList.remove('show'), kind==='kazuko'?2100:1750);
+  }
+  window.v96ShowBossEncounter = showBossEncounter;
+
+  function updateBossStageClass(enemy){
+    const stage=document.querySelector('#tab-battle .battle-stage');
+    if(!stage) return;
+    stage.classList.remove('v96-boss-fullmoon','v96-boss-kazuko');
+    const kind=bossKind(enemy);
+    if(kind==='fullmoon') stage.classList.add('v96-boss-fullmoon');
+    if(kind==='kazuko') stage.classList.add('v96-boss-kazuko');
+  }
+
+  if(typeof window.updateBattleStage === 'function' && !window.updateBattleStage.__v96Boss){
+    const oldUpdate=window.updateBattleStage;
+    window.updateBattleStage=function(mon, enemy, myHp, enemyHp){
+      const ret=oldUpdate.apply(this, arguments);
+      try{
+        updateBossStageClass(enemy);
+        const kind=bossKind(enemy);
+        if(kind && enemy && !enemy.__v96BossIntroShown && !window.battleBusy){
+          enemy.__v96BossIntroShown = true;
+          setTimeout(()=>showBossEncounter(enemy), 120);
+        }
+      }catch(e){console.warn('v96 boss stage skipped', e);}
+      return ret;
+    };
+    window.updateBattleStage.__v96Boss=true;
+  }
+
+  function branchScore(mon){
+    try{
+      const scores=calcEvolutionScores(mon), band=getTimeBand();
+      const a=(scores.power||0)+(scores.balance||0)+(band.key==='day'?4:0)+(mon.speciesKey==='onn'?(scores.defense||0)/2:0);
+      const b=(scores.tech||0)+(scores.special||0)+(band.key==='night'?4:0);
+      return {scores,band,a,b,margin:Math.abs(a-b)};
+    }catch(e){return null;}
+  }
+  function formLabel(mon, branch){
+    try{
+      const f=buildEvolutionForm(mon, branch);
+      if(!f) return branch.toUpperCase()+'候補';
+      return `${f.formName || branch.toUpperCase()+'候補'}`;
+    }catch(e){return branch.toUpperCase()+'候補';}
+  }
+  function currentPathPlus(mon, branch){
+    try{ return normalizeEvolutionPath(mon.branchPath) + branch; }catch(e){ return branch; }
+  }
+  function branchTypeLabel(mon, branch){
+    const name=formLabel(mon, branch);
+    const s=(name+' '+currentPathPlus(mon,branch)).toLowerCase();
+    if(/魔|術|詠唱|夢幻|未来|数式|禁術|毒|封印|沈黙|忘れ|闇鍋|わちゃ/.test(name)) return '魔法・特殊寄り';
+    if(/守|盾|防|耐|体力|再生|柱|要塞|不沈|重装|パラディン/.test(name)) return '耐久・守備寄り';
+    if(/速|神速|追撃|連撃|乱舞|瞬|アサシン|刃|撃|攻|拳|破壊|一撃|解体|バーサーカー|狂戦/.test(name)) return '攻撃・速度寄り';
+    if(/運|確率|乱数|賭博|偏差|スロッター|サイコロ|予測/.test(name)) return '運・変則寄り';
+    return branch==='a' ? '物理・耐久寄り' : '魔法・速度・特殊寄り';
+  }
+  function rareMood(mon, data){
+    if(!mon || mon.stage!==2) return '';
+    try{
+      const ready=isRareEvolution(mon,data.scores,data.band);
+      const special=(data.scores.special||0)+Math.floor((mon.stats?.luck||0)/5);
+      if(ready) return '月に呼ばれている気配が強い。';
+      if(special>=65 || (mon.rareScore||0)>=8) return '月の気配が少しだけ混じっている。';
+      if(data.band.key==='evening' || data.band.key==='midnight') return '時間帯の空気が少しだけ進化に影響している。';
+    }catch(e){}
+    return '';
+  }
+  function v96EvolutionPreviewHtml(mon){
+    if(!mon) return 'まだクリモンがいません。';
+    if(typeof maxStageForSpecies==='function' && mon.stage>=maxStageForSpecies(mon.speciesKey)) return '最終進化済み。ここから先は育成とバトルで強化しよう。';
+    const lv = typeof nextEvolutionLevel==='function' ? nextEvolutionLevel(mon) : 0;
+    const data=branchScore(mon);
+    if(!data) return esc(typeof getEvolveHint==='function'?getEvolveHint(mon):'進化条件を確認中。');
+    const aName=formLabel(mon,'a'), bName=formLabel(mon,'b');
+    let vibe='まだ進化の方向は読みにくい。';
+    if(data.margin>=8) vibe = data.a>data.b ? '力強い気配がする。A系統に寄っている。' : '不思議な気配がする。B系統に寄っている。';
+    else if(data.margin>=3) vibe = data.a>data.b ? '少し力強い気配。A系統寄り。' : '少し不思議な気配。B系統寄り。';
+    const rare=rareMood(mon,data);
+    if(rare && /強い/.test(rare)) vibe=rare;
+    const progress=mon.level>=lv ? '進化可能' : `あとLv.${Math.max(0, lv-(mon.level||0))}`;
+    return `
+      <div class="v96-evo-preview">
+        <b>進化前プレビュー</b>：${esc(vibe)}<br>
+        <span class="small">次の進化条件：Lv.${esc(lv)} / ${esc(progress)}</span>
+        <div class="v96-evo-grid">
+          <div class="v96-evo-chip">A候補：<b>${esc(aName)}</b><br><span class="small">${esc(branchTypeLabel(mon,'a'))}</span></div>
+          <div class="v96-evo-chip">B候補：<b>${esc(bName)}</b><br><span class="small">${esc(branchTypeLabel(mon,'b'))}</span></div>
+        </div>
+        ${rare && !/強い/.test(rare) ? `<div class="v96-evo-note">${esc(rare)}</div>` : ''}
+        <div class="v96-evo-note">※A/Bは種族ごとの傾向。A=攻撃、B=魔法で完全固定ではありません。</div>
+      </div>`;
+  }
+  window.v96EvolutionPreviewHtml=v96EvolutionPreviewHtml;
+
+  function renderV96EvolutionPreview(){
+    try{
+      const el=document.getElementById('evolveHint');
+      const mon=typeof getCurrentMonster==='function' ? getCurrentMonster() : null;
+      if(el && mon) el.innerHTML=v96EvolutionPreviewHtml(mon);
+    }catch(e){console.warn('v96 evolution preview skipped', e);}
+  }
+
+  if(typeof window.render === 'function' && !window.render.__v96EvoPreview){
+    const oldRender=window.render;
+    window.render=function(){
+      const ret=oldRender.apply(this, arguments);
+      setTimeout(renderV96EvolutionPreview,0);
+      return ret;
+    };
+    window.render.__v96EvoPreview=true;
+  }
+  window.addEventListener('load',()=>setTimeout(renderV96EvolutionPreview,250));
+})();
+</script>
+
+<!-- v96: ボス出現演出強化と進化前プレビューを追加。A/Bは完全な物理/魔法固定ではなく系統ごとの傾向表示。 -->
 
 </body>
 </html>
