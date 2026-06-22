@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v97</title>
+  <title>クリモン - 製品版 v99</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v97</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v99</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8289,6 +8289,266 @@ if ("serviceWorker" in navigator) {
   },300));
 })();
 </script>
+
+
+
+<style id="v99ExpeditionKikumonStyle">
+  .v99-expedition-panel{margin:0 0 14px;padding:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.045);border-radius:16px;}
+  .v99-expedition-panel h3{margin:0 0 8px;color:#fff1a1;}
+  .v99-expedition-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px;}
+  .v99-exp-card{border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;background:rgba(0,0,0,.18);}
+  .v99-exp-card b{display:block;margin-bottom:4px;}
+  .v99-exp-card button{width:auto;padding:7px 9px;border-radius:10px;font-size:12px;margin-top:6px;}
+  .v99-exp-list{display:grid;gap:8px;margin-top:8px;}
+  .v99-exp-row{border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:9px;background:rgba(255,255,255,.035);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;}
+  .v99-exp-row button{width:auto;padding:7px 9px;border-radius:10px;font-size:12px;}
+  .v99-scout-note{color:#ffe38b;font-weight:800;}
+  @media(max-width:540px){.v99-expedition-grid{grid-template-columns:1fr}.v99-exp-card button,.v99-exp-row button{width:100%;}.v99-expedition-panel{padding:10px}}
+</style>
+<script id="v99ExpeditionKikumonScript">
+// v99: 遠征システム調整 + 菊門スカウト正式仕様
+(function(){
+  const V99 = 99;
+  const STAT_KEYS = ['hp','atk','def','mag','luck','spd'];
+  const KIKUMON_PERSONALITIES = ['豪運','ガチ勢','堅実','天才','俊足'];
+  const EXP_TYPES = {
+    normal:{name:'通常遠征', minutes:10, scoutRate:0.005, cp:[80,180], item:'R', shardRate:0.02, ticketRate:0.02, desc:'短時間でCPとアイテムを狙う基本遠征。菊門スカウト率0.5%。'},
+    secret:{name:'秘境遠征', minutes:60, scoutRate:0.015, cp:[250,620], item:'SR', shardRate:0.06, ticketRate:0.05, desc:'報酬が重め。菊門スカウト率1.5%。'},
+    nightGate:{name:'夜の門前遠征', minutes:60, scoutRate:0.015, cp:[220,560], item:'SR', shardRate:0.07, ticketRate:0.08, desc:'ボス挑戦チケットを狙いやすい。菊門スカウト率1.5%。'}
+  };
+  function esc(s){try{return typeof escapeHtml==='function'?escapeHtml(String(s??'')):String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}catch(e){return String(s??'');}}
+  function rnd(min,max){return Math.floor(min+Math.random()*(max-min+1));}
+  function now(){return Date.now();}
+  function ensureKikumonDefs(){
+    try{
+      BASE_SPECIES.kikumon = {speciesName:'菊門', role:'スカウト限定・王者型', emoji:'👑', baseStats:{hp:42,atk:13,def:12,mag:12,luck:14,spd:11}, image:'images/kikumon_base.png'};
+      EVOLUTION_LEVELS.kikumon = [];
+      EVOLUTION_TREE.kikumon = EVOLUTION_TREE.kikumon || {aaa:{formName:'菊門', profile:'遠征でのみ低確率スカウトできる王者型クリモン。高いHP・攻撃・運を軸に、強化、妨害、大技を使い分ける。'}};
+      SPECIES_STAT_CAPS.kikumon = {hp:460,atk:185,def:165,mag:165,luck:190,spd:145};
+      if(AWAKENING_SKILL_POOLS){ AWAKENING_SKILL_POOLS.kikumon = ['kikumonSkyLovelyHurricane','blackFlashDomain','forcedReroll','tauntGuard']; }
+      if(typeof DEX_PROFILE_TEXT==='object'){
+        DEX_PROFILE_TEXT.kikumon_base = '遠征先の門前にまれに現れるスカウト限定クリモン。加入率は低いが、育て切ると王者級の戦力になる。';
+        DEX_PROFILE_TEXT.kikumon_aaa = '遠征先の門前にまれに現れるスカウト限定クリモン。加入率は低いが、育て切ると王者級の戦力になる。';
+        DEX_PROFILE_TEXT['菊門'] = DEX_PROFILE_TEXT.kikumon_aaa;
+      }
+      Object.assign(SKILL_DEFS, {
+        kikumonEcstasyDance:{name:'恍惚絶頂の舞', category:'support', desc:'3ターン、自分の攻撃・防御・素早さを上げる。菊門の専用技。'},
+        kikumonDiarrheaSplash:{name:'下痢便スプラッシュ', category:'magic', damageType:'hybrid', desc:'攻撃・魔法・素早さ依存の大ダメージ。菊門の専用技。'},
+        kikumonSurgery:{name:'包茎手術', category:'status', desc:'相手の攻撃・魔法を下げ、低確率で行動不能にする。菊門の専用技。'},
+        kikumonSkyLovelyHurricane:{name:'スカイラブリーハリケーン', category:'physical', desc:'攻撃＋運依存の強力な一撃。クリティカル時に伸びる。覚醒後に取得。'}
+      });
+    }catch(e){console.warn('v99 ensureKikumonDefs failed',e);}
+  }
+  function hasKikumon(){return (state.monsters||[]).some(m=>m.speciesKey==='kikumon' || m.formId==='kikumon_aaa' || m.formName==='菊門');}
+  function normalizeState(){
+    ensureKikumonDefs();
+    if(!state.v99Expeditions || !Array.isArray(state.v99Expeditions)) state.v99Expeditions=[];
+    state.v99Expeditions = state.v99Expeditions.filter(e=>e && e.monId && e.type && e.endAt);
+    if(!state.v99ExpeditionLog || !Array.isArray(state.v99ExpeditionLog)) state.v99ExpeditionLog=[];
+    if(!state.inventory) state.inventory={};
+    for(const id of ['god_ticket_shard','fullmoon_invite','kazuko_challenge']) if(typeof state.inventory[id] !== 'number') state.inventory[id]=0;
+  }
+  function monById(id){return (state.monsters||[]).find(m=>String(m.id)===String(id));}
+  function isAway(id){return (state.v99Expeditions||[]).some(e=>String(e.monId)===String(id));}
+  function randomItemForExp(type){
+    try{
+      if(type==='normal') return Math.random()<0.72 ? randomItemByRarity('R') : randomItemByRarity('N');
+      if(type==='secret') return Math.random()<0.22 ? randomItemByRarity('SR') : randomItemByRarity('R');
+      if(type==='nightGate') return Math.random()<0.18 ? randomItemByRarity('SR') : randomItemByRarity('R');
+    }catch(e){}
+    return '';
+  }
+  function createKikumon(){
+    ensureKikumonDefs();
+    if(hasKikumon()) return null;
+    const lv=rnd(20,30);
+    const species=BASE_SPECIES.kikumon;
+    const stats={hp:rnd(46,52),atk:rnd(17,23),def:rnd(16,22),mag:rnd(16,22),luck:rnd(18,24),spd:rnd(15,21)};
+    const personality=KIKUMON_PERSONALITIES[Math.floor(Math.random()*KIKUMON_PERSONALITIES.length)] || '豪運';
+    const id='m_kikumon_'+Date.now()+'_'+rnd(1000,9999);
+    const mon={
+      id, speciesKey:'kikumon', speciesName:'菊門', formName:'菊門', nickname:'菊門', formId:'kikumon_aaa',
+      stage:3, branchPath:'aaa', role:species.role, profile:'遠征限定の低確率スカウトキャラ。強力な専用技を持つ王者型。', emoji:species.emoji, image:'images/kikumon_base.png',
+      personality, condition:'normal', level:lv, exp:0, stats, hpCurrent:stats.hp,
+      capBias:{hp:18,atk:8,def:7,mag:7,luck:9,spd:6},
+      awakening:{done:false,type:'',result:'',title:'',skills:[],effects:[],at:0},
+      rareScore:8, trait:'なし',
+      history:{train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:'scout',miraclePlay:false,memories:['遠征先でスカウトされ、仲間になった。']},
+      createdAt:Date.now(), scoutOnly:true
+    };
+    state.monsters.push(mon);
+    if(!state.currentId) state.currentId=id;
+    try{registerDex(mon);}catch(e){}
+    return mon;
+  }
+  function addExpLog(text){
+    state.v99ExpeditionLog.unshift('['+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'] '+text);
+    state.v99ExpeditionLog=state.v99ExpeditionLog.slice(0,30);
+  }
+  window.v99StartExpedition=function(monId,type){
+    normalizeState();
+    const mon=monById(monId); const def=EXP_TYPES[type];
+    if(!mon || !def){alert('遠征対象が見つかりません。');return;}
+    if(isAway(monId)){alert('このクリモンはすでに遠征中です。');return;}
+    if((state.v99Expeditions||[]).length>=3){alert('同時遠征は最大3体までです。');return;}
+    const endAt=Date.now()+def.minutes*60*1000;
+    state.v99Expeditions.push({id:'ex_'+Date.now()+'_'+rnd(1000,9999),monId,type,startAt:Date.now(),endAt});
+    addExpLog(`${mon.nickname||mon.formName}を${def.name}に出した。`);
+    saveGame(); render();
+  };
+  window.v99CompleteExpedition=function(expId){
+    normalizeState();
+    const idx=state.v99Expeditions.findIndex(e=>String(e.id)===String(expId));
+    if(idx<0){alert('遠征が見つかりません。');return;}
+    const exp=state.v99Expeditions[idx]; const def=EXP_TYPES[exp.type]; const mon=monById(exp.monId);
+    if(Date.now()<Number(exp.endAt||0)){alert('まだ帰還していません。');return;}
+    state.v99Expeditions.splice(idx,1);
+    const cp=rnd(def.cp[0],def.cp[1]); state.cp=Number(state.cp||0)+cp;
+    const got=[]; got.push(`${cp}CP`);
+    const item=randomItemForExp(exp.type); if(item && typeof addItem==='function'){addItem(item,1); got.push(itemName(item));}
+    if(Math.random()<def.shardRate){state.inventory.god_ticket_shard=(state.inventory.god_ticket_shard||0)+1; got.push('GODチケットの欠片');}
+    if(Math.random()<def.ticketRate){const t=Math.random()<0.55?'fullmoon_invite':'kazuko_challenge'; state.inventory[t]=(state.inventory[t]||0)+1; got.push(itemName(t));}
+    let scoutMsg='';
+    if(!hasKikumon() && Math.random()<def.scoutRate){
+      const k=createKikumon();
+      if(k){ scoutMsg=' / 菊門をスカウト！'; got.push('菊門スカウト成功'); }
+    }
+    addExpLog(`${mon?mon.nickname:'クリモン'}が帰還。報酬：${got.join('、')}${scoutMsg}`);
+    try{log(`${mon?mon.nickname:'クリモン'}が遠征から帰還。${got.join('、')}を入手。${scoutMsg}`);}catch(e){}
+    saveGame(); render();
+  };
+  window.v99CompleteAllExpeditions=function(){
+    normalizeState();
+    const ready=(state.v99Expeditions||[]).filter(e=>Date.now()>=Number(e.endAt||0)).map(e=>e.id);
+    if(!ready.length){alert('帰還できる遠征はありません。');return;}
+    ready.forEach(id=>window.v99CompleteExpedition(id));
+  };
+  function remainingText(endAt){
+    const ms=Math.max(0,Number(endAt||0)-Date.now());
+    if(ms<=0) return '帰還可能';
+    const m=Math.ceil(ms/60000); if(m<60) return `残り約${m}分`;
+    return `残り約${Math.floor(m/60)}時間${m%60}分`;
+  }
+  function expPanelHtml(){
+    normalizeState();
+    const mons=(state.monsters||[]).filter(m=>m && !isAway(m.id));
+    const exp=(state.v99Expeditions||[]);
+    const current=getCurrentMonster?.();
+    const target=current && !isAway(current.id) ? current : mons[0];
+    const targetHtml=target ? `<p class="small">遠征に出す候補：<b>${esc(target.nickname||target.formName)}</b> Lv.${esc(target.level||1)}　※別キャラはボックスで育成中に切替えてから遠征。</p>` : '<p class="small">遠征に出せるクリモンがいません。</p>';
+    return `<div id="v99ExpeditionPanel" class="v99-expedition-panel">
+      <h3>🧭 遠征</h3>
+      <p class="small">控えクリモンにも役割を持たせる放置要素。CP・アイテム・欠片・ボス挑戦チケットを持ち帰ります。<span class="v99-scout-note">菊門は1体までの低確率スカウト限定キャラ</span>です。</p>
+      ${targetHtml}
+      <div class="v99-expedition-grid">${Object.entries(EXP_TYPES).map(([type,d])=>`<div class="v99-exp-card"><b>${esc(d.name)}</b><span class="small">${esc(d.minutes)}分 / 菊門スカウト率 ${(d.scoutRate*100).toFixed(1)}%</span><p class="small">${esc(d.desc)}</p><button ${target?'':'disabled'} onclick="v99StartExpedition('${target?esc(target.id):''}','${type}')">この遠征に出す</button></div>`).join('')}</div>
+      <h3 style="margin-top:12px;">遠征中</h3>
+      <div class="v99-exp-list">${exp.length?exp.map(e=>{const m=monById(e.monId); const d=EXP_TYPES[e.type]||{}; const ready=Date.now()>=Number(e.endAt||0); return `<div class="v99-exp-row"><div><b>${esc(m?.nickname||'クリモン')}</b>：${esc(d.name||e.type)}<br><span class="small">${esc(remainingText(e.endAt))}</span></div><button class="${ready?'ok':'ghost'}" ${ready?'':'disabled'} onclick="v99CompleteExpedition('${esc(e.id)}')">帰還</button></div>`}).join(''):'<p class="small">遠征中のクリモンはいません。</p>'}</div>
+      <div class="row" style="margin-top:8px;"><button class="ghost" onclick="v99CompleteAllExpeditions()">帰還できる遠征を全部回収</button></div>
+      <h3 style="margin-top:12px;">遠征ログ</h3><div class="log" style="max-height:150px;">${(state.v99ExpeditionLog||[]).map(esc).map(x=>`<div>${x}</div>`).join('') || '<div class="small">まだ遠征ログはありません。</div>'}</div>
+    </div>`;
+  }
+  function mountPanel(){
+    try{
+      normalizeState();
+      const tab=document.getElementById('tab-travel'); if(!tab) return;
+      let panel=document.getElementById('v99ExpeditionPanel');
+      const html=expPanelHtml();
+      if(panel){ panel.outerHTML=html; }
+      else{ tab.insertAdjacentHTML('afterbegin', html); }
+      document.querySelectorAll('[data-tab-btn="travel"]').forEach(b=>{ if(b.classList.contains('top-tips-btn')) b.textContent='遠征'; else b.innerHTML='🧭<br>遠征'; });
+      const h2=tab.querySelector('h2'); if(h2 && h2.textContent.includes('闘技場')) h2.textContent='遠征 / 闘技場';
+    }catch(e){console.warn('v99 mountPanel failed',e);}
+  }
+  function installSkillPatches(){
+    ensureKikumonDefs();
+    try{
+      if(typeof getSkills==='function' && !getSkills.__v99Kikumon){
+        const oldGetSkills=getSkills;
+        getSkills=function(actor){
+          const arr=oldGetSkills.apply(this,arguments)||[];
+          const source=actor&&actor.source?actor.source:actor;
+          if(source && source.speciesKey==='kikumon'){
+            ['kikumonEcstasyDance','kikumonDiarrheaSplash','kikumonSurgery'].forEach(id=>{if(SKILL_DEFS[id]&&!arr.includes(id))arr.push(id);});
+            if(source.awakening?.done && SKILL_DEFS.kikumonSkyLovelyHurricane && !arr.includes('kikumonSkyLovelyHurricane')) arr.push('kikumonSkyLovelyHurricane');
+          }
+          return arr;
+        };
+        getSkills.__v99Kikumon=true;
+      }
+    }catch(e){}
+    try{
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v99Kikumon){
+        const oldScore=skillScoreForActor;
+        skillScoreForActor=function(skillId,attacker,defender){
+          let s=oldScore.apply(this,arguments);
+          if(['kikumonEcstasyDance','kikumonSurgery','kikumonDiarrheaSplash','kikumonSkyLovelyHurricane'].includes(skillId)){
+            s += 80 + cStat(attacker,'luck')*0.35 + cStat(attacker,'atk')*0.25;
+            if(skillId==='kikumonEcstasyDance') s += 60;
+            if(skillId==='kikumonSkyLovelyHurricane') s += 120;
+          }
+          return s;
+        };
+        skillScoreForActor.__v99Kikumon=true;
+      }
+    }catch(e){}
+    try{
+      if(typeof useSkill==='function' && !useSkill.__v99Kikumon){
+        const oldUse=useSkill;
+        useSkill=function(attacker,defender,skillId,events,monRef){
+          if(!['kikumonEcstasyDance','kikumonDiarrheaSplash','kikumonSurgery','kikumonSkyLovelyHurricane'].includes(skillId)) return oldUse.apply(this,arguments);
+          const a=attacker.side==='me'?attacker:defender;
+          const b=attacker.side==='me'?defender:attacker;
+          const name=SKILL_DEFS[skillId]?.name||skillId;
+          if(skillId==='kikumonEcstasyDance'){
+            attacker.buff.atk=Math.max(attacker.buff.atk||0,3); attacker.buff.def=Math.max(attacker.buff.def||0,3); attacker.buff.spd=Math.max(attacker.buff.spd||0,3);
+            pushEvent(events,'support',`${attacker.name}の${name}！ 3ターン、攻撃・防御・素早さが上がった。`,a,b); return;
+          }
+          if(skillId==='kikumonSurgery'){
+            defender.buff.atk=Math.min(defender.buff.atk||0,-3); defender.buff.mag=Math.min(defender.buff.mag||0,-3);
+            const stun=Math.random()<0.28; if(stun) defender.status.stun=Math.max(defender.status.stun||0,1);
+            pushEvent(events,'status',`${attacker.name}の${name}！ ${defender.name}の攻撃・魔法を下げた${stun?'。さらに行動不能！':'。'}`,a,b); return;
+          }
+          let dmg=0,crit=false;
+          if(skillId==='kikumonDiarrheaSplash'){
+            const raw=cStat(attacker,'atk')*0.62+cStat(attacker,'mag')*0.62+cStat(attacker,'spd')*0.48-cStat(defender,'def')*0.30+10;
+            dmg=Math.max(1,Math.round(raw*(0.92+Math.random()*0.22))); applyDamage(defender,dmg);
+            pushEvent(events,'magic',`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ。`,a,b,{dmg,magic:true}); return;
+          }
+          if(skillId==='kikumonSkyLovelyHurricane'){
+            dmg=Math.max(1,Math.round((cStat(attacker,'atk')*1.05+cStat(attacker,'luck')*0.82-cStat(defender,'def')*0.32+12)*(0.90+Math.random()*0.24)));
+            crit=Math.random()<Math.min(0.72,0.20+cStat(attacker,'luck')/210);
+            if(crit) dmg=Math.round(dmg*1.85);
+            if(crit && monRef?.history) monRef.history.crits++;
+            applyDamage(defender,dmg);
+            pushEvent(events,'attack',`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ${crit?'！ クリティカルで伸びた！':''}`,a,b,{dmg,crit}); return;
+          }
+          return oldUse.apply(this,arguments);
+        };
+        useSkill.__v99Kikumon=true;
+      }
+    }catch(e){}
+  }
+  function installRenderPatch(){
+    try{
+      if(typeof render==='function' && !render.__v99Expedition){
+        const oldRender=render;
+        render=function(){const ret=oldRender.apply(this,arguments); setTimeout(mountPanel,0); return ret;};
+        render.__v99Expedition=true;
+      }
+      if(typeof showTab==='function' && !showTab.__v99Expedition){
+        const oldShow=showTab;
+        showTab=function(tab){const ret=oldShow.apply(this,arguments); if(tab==='travel') setTimeout(mountPanel,0); return ret;};
+        showTab.__v99Expedition=true;
+      }
+    }catch(e){}
+  }
+  function boot(){normalizeState(); installSkillPatches(); installRenderPatch(); mountPanel(); try{saveGame();}catch(e){}}
+  window.v99CreateKikumonForDebug=createKikumon;
+  window.addEventListener('load',()=>setTimeout(boot,250));
+  setTimeout(boot,80);
+})();
+</script>
+<!-- v99: 菊門を低確率スカウト限定・1体までに正式設定。加入Lv20〜30、加入状態普通、通常0.5%、秘境/夜の門前1.5%。専用技名・効果を指定どおり更新。 -->
 
 </body>
 </html>
