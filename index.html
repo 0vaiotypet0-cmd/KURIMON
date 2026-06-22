@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v100</title>
+  <title>クリモン - 製品版 v102</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v100</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v102</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8563,6 +8563,369 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 <!-- v100: 遠征説明からスカウト限定名を伏せ、出発確認と途中帰還を追加。 -->
+
+
+<script>
+// v101: わちゃ関連スカウト限定「ハル=コンドー」追加 + 入手演出
+(function(){
+  const HARU_ID = 'haruKondo';
+  const HARU_SKILLS = ['haruReactionZeroF','haruMitakaraYoyu','haruWorldStrongest'];
+  const HARU_AWAKEN_SKILL = 'haruPreNerfPerformance';
+  const HARU_BASE_RATES = {normal:0.003, secret:0.010, nightGate:0.015};
+  const HARU_PERSONALITIES = ['俊足','天才','豪運','ガチ勢'];
+
+  function safeCall(fn){try{return fn()}catch(e){console.warn('[v101]',e);}}
+  function isHaru(mon){return !!mon && (mon.speciesKey===HARU_ID || mon.formId==='haru_kondo' || mon.formName==='ハル=コンドー');}
+  function hasHaru(){return (state.monsters||[]).some(isHaru);}
+  function isWachaFamily(mon){return !!mon && mon.speciesKey==='wacha';}
+  function isWachaEligible(mon){return isWachaFamily(mon) && Number(mon.stage||0) >= 2;}
+  function haruScoutRate(type, mon){
+    if(!isWachaEligible(mon) || hasHaru()) return 0;
+    let r = HARU_BASE_RATES[type] || 0;
+    if(Number(mon.stage||0) >= 3) r += 0.005;
+    if(mon.awakening && mon.awakening.done) r += 0.010;
+    return r;
+  }
+  function installHaruMaster(){
+    safeCall(()=>{
+      if(BASE_SPECIES && !BASE_SPECIES[HARU_ID]){
+        BASE_SPECIES[HARU_ID] = {speciesName:'ハル=コンドー', role:'スカウト限定・反応速度0F型', emoji:'⚡', baseStats:{hp:35,atk:13,def:7,mag:9,luck:12,spd:17}, image:'images/haru_kondo_base.png'};
+      }
+      if(EVOLUTION_LEVELS) EVOLUTION_LEVELS[HARU_ID] = [];
+      if(EVOLUTION_TREE && !EVOLUTION_TREE[HARU_ID]){
+        EVOLUTION_TREE[HARU_ID] = {aaa:{formName:'ハル=コンドー', profile:'わちゃに導かれて現れる異世界の高速アタッカー。反応速度0Fで相手の動きを見切る。'}};
+      }
+      if(SPECIES_STAT_CAPS) SPECIES_STAT_CAPS[HARU_ID] = {hp:390,atk:185,def:105,mag:135,luck:175,spd:220};
+      if(AWAKENING_SKILL_POOLS) AWAKENING_SKILL_POOLS[HARU_ID] = [HARU_AWAKEN_SKILL,'godspeedZero','infiniteTrigger','forcedReroll'];
+      if(DEX_PROFILE_TEXT){
+        DEX_PROFILE_TEXT.haru_kondo = 'わちゃと縁のある遠征限定クリモン。極端な素早さと先制性能で、一瞬の判断から連続攻撃へつなぐ。';
+        DEX_PROFILE_TEXT['ハル=コンドー'] = DEX_PROFILE_TEXT.haru_kondo;
+      }
+      Object.assign(SKILL_DEFS,{
+        haruReactionZeroF:{name:'反応速度0F', category:'support', desc:'戦闘開始時、5ターンの間、必ず先制になる。低確率で相手の攻撃を無効化。ハル=コンドー専用スキル。'},
+        haruPreNerfPerformance:{name:'ナーフ前性能', category:'support', desc:'5ターン経過後、自分の全ステータスを大きく上げる。覚醒後に取得。ハル=コンドー専用スキル。'},
+        haruMitakaraYoyu:{name:'見てから余裕', category:'physical', desc:'相手の攻撃を低確率で回避し、反撃する。ハル=コンドー専用スキル。'},
+        haruWorldStrongest:{name:'世界最強', category:'physical', desc:'攻撃＋素早さ依存の連続攻撃。相手より素早さが高いほど威力上昇。ハル=コンドー専用スキル。'}
+      });
+    });
+  }
+  function createHaru(){
+    installHaruMaster();
+    if(hasHaru()) return null;
+    const species=BASE_SPECIES[HARU_ID];
+    const level = rnd(15,25);
+    const personality = HARU_PERSONALITIES[Math.floor(Math.random()*HARU_PERSONALITIES.length)] || '俊足';
+    const id='m_haru_'+Date.now()+'_'+rnd(1000,9999);
+    const mon={
+      id, speciesKey:HARU_ID, speciesName:'ハル=コンドー', formName:'ハル=コンドー', nickname:'ハル=コンドー', formId:'haru_kondo',
+      stage:3, branchPath:'aaa', role:species.role, profile:'わちゃと縁のある遠征限定クリモン。超高速・先制・回避・連続攻撃を得意とする。', emoji:species.emoji, image:'images/haru_kondo_base.png',
+      level, exp:0, condition:'normal', personality, trait:'反応速度0F', stats:{...species.baseStats}, capBias:{hp:26,atk:24,def:8,mag:14,luck:24,spd:34},
+      rareScore:6, awakening:{done:false,type:null,result:null,title:null,usedAt:null}, equippedItemId:null,
+      history:{train:{hp:0,atk:0,def:0,mag:0,luck:0,spd:0},rest:0,play:0,wins:0,losses:0,crits:0,doubleAttacks:0,hatchBand:'scout',miraclePlay:false,memories:['遠征先でわちゃに導かれ、異世界から現れた。']},
+      createdAt:Date.now(), scoutOnly:true, scoutRoute:'wachaExpedition'
+    };
+    applyLevelStats(mon);
+    state.monsters.push(mon);
+    state.dex=state.dex||{}; state.dex[mon.formId]=true;
+    if(!state.currentId) state.currentId=mon.id;
+    return mon;
+  }
+  function showScoutIntro(kind){
+    const isH = kind==='haru';
+    const title = isH ? '⚡ 反応速度0Fの男、現る' : '👑 特別なモンスターをスカウト！';
+    const body = isH
+      ? '遠征先で、わちゃが見知らぬ少年と出会った。\n\n「……遅いな。全部、見えてる」\n\nハル=コンドーが仲間になった！\nわちゃはどこか懐かしそうにしている……'
+      : '遠征先の門前に、ただならぬ気配をまとった者が現れた。\n\n強者の風格を放つ特別なモンスターをスカウトした！';
+    let el=document.getElementById('v101ScoutIntro');
+    if(!el){
+      el=document.createElement('div'); el.id='v101ScoutIntro';
+      el.innerHTML='<div class="v101-scout-card"><h2></h2><p></p><button>OK</button></div>';
+      document.body.appendChild(el);
+      el.querySelector('button').onclick=()=>el.classList.remove('show');
+    }
+    el.className=isH?'haru':'kikumon';
+    el.querySelector('h2').textContent=title;
+    el.querySelector('p').textContent=body;
+    requestAnimationFrame(()=>el.classList.add('show'));
+  }
+  function installScoutStyle(){
+    if(document.getElementById('v101ScoutStyle')) return;
+    const st=document.createElement('style'); st.id='v101ScoutStyle'; st.textContent=`
+      #v101ScoutIntro{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:999999;background:rgba(0,0,0,.62);padding:18px;white-space:pre-line;}
+      #v101ScoutIntro.show{display:flex;animation:v101Fade .18s ease-out;}
+      #v101ScoutIntro .v101-scout-card{max-width:360px;width:min(92vw,360px);border-radius:22px;padding:20px 18px;text-align:center;border:1px solid rgba(255,255,255,.22);box-shadow:0 16px 46px rgba(0,0,0,.45);background:linear-gradient(180deg,rgba(21,24,40,.98),rgba(9,11,22,.98));}
+      #v101ScoutIntro.haru .v101-scout-card{box-shadow:0 0 34px rgba(120,215,255,.45),0 16px 46px rgba(0,0,0,.45);border-color:rgba(120,215,255,.55);}
+      #v101ScoutIntro.kikumon .v101-scout-card{box-shadow:0 0 34px rgba(255,220,110,.38),0 16px 46px rgba(0,0,0,.45);border-color:rgba(255,220,110,.45);}
+      #v101ScoutIntro h2{margin:0 0 10px;font-size:20px;color:#fff1a1;}
+      #v101ScoutIntro p{margin:0 0 16px;line-height:1.6;color:#eef3ff;font-weight:700;font-size:14px;}
+      #v101ScoutIntro button{width:auto;min-width:120px;padding:10px 18px;border-radius:999px;}
+      @keyframes v101Fade{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}`;
+    document.head.appendChild(st);
+  }
+  function installSkillPatches(){
+    safeCall(()=>{
+      if(typeof getSkills==='function' && !getSkills.__v101Haru){
+        const old=getSkills;
+        getSkills=function(source){
+          const arr=old.apply(this,arguments)||[];
+          if(isHaru(source)){
+            HARU_SKILLS.forEach(id=>{if(SKILL_DEFS[id]&&!arr.includes(id)) arr.push(id);});
+            if(source.awakening?.done && SKILL_DEFS[HARU_AWAKEN_SKILL] && !arr.includes(HARU_AWAKEN_SKILL)) arr.push(HARU_AWAKEN_SKILL);
+          }
+          return arr;
+        };
+        getSkills.__v101Haru=true;
+      }
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v101Haru){
+        const old=skillScoreForActor;
+        skillScoreForActor=function(skillId,attacker,defender){
+          let s=old.apply(this,arguments);
+          if(['haruReactionZeroF','haruMitakaraYoyu','haruWorldStrongest','haruPreNerfPerformance'].includes(skillId)){
+            s += 95 + cStat(attacker,'spd')*0.55 + cStat(attacker,'atk')*0.25;
+            if(skillId==='haruWorldStrongest') s += 110;
+            if(skillId==='haruPreNerfPerformance') s += 140;
+          }
+          return s;
+        };
+        skillScoreForActor.__v101Haru=true;
+      }
+      if(typeof useSkill==='function' && !useSkill.__v101Haru){
+        const old=useSkill;
+        useSkill=function(attacker,defender,skillId,events,monRef){
+          if(!['haruReactionZeroF','haruMitakaraYoyu','haruWorldStrongest','haruPreNerfPerformance'].includes(skillId)) return old.apply(this,arguments);
+          const a=attacker.side==='me'?attacker:defender;
+          const b=attacker.side==='me'?defender:attacker;
+          const name=SKILL_DEFS[skillId]?.name||skillId;
+          if(skillId==='haruReactionZeroF'){
+            attacker.buff.spd=Math.max(attacker.buff.spd||0,5);
+            attacker.status.future=Math.max(attacker.status.future||0,1);
+            pushEvent(events,'support',`${attacker.name}の${name}！ 反応速度0Fで先制態勢に入った。`,a,b); return;
+          }
+          if(skillId==='haruPreNerfPerformance'){
+            ['atk','def','mag','luck','spd'].forEach(k=>attacker.buff[k]=Math.max(attacker.buff[k]||0,5));
+            pushEvent(events,'support',`${attacker.name}の${name}！ ナーフ前の性能が解放され、全ステータスが大きく上がった。`,a,b); return;
+          }
+          if(skillId==='haruMitakaraYoyu'){
+            attacker.status.future=Math.max(attacker.status.future||0,1);
+            const dmg=Math.max(1,Math.round((cStat(attacker,'atk')*0.75+cStat(attacker,'spd')*0.55-cStat(defender,'def')*0.30+8)*(0.90+Math.random()*0.25)));
+            applyDamage(defender,dmg);
+            pushEvent(events,'attack',`${attacker.name}の${name}！ 攻撃を見切る構えから${defender.name}に${dmg}ダメージ。`,a,b,{dmg}); return;
+          }
+          if(skillId==='haruWorldStrongest'){
+            const spdGap=Math.max(0,cStat(attacker,'spd')-cStat(defender,'spd'));
+            const d1=Math.max(1,Math.round((cStat(attacker,'atk')*0.70+cStat(attacker,'spd')*0.45-cStat(defender,'def')*0.26+7)*(0.9+Math.random()*0.22)));
+            const d2=Math.max(1,Math.round((cStat(attacker,'atk')*0.52+cStat(attacker,'spd')*0.36+spdGap*0.18-cStat(defender,'def')*0.20+5)*(0.9+Math.random()*0.22)));
+            let dmg=d1+d2;
+            const extra=spdGap>=25 && Math.random()<0.35;
+            if(extra){ dmg += Math.max(1,Math.round(cStat(attacker,'spd')*0.45)); if(monRef?.history) monRef.history.doubleAttacks++; }
+            applyDamage(defender,dmg);
+            pushEvent(events,'attack',`${attacker.name}の${name}！ ${defender.name}に連続で${dmg}ダメージ${extra?'！ 速度差で追撃！':''}`,a,b,{dmg}); return;
+          }
+          return old.apply(this,arguments);
+        };
+        useSkill.__v101Haru=true;
+      }
+      if(typeof takeAction==='function' && !takeAction.__v101Haru){
+        const old=takeAction;
+        takeAction=function(attacker,defender,events,monRef){
+          if(isHaru(defender.source) && attacker.side==='enemy' && Math.random()<0.16){
+            const a=defender.side==='me'?defender:attacker;
+            const b=defender.side==='me'?attacker:defender;
+            const dmg=Math.max(1,Math.round((cStat(defender,'atk')*0.46+cStat(defender,'spd')*0.38-cStat(attacker,'def')*0.22+5)*(0.9+Math.random()*0.2)));
+            applyDamage(attacker,dmg);
+            pushEvent(events,'counter',`${defender.name}は見てから余裕で回避し、${attacker.name}に${dmg}ダメージの反撃！`,a,b,{dmg,dodge:true});
+            return;
+          }
+          return old.apply(this,arguments);
+        };
+        takeAction.__v101Haru=true;
+      }
+      if(typeof buildBattleEvents==='function' && !buildBattleEvents.__v101Haru){
+        buildBattleEvents=function(mon, enemy){
+          const me=makeCombatant(mon,'me');
+          const foe=makeCombatant(enemy,'enemy');
+          const events=[];
+          const haruZero=isHaru(mon);
+          for(let t=1;t<=24;t++){
+            pushEvent(events,'turn',`ターン ${t}`,me,foe);
+            if(haruZero && t===1) pushEvent(events,'support',`${me.name}の反応速度0F！ 5ターンの間、必ず先制する。`,me,foe);
+            if(haruZero && t===6 && mon.awakening?.done){
+              ['atk','def','mag','luck','spd'].forEach(k=>me.buff[k]=Math.max(me.buff[k]||0,5));
+              pushEvent(events,'support',`${me.name}のナーフ前性能！ 5ターン経過後、全ステータスが大きく上がった。`,me,foe);
+            }
+            startTurnEffects(me,foe,events); if(me.hp<=0||foe.hp<=0)break;
+            startTurnEffects(foe,me,events); if(me.hp<=0||foe.hp<=0)break;
+            let myFirst;
+            if(haruZero && t<=5) myFirst=true;
+            else{
+              const firstChance=Math.max(0.12,Math.min(0.88,0.5+((cStat(me,'spd')-cStat(foe,'spd'))/140)));
+              myFirst=Math.random()<firstChance;
+            }
+            if(myFirst){takeAction(me,foe,events,mon); if(foe.hp<=0)break; takeAction(foe,me,events,mon);}
+            else{takeAction(foe,me,events,mon); if(me.hp<=0)break; takeAction(me,foe,events,mon);}
+            if(foe.hp>0 && me.hp>0 && cStat(me,'spd')-cStat(foe,'spd')>=8 && Math.random()<0.16){
+              if(mon.history) mon.history.doubleAttacks++;
+              pushEvent(events,'bonus',`${me.name}の素早さが相手を上回る！ 追加行動！`,me,foe);
+              takeAction(me,foe,events,mon);
+            }
+            reduceDurations(me); reduceDurations(foe);
+            if(me.hp<=0||foe.hp<=0)break;
+          }
+          const win=foe.hp<=0 && me.hp>0;
+          pushEvent(events,'result',win?'勝利！':'敗北……',me,foe,{win});
+          return events;
+        };
+        buildBattleEvents.__v101Haru=true;
+      }
+    });
+  }
+  function installExpeditionPatch(){
+    safeCall(()=>{
+      if(typeof v99CompleteExpedition==='function' && !v99CompleteExpedition.__v101Haru){
+        const old=window.v99CompleteExpedition || v99CompleteExpedition;
+        window.v99CompleteExpedition = v99CompleteExpedition = function(id){
+          const exp=(state.v99Expeditions||[]).find(e=>String(e.id)===String(id));
+          const mon=exp ? (state.monsters||[]).find(m=>m.id===exp.monId) : null;
+          const ready=exp && Date.now()>=Number(exp.endAt||0);
+          const beforeK=(state.monsters||[]).filter(m=>m.speciesKey==='kikumon').length;
+          const ret=old.apply(this,arguments);
+          const afterK=(state.monsters||[]).filter(m=>m.speciesKey==='kikumon').length;
+          if(afterK>beforeK) setTimeout(()=>showScoutIntro('kikumon'),80);
+          if(ready && mon && !hasHaru()){
+            const rate=haruScoutRate(exp.type,mon);
+            if(rate>0 && Math.random()<rate){
+              const h=createHaru();
+              if(h){
+                state.v99ExpeditionLog=state.v99ExpeditionLog||[];
+                state.v99ExpeditionLog.unshift(`わちゃに導かれて、ハル=コンドーをスカウトした！`);
+                state.v99ExpeditionLog=state.v99ExpeditionLog.slice(0,30);
+                try{log(`遠征先でハル=コンドーをスカウト！`);}catch(e){}
+                try{saveGame(); render();}catch(e){}
+                setTimeout(()=>showScoutIntro('haru'),120);
+              }
+            }
+          }
+          return ret;
+        };
+        v99CompleteExpedition.__v101Haru=true;
+      }
+    });
+  }
+  function installExpeditionTextPatch(){
+    safeCall(()=>{
+      if(typeof renderExpeditionPanel==='function' && !renderExpeditionPanel.__v101HaruText){
+        const old=renderExpeditionPanel;
+        renderExpeditionPanel=function(){
+          let html=old.apply(this,arguments);
+          html=html.replace('特別スカウトあり','特別な出会いあり');
+          html=html.replace('低確率で特別なモンスターがスカウトできるかも……','低確率で特別なモンスターがスカウトできるかも……<br><span class="small">※わちゃ系の進化個体を遠征に出すと、別の特別な出会いが起きることも……</span>');
+          return html;
+        };
+        renderExpeditionPanel.__v101HaruText=true;
+      }
+    });
+  }
+  function boot(){installHaruMaster();installScoutStyle();installSkillPatches();installExpeditionPatch();installExpeditionTextPatch();}
+  window.v101CreateHaruForDebug=createHaru;
+  window.addEventListener('load',()=>setTimeout(boot,320));
+  setTimeout(boot,120);
+})();
+</script>
+<!-- v101: わちゃ関連スカウト限定「ハル=コンドー」追加。菊門/ハルの入手演出を追加。 -->
+
+
+<script id="v102DailySingleGuard">
+// v102: デイリーミッション増殖防止。v94の正常パネルだけを1つに固定する。
+(function(){
+  const VERSION = 102;
+  function dailyText(el){
+    try{return String(el && el.textContent || '');}catch(e){return '';}
+  }
+  function isDailyPanel(el){
+    if(!el || !el.querySelector) return false;
+    const t = dailyText(el);
+    return t.includes('デイリーミッション') && (t.includes('進行を再計算') || el.querySelector('.v94-daily,.v94-daily-claim,[data-daily-id]'));
+  }
+  function cleanupDailyPanels(){
+    try{
+      // v95がv94DailyPanelをv95DailyPanelへ改名すると、v94側が次回描画で新規作成して増殖する。
+      // そのため正常版は必ず v94DailyPanel のIDに戻し、v94の再描画先を固定する。
+      const candidates = Array.from(document.querySelectorAll('#v94DailyPanel,#v95DailyPanel,.v84-panel,.v83-panel,details'))
+        .filter(isDailyPanel);
+      if(!candidates.length) return;
+
+      // 「進行を再計算」があるパネルを最優先で残す。複数ある場合は画面上で最も上にあるものを残す。
+      let keep = candidates.find(el => dailyText(el).includes('進行を再計算')) || candidates[0];
+      candidates.forEach(el => { if(el !== keep && el.parentNode) el.remove(); });
+
+      if(keep.tagName && keep.tagName.toLowerCase()==='details'){
+        const wrap=document.createElement('div');
+        wrap.className='v84-panel';
+        keep.parentNode.insertBefore(wrap, keep);
+        wrap.appendChild(keep);
+        keep=wrap;
+      }
+      keep.id='v94DailyPanel';
+      keep.dataset.dailyVersion='102';
+
+      // 古いミッション欄がパネル外に残っている場合も撤去。
+      document.querySelectorAll('#v83Panel,#v84DailyPanel,#v95DailyPanel').forEach(el=>{
+        if(el!==keep && el.parentNode) el.remove();
+      });
+      document.querySelectorAll('details,.v83-panel,.v84-panel').forEach(el=>{
+        if(el===keep || keep.contains(el) || el.contains(keep)) return;
+        const t=dailyText(el);
+        if(t.includes('デイリーミッション') && !t.includes('進行を再計算')) el.remove();
+      });
+    }catch(e){ console.warn('v102 daily cleanup failed', e); }
+  }
+  window.v102CleanupDailyPanels = cleanupDailyPanels;
+
+  // v95の改名処理が走った後に、必ずv94DailyPanelへ戻す。
+  const prevRender = window.render;
+  if(typeof prevRender === 'function' && !prevRender.__v102DailySingleGuard){
+    window.render = function(){
+      const ret = prevRender.apply(this, arguments);
+      setTimeout(cleanupDailyPanels, 0);
+      setTimeout(cleanupDailyPanels, 80);
+      return ret;
+    };
+    window.render.__v102DailySingleGuard = true;
+  }
+
+  // 受け取り/再計算/進行加算後も1個に整理。
+  ['v94DailyRepair','v95DailyRepair','v94ClaimDaily','v95ClaimDaily','v94DailyAdd','v92DailyAdd'].forEach(name=>{
+    const old=window[name];
+    if(typeof old==='function' && !old.__v102DailySingleGuard){
+      window[name]=function(){
+        const ret=old.apply(this, arguments);
+        setTimeout(cleanupDailyPanels,0);
+        setTimeout(cleanupDailyPanels,80);
+        return ret;
+      };
+      window[name].__v102DailySingleGuard=true;
+    }
+  });
+
+  // DOMに同じ欄が追加された場合も自動で掃除。
+  let timer=null;
+  try{
+    const mo=new MutationObserver(()=>{
+      clearTimeout(timer);
+      timer=setTimeout(cleanupDailyPanels,50);
+    });
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+
+  window.addEventListener('load',()=>{
+    setTimeout(cleanupDailyPanels,100);
+    setTimeout(cleanupDailyPanels,500);
+    setTimeout(cleanupDailyPanels,1200);
+  });
+  setTimeout(cleanupDailyPanels,100);
+})();
+</script>
+<!-- v102: デイリーミッションの無限増殖を防止。正常な「進行を再計算」付きパネルだけを1つ残す。 -->
 
 </body>
 </html>
