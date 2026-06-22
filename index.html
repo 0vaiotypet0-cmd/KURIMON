@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v108</title>
+  <title>クリモン - 製品版 v109</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v108</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v109</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6232,7 +6232,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 108;
+const KURIMON_APP_VERSION = 109;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -9521,154 +9521,175 @@ if ("serviceWorker" in navigator) {
 </script>
 
 
-<script id="v108HatchRecordsUpdateFix">
-// v108: 孵化数記録 / 時間経過孵化の育成中切替抑制 / 最新版確認バグ修正
-(function(){
-  const V108_APP_VERSION = 108;
-  const SCOUT_SPECIES = new Set(['kikumon','haruKondo']);
 
-  function n(v){ return Number.isFinite(Number(v)) ? Number(v) : 0; }
-  function ensureRecords(){
+<script>
+// v109: 卵孵化数の記録タブ表示を直接修正 / 自動孵化時の育成中切替抑制 / 最新版通知の再発防止
+(function(){
+  const V109_APP_VERSION = 109;
+  function safe(fn){ try{ return fn(); }catch(e){ console.warn('[v109]', e); } }
+  function arr(v){ return Array.isArray(v) ? v : []; }
+  function n(v){ v=Number(v||0); return Number.isFinite(v) ? v : 0; }
+  function isScoutMonster(mon){
+    if(!mon) return false;
+    if(mon.history && mon.history.hatchBand === 'scout') return true;
+    if(mon.scoutSource || mon.fromScout || mon.isScout) return true;
+    const key=String(mon.speciesKey||'');
+    return key==='kikumon' || key==='haru';
+  }
+  function ensureV109Records(){
+    if(!window.state) return null;
     if(!state.records || typeof state.records !== 'object') state.records = {};
     const r = state.records;
-
-    // 初回だけ、既存データから可能な範囲で過去の孵化数を推定する。
-    // 正確な孵化履歴は旧版には残っていないため、
-    // 「現在ボックス内の卵産クリモン」＋「逃がした数」を下限推定として採用。
-    if(!state._v108HatchCountMigrated){
-      const boxEggCount = (state.monsters || []).filter(mon => {
-        if(!mon) return false;
-        if(mon.scoutOnly) return false;
-        if(mon.history && mon.history.hatchBand === 'scout') return false;
-        if(SCOUT_SPECIES.has(mon.speciesKey)) return false;
-        return true;
-      }).length;
-      const released = n(r.releaseCount);
-      r.eggsHatched = Math.max(n(r.eggsHatched), boxEggCount + released);
-      state._v108HatchCountMigrated = true;
-    }
-
     if(typeof r.eggsHatched !== 'number') r.eggsHatched = 0;
+    if(!state._v109EggHatchMigrated){
+      // 旧版では正確な履歴がないため、現在ボックス内の卵産クリモン数を最低保証として初回補正。
+      const inferred = arr(state.monsters).filter(mon=>!isScoutMonster(mon)).length;
+      r.eggsHatched = Math.max(n(r.eggsHatched), inferred, n(state._v108EstimatedEggsHatched));
+      state._v109EggHatchMigrated = true;
+      try{ saveGame && saveGame(); }catch(e){}
+    }
     return r;
   }
-  window.v108EnsureRecords = ensureRecords;
-
-  function countHatch(beforeLen){
-    const afterLen = (state.monsters || []).length;
-    if(afterLen > beforeLen){
-      const r = ensureRecords();
-      r.eggsHatched = n(r.eggsHatched) + (afterLen - beforeLen);
-      return true;
+  function addEggRecordCard(){
+    if(!window.state || window.currentTab !== 'records') return;
+    const area = document.getElementById('recordsArea');
+    if(!area) return;
+    const r = ensureV109Records();
+    if(!r) return;
+    let grid = area.querySelector('.v84-rank-grid') || area.querySelector('.v83-rank-grid');
+    if(!grid){
+      area.insertAdjacentHTML('afterbegin','<div class="v84-tab-card"><p class="small">連勝以外のやりこみ記録です。</p><div class="v84-rank-grid"></div></div>');
+      grid = area.querySelector('.v84-rank-grid');
     }
-    return false;
+    let card = grid.querySelector('[data-v109-eggs-hatched="1"]');
+    if(!card){
+      card = document.createElement('div');
+      card.dataset.v109EggsHatched = '1';
+      card.innerHTML = '<b>卵の孵化数</b><span>0</span>';
+      grid.insertBefore(card, grid.firstChild);
+    }
+    const span = card.querySelector('span');
+    if(span) span.textContent = String(n(r.eggsHatched));
   }
-
-  // hatchEgg本体は既存処理を活かしつつ、呼び出し元に応じて育成中の切替だけ制御する。
-  if(typeof hatchEgg === 'function' && !hatchEgg.__v108Patched){
-    const originalHatchEgg = hatchEgg;
-    hatchEgg = function(options = {}){
-      const opt = options && typeof options === 'object' ? options : {};
-      const previousCurrentId = state.currentId || null;
-      const beforeLen = (state.monsters || []).length;
-
-      const ret = originalHatchEgg();
-
-      const didHatch = countHatch(beforeLen);
-      const shouldSwitchToNew = !!opt.switchToNew;
-
-      // 時間経過の自動孵化では、既に育成中のクリモンがいる場合は切り替えない。
-      // 孵化装置/即孵化では switchToNew:true で従来通り新しい個体へ切替。
-      if(didHatch && !shouldSwitchToNew && previousCurrentId){
-        const exists = (state.monsters || []).some(m => String(m.id) === String(previousCurrentId));
-        if(exists) state.currentId = previousCurrentId;
+  function recordOneEggHatch(beforeCount){
+    const afterCount = arr(state.monsters).length;
+    if(afterCount <= beforeCount) return;
+    const mon = state.monsters[afterCount-1];
+    if(isScoutMonster(mon)) return;
+    const r = ensureV109Records();
+    if(r) r.eggsHatched = n(r.eggsHatched) + 1;
+  }
+  function patchHatch(){
+    safe(()=>{
+      if(typeof hatchEgg === 'function' && !hatchEgg.__v109Patched){
+        const old = hatchEgg;
+        hatchEgg = function(options={}){
+          const opts = (options && typeof options === 'object') ? options : {};
+          const beforeCount = arr(state.monsters).length;
+          const previousCurrentId = state.currentId;
+          const previousTab = window.currentTab;
+          const ret = old.apply(this, arguments);
+          recordOneEggHatch(beforeCount);
+          const afterCount = arr(state.monsters).length;
+          const hasPrevious = previousCurrentId && arr(state.monsters).some(m=>m && m.id===previousCurrentId);
+          // switchToNew:false は時間経過の自動孵化用。既存の育成中個体がいる場合は戻す。
+          if(opts.switchToNew === false && afterCount > beforeCount && hasPrevious){
+            state.currentId = previousCurrentId;
+            if(previousTab) window.currentTab = previousTab;
+            try{ saveGame && saveGame(); }catch(e){}
+            try{ render && render(); }catch(e){}
+          }else{
+            try{ saveGame && saveGame(); }catch(e){}
+          }
+          setTimeout(addEggRecordCard, 0);
+          return ret;
+        };
+        hatchEgg.__v109Patched = true;
       }
-
-      ensureRecords();
-      saveGame();
-      render();
-      return ret;
-    };
-    hatchEgg.__v108Patched = true;
-  }
-
-  // 通常の時間経過チェックは育成中を切り替えない。
-  if(typeof checkHatch === 'function' && !checkHatch.__v108Patched){
-    checkHatch = function(){
-      if(state.egg && Date.now() >= Number(state.egg.hatchAt || 0)){
-        hatchEgg({switchToNew:false});
-      }
-    };
-    checkHatch.__v108Patched = true;
-  }
-
-  // 即孵化1000CPは従来通り、孵化した個体を育成中にする。
-  window.v87UseIncubator = function(){
-    try{ if(typeof v89RemoveIncubatorItem === 'function') v89RemoveIncubatorItem(); }catch(e){}
-    if(!state.egg){ alert('孵化待ちの卵がありません。先に卵を入手してください。'); return; }
-    if((state.cp || 0) < 1000){ alert('CPが足りません。即孵化には1000CP必要です。'); return; }
-    if(!confirm('1000CPを支払って、この卵をすぐに孵化させますか？')) return;
-    state.cp -= 1000;
-    state.egg.hatchAt = Date.now();
-    log('1000CPを支払い、卵をすぐに孵化させました。');
-    hatchEgg({switchToNew:true});
-    saveGame();
-    render();
-  };
-
-  // 記録タブに卵の孵化数を追加。
-  if(typeof v84RecordsHtml === 'function' && !v84RecordsHtml.__v108Patched){
-    const originalV84RecordsHtml = v84RecordsHtml;
-    v84RecordsHtml = function(){
-      ensureRecords();
-      let html = originalV84RecordsHtml();
-      const r = state.records || {};
-      const card = `<div><b>卵の孵化数</b><span>${String(n(r.eggsHatched))}</span></div>`;
-      if(html.includes('<div class="v84-rank-grid">') && !html.includes('卵の孵化数')){
-        html = html.replace('<div class="v84-rank-grid">', '<div class="v84-rank-grid">' + card);
-      }
-      return html;
-    };
-    v84RecordsHtml.__v108Patched = true;
-  }
-
-  // v83側の記録更新が走っても孵化数を消さない。
-  if(typeof v83Ensure === 'function' && !v83Ensure.__v108RecordPatched){
-    const originalV83Ensure = v83Ensure;
-    v83Ensure = function(){
-      const ret = originalV83Ensure();
-      ensureRecords();
-      return ret;
-    };
-    v83Ensure.__v108RecordPatched = true;
-  }
-
-  // 最新版確認。旧コードの内部バージョンが古いままで、最新版なのに通知され続ける問題をここで上書き。
-  window.checkKurimonLatestVersion = checkKurimonLatestVersion = async function(){
-    if(window.__kurimonV108VersionCheckDone) return;
-    window.__kurimonV108VersionCheckDone = true;
-    try{
-      const url = new URL('./version.json', window.location.href);
-      url.searchParams.set('ts', String(Date.now()));
-      const res = await fetch(url.toString(), {cache:'no-store'});
-      if(!res.ok) return;
-      const data = await res.json();
-      const latestVersion = Number(data.version || 0);
-      if(!latestVersion || latestVersion <= V108_APP_VERSION) return;
-      const message = data.message || '新しいバージョンがあります。\n最新版に更新しますか？';
-      if(confirm(message)){
-        await forceKurimonUpdate({targetVersion: latestVersion, skipConfirm:true, message});
-      }else{
-        if(typeof setKurimonUpdateStatus === 'function'){
-          setKurimonUpdateStatus(`新しいバージョン v${latestVersion} があります。設定から更新できます。`);
+    });
+    safe(()=>{
+      checkHatch = function(){
+        if(state && state.egg && Date.now() >= Number(state.egg.hatchAt || 0)){
+          hatchEgg({switchToNew:false});
         }
+      };
+    });
+    safe(()=>{
+      window.v87UseIncubator = function(){
+        try{ if(typeof v89RemoveIncubatorItem === 'function') v89RemoveIncubatorItem(); }catch(e){}
+        if(!state.egg){ alert('孵化待ちの卵がありません。先に卵を入手してください。'); return; }
+        if((state.cp||0) < 1000){ alert('CPが足りません。即孵化には1000CP必要です。'); return; }
+        if(!confirm('1000CPを支払って、この卵をすぐに孵化させますか？')) return;
+        state.cp -= 1000;
+        state.egg.hatchAt = Date.now();
+        try{ log && log('1000CPを支払い、卵をすぐに孵化させました。'); }catch(e){}
+        hatchEgg({switchToNew:true});
+        try{ saveGame && saveGame(); }catch(e){}
+        try{ render && render(); }catch(e){}
+      };
+    });
+  }
+  function patchRender(){
+    safe(()=>{
+      if(typeof render === 'function' && !render.__v109EggRecord){
+        const old = render;
+        render = function(){
+          ensureV109Records();
+          const ret = old.apply(this, arguments);
+          addEggRecordCard();
+          return ret;
+        };
+        render.__v109EggRecord = true;
       }
-    }catch(e){
-      console.log('Kurimon v108 version check skipped', e);
-    }
-  };
-
-  ensureRecords();
-  try{ saveGame(); }catch(e){}
+    });
+    safe(()=>{
+      if(typeof showTab === 'function' && !showTab.__v109EggRecord){
+        const old = showTab;
+        showTab = function(tab){
+          const ret = old.apply(this, arguments);
+          setTimeout(addEggRecordCard, 0);
+          return ret;
+        };
+        showTab.__v109EggRecord = true;
+      }
+    });
+  }
+  function patchVersionCheck(){
+    safe(()=>{
+      window.kurimonVersionCheckDone = false;
+      checkKurimonLatestVersion = async function(){
+        if(window.kurimonVersionCheckDone) return;
+        window.kurimonVersionCheckDone = true;
+        try{
+          const url = new URL('./version.json', window.location.href);
+          url.searchParams.set('ts', String(Date.now()));
+          const res = await fetch(url.toString(), {cache:'no-store'});
+          if(!res.ok) return;
+          const data = await res.json();
+          const latestVersion = Number(data.version || 0);
+          if(!latestVersion || latestVersion <= V109_APP_VERSION) return;
+          const message = data.message || '新しいバージョンがあります。\n最新版に更新しますか？';
+          const ok = confirm(message);
+          if(ok && typeof forceKurimonUpdate === 'function'){
+            await forceKurimonUpdate({targetVersion:latestVersion, skipConfirm:true, message});
+          }else if(!ok && typeof setKurimonUpdateStatus === 'function'){
+            setKurimonUpdateStatus(`新しいバージョン v${latestVersion} があります。設定から更新できます。`);
+          }
+        }catch(e){ console.log('Kurimon version check skipped', e); }
+      };
+    });
+  }
+  function boot(){
+    ensureV109Records();
+    patchHatch();
+    patchRender();
+    patchVersionCheck();
+    addEggRecordCard();
+  }
+  boot();
+  window.addEventListener('load',()=>setTimeout(boot,80));
+  setTimeout(boot,500);
+  setTimeout(boot,1500);
 })();
 </script>
 
