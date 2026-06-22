@@ -1,8 +1,8 @@
 {
-  "name": "クリモン - 製品版 v106",
-  "short_name": "クリモン v106",
+  "name": "クリモン - 製品版 v107",
+  "short_name": "クリモン v107",
   "description": "育成・進化・バトルが楽しめるクリモン育成ゲーム",
-  "start_url": "./?v=106",
+  "start_url": "./?v=107",
   "scope": "./",
   "display": "standalone",
   "background_color": "#10131c",

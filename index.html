@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v106</title>
+  <title>クリモン - 製品版 v107</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v106</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v107</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -1699,7 +1699,7 @@ const BASE_SPECIES = {
   dentaku: {speciesName:"電卓", role:"運・魔法・確率操作型", emoji:"🧮", baseStats:{hp:28,atk:4,def:5,mag:8,luck:11,spd:5}, image:"images/dentaku_base.png"},
 
   // v46追加：卵から低確率で出るレアキャラ
-  tsumugi: {speciesName:"つむぎ", role:"超ハイリスク料理魔法型", emoji:"🍳", baseStats:{hp:28,atk:3,def:5,mag:14,luck:9,spd:5}, image:"images/tsumugi_base.png"},
+  tsumugi: {speciesName:"つむぎ", role:"事故料理・猛毒・妨害魔法型", emoji:"🍳", baseStats:{hp:34,atk:4,def:7,mag:17,luck:12,spd:7}, image:"images/tsumugi_base.png"},
   forte: {speciesName:"フォルテ", role:"音圧バフ・高速連撃型", emoji:"🎼", baseStats:{hp:31,atk:8,def:6,mag:8,luck:7,spd:12}, image:"images/forte_base.png"},
   sipa: {speciesName:"シパ", role:"進化なし完成型・必殺守護・反撃型", emoji:"🐺", baseStats:{hp:42,atk:15,def:14,mag:2,luck:12,spd:9}, image:"images/sipa_base.png"}
 };
@@ -1786,7 +1786,7 @@ const AWAKENING_SKILL_POOLS = {
   gl:["annihilationShot","oneSlash","infiniteTrigger","gamblerRuin","coolExecution","bladeStorm"],
   wacha:["grandMeteor","arcaneOverdrive","sealCatastrophe","dreamCollapse","echoSpell","manaDrain"],
   dentaku:["divideByZero","quantumBreak","debugMode","forcedReroll","formulaCannon","chainReaction"],
-  tsumugi:["darkHotpot","vomitAlchemy","superVenom","failedCooking","areaMove","poison"],
+  tsumugi:["darkHotpot","vomitAlchemy","superVenom","failedCooking","areaMove","venom","manaDrain"],
   forte:["fortissimoRush","riseUp","crescendo","sonicWave","combo","shunpo"],
   sipa:["sipaDeathblow","sipaGuard","sipaPressure","counterStep","dismantleArt","pressurePoint"]
 };
@@ -1809,7 +1809,7 @@ const SPECIES_STAT_CAPS = {
   gl:{hp:330,atk:180,def:85,mag:95,luck:135,spd:145},
   wacha:{hp:330,atk:95,def:115,mag:175,luck:130,spd:110},
   dentaku:{hp:310,atk:85,def:105,mag:160,luck:185,spd:120},
-  tsumugi:{hp:260,atk:70,def:70,mag:220,luck:160,spd:100},
+  tsumugi:{hp:380,atk:90,def:115,mag:285,luck:215,spd:145},
   forte:{hp:330,atk:150,def:110,mag:150,luck:125,spd:210},
   sipa:{hp:500,atk:230,def:215,mag:65,luck:190,spd:165}
 };
@@ -1911,11 +1911,11 @@ const SKILL_DEFS = {
   chainReaction:{name:"連鎖反応", category:"magic", desc:"魔法依存の多段攻撃。2〜4回連続でダメージを与える。"},
 
   // v48：レア卵キャラ専用・CSV反映
-  failedCooking:{name:"失敗料理", category:"status", desc:"相手に毒3ターン。自分に最大HP6%反動。"},
-  vomitAlchemy:{name:"ゲロ錬成", category:"magic", desc:"魔法依存1.55倍、防御貫通5%、猛毒3ターン、自分に最大HP10%反動。"},
-  areaMove:{name:"エリア移動", category:"support", desc:"2ターンの間、あらゆる攻撃・妨害を受けない。"},
-  darkHotpot:{name:"闇鍋フルコース", category:"magic", desc:"魔法依存1.95倍、防御貫通8%。50%で猛毒、50%で行動不能。"},
-  superVenom:{name:"超猛毒", category:"status", desc:"相手に5ターンの強力な継続ダメージを与える。"},
+  failedCooking:{name:"失敗料理", category:"status", desc:"相手に毒4ターン。さらに攻撃・魔法を下げる。自分に最大HP3%反動。"},
+  vomitAlchemy:{name:"ゲロ錬成", category:"magic", desc:"魔法依存1.85倍、防御貫通12%、猛毒4ターン。相手の防御を下げる。自分に最大HP6%反動。"},
+  areaMove:{name:"エリア移動", category:"support", desc:"2ターンの間、攻撃・妨害を受けない。さらに素早さと運を上げる。"},
+  darkHotpot:{name:"闇鍋フルコース", category:"magic", desc:"魔法依存2.25倍、防御貫通15%。高確率で猛毒、低確率で行動不能。上振れ時は追加ダメージ。"},
+  superVenom:{name:"超猛毒", category:"status", desc:"相手に6ターンの強力な継続ダメージ。さらに魔法・素早さを下げる。"},
 
   crescendo:{name:"Make you unhappy", category:"status", desc:"3ターン、相手の攻撃・魔法・素早さを下げる。"},
   sonicWave:{name:"CLAP CLAP", category:"magic", damageType:"hybrid", desc:"攻撃＋魔法依存。相手防御を下げ、2〜5回の音圧で攻撃する。"},
@@ -3308,7 +3308,7 @@ function skillScoreForActor(skillId, attacker, defender){
   if(["chainReaction"].includes(skillId)) score += magic*0.45 + cStat(attacker,"spd")*0.25;
   if(["magicConversion","equationChant","chainFormula"].includes(skillId)) score += 50 + magic*0.25;
 
-  if(["failedCooking","vomitAlchemy","darkHotpot","superVenom"].includes(skillId)) score += magic*0.65 + luck*0.25;
+  if(["failedCooking","vomitAlchemy","darkHotpot","superVenom"].includes(skillId)) score += magic*0.85 + luck*0.35;
   if(["areaMove"].includes(skillId)) score += (1 - hp/maxHp) * 120 + magic*0.25;
   if(["crescendo"].includes(skillId)) score += 70 + cStat(attacker,"spd")*0.22;
   if(["sonicWave"].includes(skillId)) score += atk*0.30 + magic*0.55 + cStat(attacker,"spd")*0.20;
@@ -3461,7 +3461,7 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="fury"){attacker.buff.atk=Math.max(attacker.buff.atk,3);push(`${attacker.name}の猛攻！ 攻撃が上がった。`);return;}
   if(skillId==="probabilityHack"){attacker.buff.luck=Math.max(attacker.buff.luck,3);attacker.buff.mag=Math.max(attacker.buff.mag,3);push(`${attacker.name}の確率ハック！ 運と魔法が上がった。`);return;}
   if(skillId==="debugMode"){attacker.buff.mag=Math.max(attacker.buff.mag,3);attacker.buff.spd=Math.max(attacker.buff.spd,3);attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}はデバッグモードに入った！ 魔法・素早さ・運が上がる。`);return;}
-  if(skillId==="areaMove"){attacker.status.invincible=Math.max(attacker.status.invincible,2);push(`${attacker.name}のエリア移動！ 2ターンの間、攻撃と妨害を受けない。`);return;}
+  if(skillId==="areaMove"){attacker.status.invincible=Math.max(attacker.status.invincible,2);attacker.buff.spd=Math.max(attacker.buff.spd||0,3);attacker.buff.luck=Math.max(attacker.buff.luck||0,3);push(`${attacker.name}のエリア移動！ 2ターンの間、攻撃と妨害を受けず、素早さと運が上がった。`);return;}
   if(skillId==="crescendo"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}のMake you unhappy！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
   if(skillId==="fortissimoRush"){const heal=applyHeal(attacker,Math.round(attacker.maxHp*0.30));push(`${attacker.name}のYOAKE！ HPを${heal}回復した。`,{myHp:a.hp,enemyHp:b.hp});return;}
   if(skillId==="riseUp"){for(const k of ["atk","def","mag","luck","spd"]){attacker.buff[k]=Math.max(attacker.buff[k]||0,3);}push(`${attacker.name}のRISE UP！ 3ターン、全ステータスが上がった。`);return;}
@@ -3478,8 +3478,8 @@ function useSkill(attacker, defender, skillId, events, monRef){
   if(skillId==="tauntGuard"){defender.buff.atk=Math.min(defender.buff.atk||0,-3); if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1); push(`${attacker.name}の挑発防御！ ${defender.name}の攻撃を下げ、動きを乱した。`);return;}
   if(skillId==="forcedReroll"){defender.buff.atk=0;defender.buff.def=0;defender.buff.mag=0;defender.buff.luck=0;defender.buff.spd=0;attacker.buff.luck=Math.max(attacker.buff.luck,3);push(`${attacker.name}の強制再抽選！ ${defender.name}の強化を消し、自分の運を上げた。`);return;}
   if(skillId==="oniPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);push(`${attacker.name}の鬼圧！ ${defender.name}の攻撃・魔法・素早さが下がった。`);return;}
-  if(skillId==="failedCooking"){defender.status.poison=Math.max(defender.status.poison,3);const recoil=Math.max(1,Math.round(attacker.maxHp*0.06));attacker.hp=Math.max(1,attacker.hp-recoil);push(`${attacker.name}の失敗料理！ ${defender.name}は毒状態。反動で${recoil}ダメージ。`,{myHp:a.hp,enemyHp:b.hp});return;}
-  if(skillId==="superVenom"){defender.status.superVenom=Math.max(defender.status.superVenom,5);push(`${attacker.name}の超猛毒！ ${defender.name}は超猛毒状態になった。`);return;}
+  if(skillId==="failedCooking"){defender.status.poison=Math.max(defender.status.poison,4);defender.buff.atk=Math.min(defender.buff.atk||0,-2);defender.buff.mag=Math.min(defender.buff.mag||0,-2);const recoil=Math.max(1,Math.round(attacker.maxHp*0.03));attacker.hp=Math.max(1,attacker.hp-recoil);push(`${attacker.name}の失敗料理！ ${defender.name}は毒状態。攻撃と魔法も下がった。反動で${recoil}ダメージ。`,{myHp:a.hp,enemyHp:b.hp});return;}
+  if(skillId==="superVenom"){defender.status.superVenom=Math.max(defender.status.superVenom,6);defender.buff.mag=Math.min(defender.buff.mag||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-2);push(`${attacker.name}の超猛毒！ ${defender.name}は長時間の超猛毒状態になり、魔法と素早さも下がった。`);return;}
   if(skillId==="sipaPressure"){defender.buff.atk=Math.min(defender.buff.atk||0,-3);defender.buff.def=Math.min(defender.buff.def||0,-3);defender.buff.spd=Math.min(defender.buff.spd||0,-3);if(Math.random()<0.40) defender.status.stun=Math.max(defender.status.stun,1);push(`${attacker.name}の煽る！ ${defender.name}の攻撃・防御・素早さを下げた。`);return;}
   if(skillId==="poison"){defender.status.poison=Math.max(defender.status.poison,3);push(`${attacker.name}の毒！ ${defender.name}は毒状態になった。`);return;}
   if(skillId==="venom"){defender.status.venom=Math.max(defender.status.venom,3);push(`${attacker.name}の猛毒！ ${defender.name}は猛毒状態になった。`);return;}
@@ -3575,12 +3575,12 @@ function useSkill(attacker, defender, skillId, events, monRef){
     dmg=0; for(let i=0;i<hits;i++){dmg+=calcDamage(attacker,defender,"magic",0.46,0);}
     applyDamage(defender,dmg);
   }else if(skillId==="vomitAlchemy"){
-    dmg=calcDamage(attacker,defender,"magic",1.55,0.05); defender.status.venom=Math.max(defender.status.venom,3); applyDamage(defender,dmg);
-    const recoil=Math.max(1,Math.round(attacker.maxHp*0.10)); attacker.hp=Math.max(1,attacker.hp-recoil);
-    push(`${attacker.name}のゲロ錬成！ ${defender.name}に${dmg}ダメージ。猛毒を付与。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
+    dmg=calcDamage(attacker,defender,"magic",1.85,0.12); defender.status.venom=Math.max(defender.status.venom,4); defender.buff.def=Math.min(defender.buff.def||0,-2); applyDamage(defender,dmg);
+    const recoil=Math.max(1,Math.round(attacker.maxHp*0.06)); attacker.hp=Math.max(1,attacker.hp-recoil);
+    push(`${attacker.name}のゲロ錬成！ ${defender.name}に${dmg}ダメージ。猛毒を付与し、防御を下げた。反動で${recoil}ダメージ。`,{dmg,magic:true,myHp:a.hp,enemyHp:b.hp}); return;
   }else if(skillId==="darkHotpot"){
-    dmg=calcDamage(attacker,defender,"magic",1.95,0.08); applyDamage(defender,dmg);
-    if(Math.random()<0.5) defender.status.venom=Math.max(defender.status.venom,3); else defender.status.stun=Math.max(defender.status.stun,1);
+    dmg=calcDamage(attacker,defender,"magic",2.25,0.15); if(Math.random()<0.22)dmg=Math.round(dmg*1.45); applyDamage(defender,dmg);
+    if(Math.random()<0.70) defender.status.venom=Math.max(defender.status.venom,4); if(Math.random()<0.35) defender.status.stun=Math.max(defender.status.stun,1);
   }else if(skillId==="sonicWave"){
     const hits=2 + (Math.random()<0.65?1:0) + (Math.random()<0.38?1:0) + (Math.random()<0.18?1:0);
     dmg=0; for(let i=0;i<hits;i++){dmg+=calcHybridDamage(attacker,defender,0.42,0.05);}
@@ -3872,7 +3872,7 @@ function growthBySpecies(k){
   if(k==="gl")return{hp:1,atk:3,def:0,mag:0,luck:1,spd:1};
   if(k==="wacha")return{hp:1,atk:0,def:0,mag:3,luck:1,spd:0};
   if(k==="dentaku")return{hp:0,atk:0,def:1,mag:2,luck:2,spd:1};
-  if(k==="tsumugi")return{hp:0,atk:0,def:0,mag:4,luck:2,spd:0};
+  if(k==="tsumugi")return{hp:1,atk:0,def:1,mag:5,luck:3,spd:1};
   if(k==="forte")return{hp:1,atk:2,def:0,mag:2,luck:0,spd:3};
   if(k==="sipa")return{hp:3,atk:4,def:4,mag:0,luck:3,spd:2};
   return{hp:1,atk:1,def:1,mag:1,luck:1,spd:1};
@@ -9266,7 +9266,6 @@ if ("serviceWorker" in navigator) {
 <!-- v103: 卵限定「ミルカ」追加。通常卵0.2%、深夜卵0.5%、ハル所持+0.3%。隠し称号は未取得時、称号名・条件ともに？？？表示。 -->
 
 
-
 <script>
 // v106: つむぎ強化 + シパ/つむぎ/フォルテ覚醒専用スキル追加
 (function(){
@@ -9437,6 +9436,90 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 
+<script>
+// v107: シパ「管理者権限ハック」ナーフ。ワンパン火力を落として、妨害寄りの覚醒専用技に調整。
+(function(){
+  function safe(fn){try{return fn();}catch(e){console.warn('[v107 sipa nerf]', e);}}
+  function stat(actor,k){try{return typeof cStat==='function'?cStat(actor,k):((actor?.stats?.[k]||actor?.[k]||0)+(actor?.buff?.[k]||0)*5);}catch(e){return 0;}}
+  function getSideActors(attacker,defender){return {a:attacker.side==='me'?attacker:defender,b:attacker.side==='me'?defender:attacker};}
+  function patchDefs(){
+    safe(()=>{
+      if(typeof SKILL_DEFS!=='undefined'){
+        SKILL_DEFS.sipaAdminHack = {
+          name:'管理者権限ハック',
+          category:'physical',
+          desc:'覚醒シパ専用。攻撃＋運依存の妨害技。中ダメージを与え、低〜中確率で行動不能・沈黙・強化解除を狙う。ワンパン火力は控えめ。'
+        };
+      }
+    });
+  }
+  function patchScore(){
+    safe(()=>{
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v107SipaNerf){
+        const old=skillScoreForActor;
+        skillScoreForActor=function(skillId,attacker,defender){
+          let s=old.apply(this,arguments);
+          if(skillId==='sipaAdminHack'){
+            // v106では最優先級になりすぎたため、AI評価を中堅強スキル程度へ補正。
+            s -= 120;
+          }
+          return s;
+        };
+        skillScoreForActor.__v107SipaNerf=true;
+      }
+    });
+  }
+  function patchUseSkill(){
+    safe(()=>{
+      if(typeof useSkill==='function' && !useSkill.__v107SipaNerf){
+        const old=useSkill;
+        useSkill=function(attacker,defender,skillId,events,monRef){
+          if(skillId!=='sipaAdminHack') return old.apply(this,arguments);
+          patchDefs();
+          const name=(typeof SKILL_DEFS!=='undefined' && SKILL_DEFS[skillId]?.name) || '管理者権限ハック';
+          const {a,b}=getSideActors(attacker,defender);
+          // 火力を大幅に調整：ワンパン技ではなく、中ダメージ＋妨害の技にする。
+          let dmg=Math.max(1, Math.round((stat(attacker,'atk')*0.62 + stat(attacker,'luck')*0.42 - stat(defender,'def')*0.28 + 10) * (0.88 + Math.random()*0.18)));
+          const critRate=Math.min(0.32, 0.08 + stat(attacker,'luck')/520);
+          const crit=Math.random()<critRate;
+          if(crit) dmg=Math.round(dmg*1.35);
+          if(typeof applyDamage==='function') applyDamage(defender,dmg); else defender.hp=Math.max(0,(defender.hp||0)-dmg);
+          // 強化解除は確定から低確率へ。解除できても全部ではなく一部のみ。
+          const dispel=Math.random()<0.35;
+          if(dispel && defender.buff){
+            const keys=['atk','def','mag','luck','spd'].filter(k=>(defender.buff[k]||0)>0);
+            if(keys.length){
+              const k=keys[Math.floor(Math.random()*keys.length)];
+              defender.buff[k]=0;
+            }
+          }
+          const stun=Math.random()<0.22;
+          if(stun && defender.status) defender.status.stun=Math.max(defender.status.stun||0,1);
+          const silence=Math.random()<0.28;
+          if(silence && defender.status) defender.status.silence=Math.max(defender.status.silence||0,1);
+          if(crit && monRef && monRef.history) monRef.history.crits=(monRef.history.crits||0)+1;
+          const extras=[];
+          if(dispel) extras.push('強化を一部解除');
+          if(stun) extras.push('行動不能');
+          if(silence) extras.push('沈黙');
+          const suffix=extras.length ? ' さらに'+extras.join('・')+'を付与。' : '';
+          if(typeof pushEvent==='function'){
+            pushEvent(events,'attack',`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ${crit?'！ クリティカル！':''}${suffix}`,a,b,{dmg,crit});
+          }else if(Array.isArray(events)){
+            events.push({type:'attack',text:`${attacker.name}の${name}！ ${defender.name}に${dmg}ダメージ${crit?'！ クリティカル！':''}${suffix}`});
+          }
+          return;
+        };
+        useSkill.__v107SipaNerf=true;
+      }
+    });
+  }
+  function boot(){patchDefs(); patchScore(); patchUseSkill();}
+  window.addEventListener('load',()=>setTimeout(boot,250));
+  setTimeout(boot,80); setTimeout(boot,900);
+})();
+</script>
+
 </body>
 </html>
 
@@ -9446,5 +9529,5 @@ if ("serviceWorker" in navigator) {
 <!-- v91: iPhone連打時のダブルタップズーム抑制 -->
 
 <script>
-// v106: シパ強化パッチ。進化なし完成型として、HP/攻撃/防御/運/素早さ上限と専用技を強化。
+// v106: つむぎ強化パッチ。ハイリスク料理魔法型として、耐久・魔法・妨害性能と専用技を強化。
 </script>
