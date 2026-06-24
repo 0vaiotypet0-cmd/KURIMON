@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v113</title>
+  <title>クリモン - 製品版 v116</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v113</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v116</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -6238,7 +6238,7 @@ injectV78Styles();
 
 <script>
 // v77: 自動バージョン確認 + ホーム画面に追加し直さず最新版へ更新する
-const KURIMON_APP_VERSION = 113;
+const KURIMON_APP_VERSION = 115;
 let kurimonVersionCheckDone = false;
 
 function getKurimonNoCacheUrl(path){
@@ -10509,7 +10509,7 @@ if ("serviceWorker" in navigator) {
   function renderDailyTab(){ ensureDailyTabDom(); const area=document.getElementById('dailyTabArea'); if(area) area.innerHTML=dailyHtml(); document.querySelectorAll('#v94DailyPanel').forEach(el=>{ if(!document.getElementById('tab-daily')?.contains(el)) el.style.display='none'; }); }
   window.v113ClaimDaily=claim; window.v113DailyRepair=()=>repair(false);
   window.v94ClaimDaily=claim; window.v93ClaimDaily=claim; window.v92ClaimDaily=claim; window.v83ClaimDaily=claim;
-  const oldAdd=window.v94DailyAdd || window.v92DailyAdd || function(key,amount){ const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=n(d.counts[key])+Math.max(1,n(amount)||1); };
+  const oldAdd=window.v94DailyAdd || window.v92DailyAdd || function(key,n){ const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=n(d.counts[key])+Math.max(1,n||1); };
   window.v94DailyAdd=function(key,amount=1){ let ret; safe(()=>{ret=oldAdd.apply(this,arguments);}); const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=Math.max(n(d.counts[key]), n(d.counts[key])); syncLegacy(); if((window.currentTab||currentTab)==='daily') renderDailyTab(); return ret; };
   window.v92DailyAdd=window.v94DailyAdd;
 
@@ -10602,6 +10602,419 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 <!-- v113: シパ更新時ステータス低下防止・デイリーミッション上タブ復帰 -->
+
+
+<script id="v114_sipa_daily_fix">
+// v114: シパ運・素早さ低下防止強化 + デイリータブ表示修正
+(function(){
+  const V114_APP_VERSION = 115;
+  const DAILY = [
+    ['cpu','CPU戦を3回する',3,{cp:300}],
+    ['wins','CPU戦で2勝する',2,{cp:500}],
+    ['rest','休憩を1回する',1,{cp:150}],
+    ['train','トレーニングを3回する',3,{cp:250}],
+    ['gacha','闇鍋ガチャを1回引く',1,{item:'god_ticket_shard'}],
+    ['dismantle','アイテムを1個分解する',1,{cp:300}]
+  ];
+  const KEYS = DAILY.map(x=>x[0]);
+  const RECORD_KEYS = {cpu:'totalBattles',wins:'totalWins',gacha:'gachaCount',dismantle:'itemsDismantled'};
+  const SIPA_FLOOR = {hp:510,atk:235,def:225,mag:75,luck:240,spd:180};
+  const SIPA_CAP_MIN = {hp:510,atk:235,def:225,mag:75,luck:240,spd:180};
+  function safe(fn){try{return fn();}catch(e){console.warn('[v114]', e);}}
+  function num(v){v=Number(v||0); return Number.isFinite(v)?v:0;}
+  function esc(s){try{return typeof escapeHtml==='function'?escapeHtml(String(s??'')):String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}catch(e){return String(s??'');}}
+  function todayKey(){const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+  function rewardText(r){ if(r&&r.item) return `${typeof itemName==='function'?itemName(r.item):r.item}×1`; return `${num(r&&r.cp)}CP`; }
+  function ensureRecords(){ if(!state.records||typeof state.records!=='object') state.records={}; return state.records; }
+  function ensureDaily(){
+    const t=todayKey(); const rec=ensureRecords();
+    if(!state.dailyV94 || state.dailyV94.key!==t){
+      const old = state.dailyV94 && state.dailyV94.key===t ? state.dailyV94 : null;
+      state.dailyV94 = {key:t,version:114,counts:{},claimed:{},baseRecords:{}};
+      for(const k of KEYS) state.dailyV94.counts[k]=num(old?.counts?.[k]);
+      if(old?.claimed) state.dailyV94.claimed={...old.claimed};
+      for(const [k,rk] of Object.entries(RECORD_KEYS)) state.dailyV94.baseRecords[rk]=num(rec[rk]);
+      for(const src of [state.dailyV92,state.daily]){
+        if(src && src.key===t){
+          for(const k of KEYS) state.dailyV94.counts[k]=Math.max(num(state.dailyV94.counts[k]), num(src[k]));
+          if(src.claimed) state.dailyV94.claimed={...state.dailyV94.claimed,...src.claimed};
+        }
+      }
+    }
+    if(!state.dailyV94.counts) state.dailyV94.counts={};
+    if(!state.dailyV94.claimed) state.dailyV94.claimed={};
+    if(!state.dailyV94.baseRecords) state.dailyV94.baseRecords={};
+    for(const k of KEYS) state.dailyV94.counts[k]=Math.max(0,num(state.dailyV94.counts[k]));
+    syncFromRecords(); syncLegacy();
+    return state.dailyV94;
+  }
+  function syncFromRecords(){
+    const d=state.dailyV94; if(!d) return; const r=ensureRecords();
+    for(const [k,rk] of Object.entries(RECORD_KEYS)){
+      if(typeof d.baseRecords[rk] !== 'number') d.baseRecords[rk]=num(r[rk]);
+      d.counts[k]=Math.max(num(d.counts[k]), Math.max(0,num(r[rk])-num(d.baseRecords[rk])));
+    }
+  }
+  function syncLegacy(){
+    const d=state.dailyV94; if(!d) return;
+    state.daily={key:d.key,claimed:{...d.claimed}};
+    state.dailyV92=state.dailyV92&&state.dailyV92.key===d.key?state.dailyV92:{key:d.key,claimed:{}};
+    if(!state.dailyV92.claimed) state.dailyV92.claimed={};
+    for(const k of KEYS){ state.daily[k]=num(d.counts[k]); state.dailyV92[k]=num(d.counts[k]); }
+    state.dailyV92.claimed={...state.dailyV92.claimed,...d.claimed};
+  }
+  function giveReward(r){
+    if(!r) return;
+    if(r.cp) state.cp=num(state.cp)+num(r.cp);
+    if(r.item){
+      let ok=false; safe(()=>{ ok=!!addItem(r.item,1); });
+      if(!ok){ if(!state.inventory) state.inventory={}; state.inventory[r.item]=num(state.inventory[r.item])+1; }
+    }
+  }
+  function claimDaily(id){
+    const d=ensureDaily(); const m=DAILY.find(x=>x[0]===id);
+    if(!m){alert('ミッションIDが見つかりません。'); renderDailyTab114(); return false;}
+    const [key,,need,reward]=m; const cur=num(d.counts[key]);
+    if(cur<need){ alert(`まだ達成していません。\n現在：${Math.min(cur,need)}/${need}`); renderDailyTab114(); return false; }
+    if(d.claimed[key]){ alert('受け取り済みです。'); renderDailyTab114(); return false; }
+    d.claimed[key]=true; giveReward(reward); syncLegacy(); safe(()=>saveGame());
+    safe(()=>log(`デイリーミッション報酬：${rewardText(reward)}を受け取りました。`));
+    renderDailyTab114(); safe(()=>render()); alert(`受け取りました：${rewardText(reward)}`); return true;
+  }
+  function repairDaily(noAlert){
+    const d=ensureDaily();
+    for(const src of [state.dailyV92,state.daily]){
+      if(src&&src.key===d.key){
+        for(const k of KEYS) d.counts[k]=Math.max(num(d.counts[k]),num(src[k]));
+        if(src.claimed) d.claimed={...d.claimed,...src.claimed};
+      }
+    }
+    syncFromRecords(); syncLegacy(); safe(()=>saveGame()); renderDailyTab114();
+    if(!noAlert) alert('デイリーミッション進行を再計算しました。');
+  }
+  function dailyHtml114(){
+    const d=ensureDaily();
+    const rows=DAILY.map(([id,label,need,reward])=>{
+      const cur=Math.min(need,num(d.counts[id])); const done=cur>=need; const claimed=!!d.claimed[id];
+      const btn=claimed?'受取済':done?'受け取る':'未達成';
+      return `<div class="v84-mission"><span>${esc(label)}<br><small>${cur}/${need} / 報酬：${esc(rewardText(reward))}</small></span><button type="button" class="ghost ${done&&!claimed?'ok':''}" onclick="v114ClaimDaily('${id}')" ${claimed?'disabled':''}>${btn}</button></div>`;
+    }).join('');
+    return `<div id="v114DailyPanel" class="v84-panel"><h3>📅 デイリーミッション</h3><div class="v84-mission-list">${rows}</div><div class="row" style="margin-top:6px"><button type="button" class="ghost" style="font-size:11px;padding:5px 8px" onclick="v114DailyRepair()">進行を再計算</button></div></div>`;
+  }
+  function ensureDailyTabDom114(){
+    const nav=document.querySelector('.top-nav-actions');
+    if(nav && !nav.querySelector('[data-tab-btn="daily"]')){
+      const btn=document.createElement('button'); btn.className='top-tips-btn'; btn.dataset.tabBtn='daily'; btn.textContent='デイリー'; btn.onclick=()=>showTab('daily');
+      const settings=nav.querySelector('[data-tab-btn="settings"]'); nav.insertBefore(btn, settings||null);
+    }
+    const main=document.querySelector('main section');
+    if(main && !document.getElementById('tab-daily')){
+      const div=document.createElement('div'); div.id='tab-daily'; div.className='hidden'; div.innerHTML='<h2>デイリーミッション</h2><div id="dailyTabArea"></div>';
+      const shop=document.getElementById('tab-shop'); main.insertBefore(div, shop||null);
+    }
+  }
+  function renderDailyTab114(){
+    ensureDailyTabDom114();
+    const area=document.getElementById('dailyTabArea');
+    if(area) area.innerHTML=dailyHtml114();
+    // ホーム側に残った旧デイリー・コンディション混入パネルは非表示/削除
+    document.querySelectorAll('#v83Panel,#v84DailyPanel,#v94DailyPanel,#v95DailyPanel').forEach(el=>{ if(!document.getElementById('tab-daily')?.contains(el)) el.style.display='none'; });
+  }
+  function patchSipaNoDrop114(){
+    safe(()=>{ if(typeof SPECIES_STAT_CAPS!=='undefined') SPECIES_STAT_CAPS.sipa={hp:510,atk:235,def:225,mag:75,luck:240,spd:180}; });
+    if(typeof getStatCaps==='function' && !getStatCaps.__v114SipaNoDrop){
+      const old=getStatCaps;
+      getStatCaps=function(mon){
+        const caps=old.apply(this,arguments)||{};
+        if(mon && mon.speciesKey==='sipa'){
+          const bias=mon.capBias||{};
+          for(const k of Object.keys(SIPA_CAP_MIN)) caps[k]=Math.max(num(caps[k]), num(SIPA_CAP_MIN[k])+num(bias[k]));
+        }
+        return caps;
+      };
+      getStatCaps.__v114SipaNoDrop=true;
+    }
+    if(typeof capMonsterStats==='function' && !capMonsterStats.__v114SipaNoDrop){
+      const old=capMonsterStats;
+      capMonsterStats=function(mon){
+        const snap=(mon&&mon.speciesKey==='sipa'&&mon.stats)?{stats:{...mon.stats},hp:mon.hpCurrent}:null;
+        const ret=old.apply(this,arguments);
+        if(snap && mon && mon.stats){
+          for(const k of Object.keys(snap.stats)) mon.stats[k]=Math.max(num(mon.stats[k]),num(snap.stats[k]),num(SIPA_FLOOR[k]));
+          mon.hpCurrent=Math.min(mon.stats.hp, Math.max(num(mon.hpCurrent),num(snap.hp),mon.stats.hp));
+        }
+        return ret;
+      };
+      capMonsterStats.__v114SipaNoDrop=true;
+    }
+    let changed=false;
+    safe(()=>{(state.monsters||[]).forEach(mon=>{
+      if(mon&&mon.speciesKey==='sipa'){
+        if((mon.stage||0)<3){mon.stage=3; changed=true;}
+        if(!mon.stats) mon.stats={};
+        for(const [k,v] of Object.entries(SIPA_FLOOR)){
+          if(num(mon.stats[k])<v){mon.stats[k]=v; changed=true;}
+        }
+        if(num(mon.hpCurrent)<num(mon.stats.hp)){mon.hpCurrent=mon.stats.hp; changed=true;}
+      }
+    }); if(changed) saveGame();});
+  }
+  function patchShowTab114(){
+    if(typeof showTab==='function' && !showTab.__v114Daily){
+      const old=showTab;
+      showTab=function(tab){
+        ensureDailyTabDom114();
+        if(tab==='daily'){
+          currentTab='daily'; window.currentTab='daily';
+          document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.toggle('hidden', el.id!=='tab-daily'));
+          document.querySelectorAll('[data-tab-btn]').forEach(btn=>btn.classList.toggle('active', btn.dataset.tabBtn==='daily'));
+          renderDailyTab114();
+          return;
+        }
+        const ret=old.apply(this,arguments);
+        document.getElementById('tab-daily')?.classList.add('hidden');
+        return ret;
+      };
+      showTab.__v114Daily=true;
+    }
+  }
+  function patchRender114(){
+    if(typeof render==='function' && !render.__v114Daily){
+      const old=render;
+      render=function(){
+        const ret=old.apply(this,arguments);
+        ensureDailyTabDom114();
+        document.querySelectorAll('#v83Panel,#v84DailyPanel,#v94DailyPanel,#v95DailyPanel').forEach(el=>{ if(!document.getElementById('tab-daily')?.contains(el)) el.style.display='none'; });
+        if((window.currentTab||currentTab)==='daily') renderDailyTab114();
+        return ret;
+      };
+      render.__v114Daily=true;
+    }
+  }
+  function patchVersion114(){
+    window.kurimonVersionCheckDone=false;
+    window.checkKurimonLatestVersion=async function(){
+      if(window.kurimonVersionCheckDone) return; window.kurimonVersionCheckDone=true;
+      try{const u=new URL('./version.json',location.href);u.searchParams.set('ts',Date.now());const res=await fetch(u,{cache:'no-store'});if(!res.ok)return;const data=await res.json();const latest=num(data.version);if(!latest||latest<=V114_APP_VERSION)return; if(confirm(data.message||'新しいバージョンがあります。\n最新版に更新しますか？')) await forceKurimonUpdate({targetVersion:latest,skipConfirm:true});}catch(e){console.log('Kurimon version check skipped',e);}
+    };
+  }
+  window.v114ClaimDaily=claimDaily; window.v114DailyRepair=()=>repairDaily(false);
+  window.v113ClaimDaily=claimDaily; window.v94ClaimDaily=claimDaily; window.v93ClaimDaily=claimDaily; window.v92ClaimDaily=claimDaily; window.v83ClaimDaily=claimDaily;
+  const prevAdd=window.v94DailyAdd || window.v92DailyAdd;
+  window.v94DailyAdd=function(key,amount=1){ let ret; safe(()=>{ if(typeof prevAdd==='function') ret=prevAdd.apply(this,arguments); }); const d=ensureDaily(); if(KEYS.includes(key)) d.counts[key]=Math.max(num(d.counts[key]), num(d.counts[key])+Math.max(1,num(amount))); syncLegacy(); if((window.currentTab||currentTab)==='daily') renderDailyTab114(); return ret; };
+  window.v92DailyAdd=window.v94DailyAdd;
+  function boot(){ ensureDailyTabDom114(); patchSipaNoDrop114(); patchShowTab114(); patchRender114(); patchVersion114(); repairDaily(true); if((window.currentTab||currentTab)==='daily') renderDailyTab114(); }
+  boot(); window.addEventListener('load',()=>{setTimeout(boot,80);setTimeout(boot,400);setTimeout(boot,1000);});
+})();
+</script>
+<!-- v114: シパ運・素早さ低下防止強化、デイリータブのミッション表示修正 -->
+
+
+<script id="v116_kikumon_image_fix">
+// v116: 菊門画像の参照名ズレ対策。kikumon.png / kikumon_base.png / jpg差分まで候補に入れる。
+(function(){
+  function safe(fn){try{return fn();}catch(e){console.warn('[v116 kikumon image]', e);}}
+  const V115_APP_VERSION = 115;
+  function isKikumonSrc(src){return /(^|\/|_)kikumon(_|\.|$)/i.test(String(src||''));}
+  function uniq(arr){return [...new Set(arr.filter(Boolean))];}
+  function patchKikumonDefs(){
+    safe(()=>{
+      if(typeof BASE_SPECIES !== 'undefined' && BASE_SPECIES.kikumon){
+        BASE_SPECIES.kikumon.image = 'images/kikumon.png';
+      }
+      if(typeof EVOLUTION_TREE !== 'undefined' && EVOLUTION_TREE.kikumon){
+        Object.values(EVOLUTION_TREE.kikumon).forEach(v=>{ if(v && typeof v==='object') v.image = 'images/kikumon.png'; });
+      }
+      (state?.monsters||[]).forEach(m=>{
+        if(m && (m.speciesKey==='kikumon' || m.formId==='kikumon_aaa' || m.formName==='菊門' || m.nickname==='菊門')){
+          m.image = 'images/kikumon.png';
+        }
+      });
+      Object.values(state?.dex||{}).forEach(d=>{
+        if(d && (d.speciesKey==='kikumon' || d.formId==='kikumon_aaa' || d.formName==='菊門' || d.name==='菊門')){
+          d.image = 'images/kikumon.png';
+        }
+      });
+    });
+  }
+  function patchImagePath(){
+    safe(()=>{
+      if(typeof imagePath === 'function' && !imagePath.__v116Kikumon){
+        const old = imagePath;
+        imagePath = function(speciesKey, branchPath){
+          if(speciesKey === 'kikumon') return 'images/kikumon.png';
+          return old.apply(this, arguments);
+        };
+        imagePath.__v116Kikumon = true;
+      }
+    });
+  }
+  function patchActorImage(){
+    safe(()=>{
+      if(typeof actorImage === 'function' && !actorImage.__v116Kikumon){
+        const old = actorImage;
+        actorImage = function(actor){
+          const source = actor && actor.source ? actor.source : actor;
+          if(source && (source.speciesKey==='kikumon' || source.formId==='kikumon_aaa' || source.formName==='菊門' || source.nickname==='菊門')){
+            return source.image || 'images/kikumon.png';
+          }
+          return old.apply(this, arguments);
+        };
+        actorImage.__v116Kikumon = true;
+      }
+    });
+  }
+  function patchCandidates(){
+    safe(()=>{
+      if(typeof imageCandidatePaths === 'function' && !imageCandidatePaths.__v116Kikumon){
+        const old = imageCandidatePaths;
+        imageCandidatePaths = function(src){
+          const base = old.apply(this, arguments) || [];
+          if(isKikumonSrc(src)){
+            return uniq([
+              ...base,
+              'images/kikumon.png','kikumon.png',
+              'images/kikumon_base.png','kikumon_base.png',
+              'images/kikumon.jpg','kikumon.jpg',
+              'images/kikumon_base.jpg','kikumon_base.jpg',
+              'images/kikumon_aaa.png','kikumon_aaa.png',
+              'images/kikumon_aaa.jpg','kikumon_aaa.jpg'
+            ]);
+          }
+          return base;
+        };
+        imageCandidatePaths.__v116Kikumon = true;
+      }
+    });
+  }
+  function patchVersion(){
+    safe(()=>{
+      window.kurimonVersionCheckDone=false;
+      window.checkKurimonLatestVersion=async function(){
+        if(window.kurimonVersionCheckDone) return;
+        window.kurimonVersionCheckDone=true;
+        try{
+          const u=new URL('./version.json',location.href);u.searchParams.set('ts',Date.now());
+          const res=await fetch(u,{cache:'no-store'}); if(!res.ok) return;
+          const data=await res.json(); const latest=Number(data.version||0);
+          if(!latest || latest <= V115_APP_VERSION) return;
+          if(confirm(data.message||'新しいバージョンがあります。\n最新版に更新しますか？')){
+            await forceKurimonUpdate({targetVersion:latest,skipConfirm:true});
+          }
+        }catch(e){console.log('Kurimon version check skipped', e);}
+      };
+    });
+  }
+  function boot(){
+    patchKikumonDefs(); patchImagePath(); patchActorImage(); patchCandidates(); patchVersion();
+    safe(()=>saveGame && saveGame());
+    safe(()=>{ if(typeof render==='function') render(); });
+  }
+  boot();
+  window.addEventListener('load',()=>{setTimeout(boot,80);setTimeout(boot,500);});
+})();
+</script>
+<!-- v116: 菊門画像候補を kikumon.png / kikumon_base.png / jpg まで拡張 -->
+
+
+
+<script>
+// v116: 菊門AIが包茎手術だけを使い続ける問題を修正。
+// 役割分担：初手は恍惚絶頂の舞、火力は下痢便/覚醒後スカイラブ、包茎手術は妨害が入っていない時だけ優先。
+(function(){
+  const V116_APP_VERSION = 116;
+  function safe(fn){try{return fn();}catch(e){console.warn('[v116]', e);}}
+  function isKikumonActor(a){
+    const s=a && (a.speciesKey || a.source?.speciesKey || '');
+    const f=a && (a.formId || a.source?.formId || '');
+    const n=a && (a.formName || a.nickname || a.name || a.source?.formName || '');
+    return s==='kikumon' || f==='kikumon_aaa' || n==='菊門';
+  }
+  function stat(a,k){try{return typeof cStat==='function'?cStat(a,k):((a?.stats&&a.stats[k])||a?.[k]||0);}catch(e){return 0;}}
+  function hasPositiveBuff(a){
+    const b=a?.buff||{};
+    return ['atk','def','mag','luck','spd'].some(k=>(b[k]||0)>0);
+  }
+  function debuffedBySurgery(def){
+    const b=def?.buff||{};
+    const st=def?.status||{};
+    return (b.atk||0)<0 || (b.mag||0)<0 || (st.stun||0)>0 || (st.silence||0)>0;
+  }
+  function install(){
+    safe(()=>{
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v116KikumonBalance){
+        const old=skillScoreForActor;
+        skillScoreForActor=function(skillId, attacker, defender){
+          let s=old.apply(this, arguments);
+          if(!isKikumonActor(attacker)) return s;
+          const hp=(attacker?.hp||1), maxHp=(attacker?.maxHp||hp||1);
+          const hpRate=hp/maxHp;
+          const atk=stat(attacker,'atk'), mag=stat(attacker,'mag'), luck=stat(attacker,'luck'), spd=stat(attacker,'spd'), def=stat(attacker,'def');
+
+          // 既存の包茎手術評価が高くなりすぎるため、菊門専用技はここで役割別に再補正する。
+          if(skillId==='kikumonSurgery'){
+            s = 80 + luck*0.42 + mag*0.22 + atk*0.12;
+            // まだ相手に妨害が入っていない時だけ使いやすい。
+            if(!debuffedBySurgery(defender)) s += 70;
+            // 既に攻撃/魔法低下や行動不能が入っているなら連発しない。
+            if(debuffedBySurgery(defender)) s -= 115;
+          }
+          if(skillId==='kikumonEcstasyDance'){
+            s = 95 + def*0.45 + luck*0.28 + spd*0.22;
+            // バフ未使用・序盤・HPが残っている時は舞を優先。
+            if(!hasPositiveBuff(attacker)) s += 105;
+            if(hasPositiveBuff(attacker)) s -= 100;
+            if(hpRate>0.55) s += 35;
+          }
+          if(skillId==='kikumonDiarrheaSplash'){
+            s = 120 + atk*0.55 + mag*0.48 + spd*0.38;
+            // 妨害済みなら火力技へ移行しやすくする。
+            if(debuffedBySurgery(defender)) s += 65;
+          }
+          if(skillId==='kikumonSkyLovelyHurricane'){
+            s = 155 + atk*0.62 + luck*0.62 + spd*0.18;
+            if(hasPositiveBuff(attacker)) s += 45;
+            if(debuffedBySurgery(defender)) s += 35;
+          }
+          return Math.max(1,s);
+        };
+        skillScoreForActor.__v116KikumonBalance=true;
+      }
+    });
+    safe(()=>{
+      if(typeof shouldUseSkill==='function' && !shouldUseSkill.__v116KikumonBalance){
+        const old=shouldUseSkill;
+        shouldUseSkill=function(attacker, defender){
+          if(!isKikumonActor(attacker)) return old.apply(this, arguments);
+          const silence=attacker.status?.silence||0;
+          const usable=(typeof getSkills==='function'?getSkills(attacker):[]).filter(id=>{
+            const cat=SKILL_DEFS[id]?.category;
+            return !(silence>0 && (cat==='magic'||cat==='status'));
+          });
+          if(!usable.length) return null;
+          // 菊門は専用技を使うキャラ。ただし通常攻撃も少し残す。
+          if(Math.random()>=0.72) return null;
+          // 包茎手術の連発を禁止。相手が既に妨害中なら候補から外す。
+          let pool=usable.slice();
+          if(debuffedBySurgery(defender)) pool=pool.filter(id=>id!=='kikumonSurgery');
+          // バフ中は恍惚絶頂の舞も連発しない。
+          if(hasPositiveBuff(attacker)) pool=pool.filter(id=>id!=='kikumonEcstasyDance');
+          if(!pool.length) pool=usable;
+          return typeof chooseWeightedSkill==='function' ? chooseWeightedSkill(pool, attacker, defender) : pool[Math.floor(Math.random()*pool.length)];
+        };
+        shouldUseSkill.__v116KikumonBalance=true;
+      }
+    });
+    safe(()=>{
+      // バージョン通知の基準もv116へ。
+      window.APP_VERSION = Math.max(Number(window.APP_VERSION||0), V116_APP_VERSION);
+      window.KURIMON_APP_VERSION = V116_APP_VERSION;
+    });
+  }
+  window.addEventListener('load',()=>setTimeout(install,350));
+  setTimeout(install,80); setTimeout(install,1200);
+})();
+</script>
 
 </body>
 </html>
