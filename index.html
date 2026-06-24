@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>クリモン - 製品版 v116</title>
+  <title>クリモン - 製品版 v117</title>
   <style>
     :root{
       --bg:#10131c;
@@ -1187,7 +1187,7 @@ body{padding-bottom:108px;}
 <body>
 <header>
   <div class="topbar">
-    <div class="logo">🥚 クリモン <span class="small">製品版 v116</span></div>
+    <div class="logo">🥚 クリモン <span class="small">製品版 v117</span></div>
     <div class="row top-status">
       <span class="pill">CP <b id="cpText">0</b></span>
       <span class="pill">AP <b id="apText">0/0</b></span>
@@ -8328,9 +8328,9 @@ if ("serviceWorker" in navigator) {
   function now(){return Date.now();}
   function ensureKikumonDefs(){
     try{
-      BASE_SPECIES.kikumon = {speciesName:'菊門', role:'スカウト限定・王者型', emoji:'👑', baseStats:{hp:42,atk:13,def:12,mag:12,luck:14,spd:11}, image:'images/kikumon_base.png'};
+      BASE_SPECIES.kikumon = {speciesName:'菊門', role:'スカウト限定・王者型', emoji:'👑', baseStats:{hp:42,atk:13,def:12,mag:12,luck:14,spd:11}, image:'images/kikumon.png'};
       EVOLUTION_LEVELS.kikumon = [];
-      EVOLUTION_TREE.kikumon = EVOLUTION_TREE.kikumon || {aaa:{formName:'菊門', profile:'遠征でのみ低確率スカウトできる王者型クリモン。高いHP・攻撃・運を軸に、強化、妨害、大技を使い分ける。'}};
+      EVOLUTION_TREE.kikumon = EVOLUTION_TREE.kikumon || {aaa:{formName:'完成の菊門', profile:'遠征でのみ低確率スカウトできる王者型クリモン。高いHP・攻撃・運を軸に、強化、妨害、大技を使い分ける。', image:'images/kikumon.png'}};
       SPECIES_STAT_CAPS.kikumon = {hp:460,atk:185,def:165,mag:165,luck:190,spd:145};
       if(AWAKENING_SKILL_POOLS){ AWAKENING_SKILL_POOLS.kikumon = ['kikumonSkyLovelyHurricane','blackFlashDomain','forcedReroll','tauntGuard']; }
       if(typeof DEX_PROFILE_TEXT==='object'){
@@ -8374,8 +8374,8 @@ if ("serviceWorker" in navigator) {
     const personality=KIKUMON_PERSONALITIES[Math.floor(Math.random()*KIKUMON_PERSONALITIES.length)] || '豪運';
     const id='m_kikumon_'+Date.now()+'_'+rnd(1000,9999);
     const mon={
-      id, speciesKey:'kikumon', speciesName:'菊門', formName:'菊門', nickname:'菊門', formId:'kikumon_aaa',
-      stage:3, branchPath:'aaa', role:species.role, profile:'遠征限定の低確率スカウトキャラ。強力な専用技を持つ王者型。', emoji:species.emoji, image:'images/kikumon_base.png',
+      id, speciesKey:'kikumon', speciesName:'菊門', formName:'完成の菊門', nickname:'菊門', formId:'kikumon_aaa',
+      stage:3, branchPath:'aaa', role:species.role, profile:'遠征限定の低確率スカウトキャラ。強力な専用技を持つ王者型。', emoji:species.emoji, image:'images/kikumon.png',
       personality, condition:'normal', level:lv, exp:0, stats, hpCurrent:stats.hp,
       capBias:{hp:18,atk:8,def:7,mag:7,luck:9,spd:6},
       awakening:{done:false,type:'',result:'',title:'',skills:[],effects:[],at:0},
@@ -10810,10 +10810,10 @@ if ("serviceWorker" in navigator) {
 <!-- v114: シパ運・素早さ低下防止強化、デイリータブのミッション表示修正 -->
 
 
-<script id="v116_kikumon_image_fix">
-// v116: 菊門画像の参照名ズレ対策。kikumon.png / kikumon_base.png / jpg差分まで候補に入れる。
+<script id="v117_kikumon_image_fix">
+// v117: 菊門画像の参照名ズレ対策。kikumon.png / kikumon_base.png / jpg差分まで候補に入れる。
 (function(){
-  function safe(fn){try{return fn();}catch(e){console.warn('[v116 kikumon image]', e);}}
+  function safe(fn){try{return fn();}catch(e){console.warn('[v117 kikumon image]', e);}}
   const V115_APP_VERSION = 115;
   function isKikumonSrc(src){return /(^|\/|_)kikumon(_|\.|$)/i.test(String(src||''));}
   function uniq(arr){return [...new Set(arr.filter(Boolean))];}
@@ -10839,19 +10839,19 @@ if ("serviceWorker" in navigator) {
   }
   function patchImagePath(){
     safe(()=>{
-      if(typeof imagePath === 'function' && !imagePath.__v116Kikumon){
+      if(typeof imagePath === 'function' && !imagePath.__v117Kikumon){
         const old = imagePath;
         imagePath = function(speciesKey, branchPath){
           if(speciesKey === 'kikumon') return 'images/kikumon.png';
           return old.apply(this, arguments);
         };
-        imagePath.__v116Kikumon = true;
+        imagePath.__v117Kikumon = true;
       }
     });
   }
   function patchActorImage(){
     safe(()=>{
-      if(typeof actorImage === 'function' && !actorImage.__v116Kikumon){
+      if(typeof actorImage === 'function' && !actorImage.__v117Kikumon){
         const old = actorImage;
         actorImage = function(actor){
           const source = actor && actor.source ? actor.source : actor;
@@ -10860,13 +10860,13 @@ if ("serviceWorker" in navigator) {
           }
           return old.apply(this, arguments);
         };
-        actorImage.__v116Kikumon = true;
+        actorImage.__v117Kikumon = true;
       }
     });
   }
   function patchCandidates(){
     safe(()=>{
-      if(typeof imageCandidatePaths === 'function' && !imageCandidatePaths.__v116Kikumon){
+      if(typeof imageCandidatePaths === 'function' && !imageCandidatePaths.__v117Kikumon){
         const old = imageCandidatePaths;
         imageCandidatePaths = function(src){
           const base = old.apply(this, arguments) || [];
@@ -10883,7 +10883,7 @@ if ("serviceWorker" in navigator) {
           }
           return base;
         };
-        imageCandidatePaths.__v116Kikumon = true;
+        imageCandidatePaths.__v117Kikumon = true;
       }
     });
   }
@@ -10914,16 +10914,16 @@ if ("serviceWorker" in navigator) {
   window.addEventListener('load',()=>{setTimeout(boot,80);setTimeout(boot,500);});
 })();
 </script>
-<!-- v116: 菊門画像候補を kikumon.png / kikumon_base.png / jpg まで拡張 -->
+<!-- v117: 菊門画像候補を kikumon.png / kikumon_base.png / jpg まで拡張 -->
 
 
 
 <script>
-// v116: 菊門AIが包茎手術だけを使い続ける問題を修正。
+// v117: 菊門AIが包茎手術だけを使い続ける問題を修正。
 // 役割分担：初手は恍惚絶頂の舞、火力は下痢便/覚醒後スカイラブ、包茎手術は妨害が入っていない時だけ優先。
 (function(){
   const V116_APP_VERSION = 116;
-  function safe(fn){try{return fn();}catch(e){console.warn('[v116]', e);}}
+  function safe(fn){try{return fn();}catch(e){console.warn('[v117]', e);}}
   function isKikumonActor(a){
     const s=a && (a.speciesKey || a.source?.speciesKey || '');
     const f=a && (a.formId || a.source?.formId || '');
@@ -10942,7 +10942,7 @@ if ("serviceWorker" in navigator) {
   }
   function install(){
     safe(()=>{
-      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v116KikumonBalance){
+      if(typeof skillScoreForActor==='function' && !skillScoreForActor.__v117KikumonBalance){
         const old=skillScoreForActor;
         skillScoreForActor=function(skillId, attacker, defender){
           let s=old.apply(this, arguments);
@@ -10978,11 +10978,11 @@ if ("serviceWorker" in navigator) {
           }
           return Math.max(1,s);
         };
-        skillScoreForActor.__v116KikumonBalance=true;
+        skillScoreForActor.__v117KikumonBalance=true;
       }
     });
     safe(()=>{
-      if(typeof shouldUseSkill==='function' && !shouldUseSkill.__v116KikumonBalance){
+      if(typeof shouldUseSkill==='function' && !shouldUseSkill.__v117KikumonBalance){
         const old=shouldUseSkill;
         shouldUseSkill=function(attacker, defender){
           if(!isKikumonActor(attacker)) return old.apply(this, arguments);
@@ -11002,11 +11002,11 @@ if ("serviceWorker" in navigator) {
           if(!pool.length) pool=usable;
           return typeof chooseWeightedSkill==='function' ? chooseWeightedSkill(pool, attacker, defender) : pool[Math.floor(Math.random()*pool.length)];
         };
-        shouldUseSkill.__v116KikumonBalance=true;
+        shouldUseSkill.__v117KikumonBalance=true;
       }
     });
     safe(()=>{
-      // バージョン通知の基準もv116へ。
+      // バージョン通知の基準もv117へ。
       window.APP_VERSION = Math.max(Number(window.APP_VERSION||0), V116_APP_VERSION);
       window.KURIMON_APP_VERSION = V116_APP_VERSION;
     });
@@ -11015,6 +11015,79 @@ if ("serviceWorker" in navigator) {
   setTimeout(install,80); setTimeout(install,1200);
 })();
 </script>
+
+
+
+<script id="v117_kikumon_species_form_fix">
+// v117: 菊門がシンヤの種族/形態として表示される問題を補正。
+// 既存セーブにも効くよう、起動時・保存前後・描画前後に最低限の正規化を行う。
+(function(){
+  const VERSION = 117;
+  const KIKUMON_FORMS = new Set(['kikumon_aaa','kikumon','菊門','完成の菊門']);
+  function isKikumon(mon){
+    if(!mon) return false;
+    const n = String(mon.nickname || mon.name || mon.formName || mon.speciesName || '');
+    const sk = String(mon.speciesKey || '');
+    const fid = String(mon.formId || '');
+    const img = String(mon.image || '');
+    return sk === 'kikumon' || fid === 'kikumon_aaa' || n === '菊門' || n === '完成の菊門' || /kikumon/i.test(img);
+  }
+  function fixOne(mon){
+    if(!isKikumon(mon)) return false;
+    let changed = false;
+    function set(k,v){ if(mon[k] !== v){ mon[k]=v; changed=true; } }
+    set('speciesKey','kikumon');
+    set('speciesName','菊門');
+    set('formId','kikumon_aaa');
+    set('formName','完成の菊門');
+    if(!mon.nickname || mon.nickname === 'シンヤ' || mon.nickname === '完成のシンヤ') set('nickname','菊門');
+    set('stage',3);
+    set('branchPath','aaa');
+    set('image','images/kikumon.png');
+    return changed;
+  }
+  function fixKikumonAll(){
+    let changed = false;
+    try{
+      if(typeof BASE_SPECIES !== 'undefined'){
+        BASE_SPECIES.kikumon = BASE_SPECIES.kikumon || {speciesName:'菊門', role:'スカウト限定・王者型', emoji:'👑', baseStats:{hp:42,atk:13,def:12,mag:12,luck:14,spd:11}};
+        BASE_SPECIES.kikumon.speciesName = '菊門';
+        BASE_SPECIES.kikumon.image = 'images/kikumon.png';
+      }
+      if(typeof EVOLUTION_TREE !== 'undefined'){
+        EVOLUTION_TREE.kikumon = EVOLUTION_TREE.kikumon || {};
+        EVOLUTION_TREE.kikumon.aaa = Object.assign({}, EVOLUTION_TREE.kikumon.aaa || {}, {
+          formName:'完成の菊門',
+          image:'images/kikumon.png',
+          profile:'遠征でのみ低確率スカウトできる王者型クリモン。高いHP・攻撃・運を軸に、強化、妨害、大技を使い分ける。'
+        });
+      }
+      if(typeof DEX_PROFILE_TEXT !== 'undefined'){
+        DEX_PROFILE_TEXT.kikumon_aaa = DEX_PROFILE_TEXT.kikumon_aaa || '遠征先の門前にまれに現れるスカウト限定クリモン。加入率は低いが、育て切ると王者級の戦力になる。';
+        DEX_PROFILE_TEXT['完成の菊門'] = DEX_PROFILE_TEXT.kikumon_aaa;
+      }
+      if(typeof state !== 'undefined' && state){
+        (state.monsters || []).forEach(m=>{ if(fixOne(m)) changed = true; });
+        if(state.currentMonster && fixOne(state.currentMonster)) changed = true;
+      }
+      if(changed && typeof save === 'function') save();
+    }catch(e){ console.warn('[v117 kikumon fix]', e); }
+    return changed;
+  }
+  const oldRender = window.render;
+  if(typeof oldRender === 'function'){
+    window.render = function(){ fixKikumonAll(); return oldRender.apply(this, arguments); };
+  }
+  const oldSave = window.save;
+  if(typeof oldSave === 'function'){
+    window.save = function(){ fixKikumonAll(); return oldSave.apply(this, arguments); };
+  }
+  window.fixKikumonSpeciesFormV117 = fixKikumonAll;
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(()=>{ fixKikumonAll(); if(typeof render==='function') render(); }, 80));
+  setTimeout(()=>{ fixKikumonAll(); }, 500);
+})();
+</script>
+<!-- v117: 菊門の種族/形態を専用表示に修正。ZIPから icons/images フォルダを除外。 -->
 
 </body>
 </html>
